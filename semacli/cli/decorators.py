@@ -5,6 +5,9 @@ from typing import Any
 
 import click
 
+from semacli.core.config import SemaphoreConfig
+from semacli.core.exceptions import ConfigurationError
+
 
 def common_options(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for common CLI options."""
@@ -22,3 +25,26 @@ def output_options(func: Callable[..., Any]) -> Callable[..., Any]:
     func = click.option("-q", "--quiet", is_flag=True, help="Minimal output")(func)
 
     return func
+
+
+def project_option(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Decorator for the --project flag (override config default)."""
+    return click.option(
+        "-p",
+        "--project",
+        "project_override",
+        type=int,
+        default=None,
+        help="Project id (overrides [semaphore] project= in semacli.ini)",
+    )(func)
+
+
+def resolve_project(cfg: SemaphoreConfig, override: int | None) -> int:
+    """Resolve the effective project id from CLI flag + config."""
+    pid = override if override is not None else cfg.project
+    if pid is None:
+        raise ConfigurationError(
+            "Project id required: pass --project N or set 'project = N' "
+            "in the [semaphore] section of semacli.ini."
+        )
+    return pid
