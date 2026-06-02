@@ -28,6 +28,15 @@ wiki:
     - id: docs
       title: Documentation
       description: README, ARCHITECTURE.md, and other user/developer-facing docs.
+    - id: quality
+      title: Code quality & CI
+      description: Cross-cutting quality concerns — coverage, Sonarcloud, linters, CI workflows.
+    - id: quality/test
+      title: Quality / Tests
+      description: Stratégie de tests, conventions pytest, fixtures partagées, coverage, regression cases.
+    - id: quality/doc
+      title: Quality / Documentation qualité
+      description: Guides contributeur, conventions de tests, badges (coverage/interrogate), checklists de review.
 ---
 
 # semacli architecture

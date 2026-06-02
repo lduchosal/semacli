@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from ..docs import register_docs_commands
 from .environments import register_environments_commands
 from .inventories import register_inventories_commands
 from .keys import register_keys_commands
@@ -24,3 +25,4 @@ def register_all_commands(main_group: Any) -> None:
     register_repositories_commands(main_group)
     register_keys_commands(main_group)
     register_schedules_commands(main_group)
+    register_docs_commands(main_group)
