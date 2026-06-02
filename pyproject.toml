@@ -40,6 +40,10 @@ dev = [
     "pdm-bump",
     "interrogate>=1.7.0",
 ]
+publish = [
+    "twine>=6.2.0",
+    "keyring>=25.7.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/lduchosal/semacli"
