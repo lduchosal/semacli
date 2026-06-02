@@ -67,3 +67,37 @@ class Environment:
     name: str
     password: str = ""
     json: str = ""
+
+
+@dataclass
+class Repository:
+    """A Semaphore repository (git source for playbooks)."""
+
+    id: int
+    project_id: int
+    name: str
+    git_url: str = ""
+    git_branch: str = ""
+    ssh_key_id: int = 0
+
+
+@dataclass
+class Key:
+    """A Semaphore access key (SSH, login_password, none)."""
+
+    id: int
+    project_id: int
+    name: str
+    type: str = ""
+
+
+@dataclass
+class Schedule:
+    """A Semaphore cron schedule."""
+
+    id: int
+    project_id: int
+    template_id: int
+    cron_format: str = ""
+    name: str = ""
+    active: bool = True

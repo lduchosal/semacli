@@ -181,3 +181,78 @@ def register_tasks_commands(main_group: Any) -> None:
                 time.sleep(interval)
         except Exception as e:
             handle_error(e, verbose)
+
+    @tasks_group.command("list")
+    @click.pass_context
+    def list_cmd(ctx: click.Context) -> None:
+        """List task history of the project."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            tasks = client.list_tasks(pid)
+            if opts["output_json"]:
+                click.echo(
+                    json.dumps(
+                        [
+                            {
+                                "id": t.id,
+                                "template_id": t.template_id,
+                                "status": t.status,
+                                "created": t.created,
+                            }
+                            for t in tasks
+                        ],
+                        indent=2,
+                    )
+                )
+            elif not opts["quiet"]:
+                if not tasks:
+                    click.echo("No tasks found")
+                else:
+                    for t in tasks:
+                        click.echo(
+                            f"{t.id:>5}  tpl={t.template_id:<4}  "
+                            f"{t.status:<10}  {t.created}"
+                        )
+                    click.echo(f"\nTotal: {len(tasks)} task(s)")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @tasks_group.command("stop")
+    @click.argument("task_id", type=int)
+    @click.pass_context
+    def stop_cmd(ctx: click.Context, task_id: int) -> None:
+        """Stop a running task."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            client.stop_task(pid, task_id)
+            if not opts["quiet"]:
+                click.echo(f"stop requested for task {task_id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @tasks_group.command("raw-output")
+    @click.argument("task_id", type=int)
+    @click.pass_context
+    def raw_output_cmd(ctx: click.Context, task_id: int) -> None:
+        """Dump task output without timestamps."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            raw = client.get_task_raw_output(pid, task_id)
+            if opts["output_json"]:
+                click.echo(json.dumps({"output": raw}))
+            elif not opts["quiet"]:
+                click.echo(raw, nl=False)
+        except Exception as e:
+            handle_error(e, verbose)

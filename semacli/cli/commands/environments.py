@@ -1,0 +1,168 @@
+"""Environments CRUD commands."""
+
+from typing import Any
+
+import click
+
+from semacli.core.models import Environment
+
+from .._crud import (
+    confirm_delete,
+    emit_json_list,
+    emit_json_single,
+    emit_text_list,
+    opts_from_ctx,
+    setup,
+    store_opts,
+)
+from ..decorators import common_options, output_options, project_option
+from ..handlers import handle_error
+
+
+def _read_json(path_or_text: str) -> str:
+    if path_or_text.startswith("@"):
+        with open(path_or_text[1:], encoding="utf-8") as f:
+            return f.read()
+    return path_or_text
+
+
+def _fmt_row(e: Environment) -> str:
+    return f"{e.id:>4}  {e.name}"
+
+
+def _emit_show_text(e: Environment) -> None:
+    click.echo(f"id:         {e.id}")
+    click.echo(f"name:       {e.name}")
+    click.echo(f"project_id: {e.project_id}")
+    if e.password:
+        click.echo("password:   <set>")
+    if e.json:
+        click.echo("json:")
+        click.echo(e.json)
+
+
+def register_environments_commands(main_group: Any) -> None:
+    """Register the `environments` command group."""
+
+    @main_group.group("environments", invoke_without_command=True)
+    @click.pass_context
+    @common_options
+    @output_options
+    @project_option
+    def environments(
+        ctx: click.Context,
+        config: str,
+        verbose: int,
+        output_json: bool,
+        quiet: bool,
+        project_override: int | None,
+    ) -> None:
+        """List, show, create, update, delete environments (extra vars + secrets)."""
+        store_opts(
+            ctx,
+            config=config,
+            verbose=verbose,
+            output_json=output_json,
+            quiet=quiet,
+            project_override=project_override,
+        )
+        if ctx.invoked_subcommand is not None:
+            return
+        try:
+            client, pid = setup(opts_from_ctx(ctx))
+            items = client.list_environments(pid)
+            if output_json:
+                emit_json_list(items)
+            elif not quiet:
+                emit_text_list(items, "environment(s)", _fmt_row)
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @environments.command("show")
+    @click.argument("env_id", type=int)
+    @click.pass_context
+    def show_cmd(ctx: click.Context, env_id: int) -> None:
+        """Show one environment."""
+        opts = opts_from_ctx(ctx)
+        try:
+            client, pid = setup(opts)
+            item = client.get_environment(pid, env_id)
+            if opts["output_json"]:
+                emit_json_single(item)
+            elif not opts["quiet"]:
+                _emit_show_text(item)
+        except Exception as e:
+            handle_error(e, opts["verbose"])
+
+    @environments.command("create")
+    @click.option("--name", required=True)
+    @click.option(
+        "--json", "json_vars", required=True,
+        help="JSON env vars. Prefix with @ to read from a file.",
+    )
+    @click.option("--password", default="")
+    @click.pass_context
+    def create_cmd(
+        ctx: click.Context, name: str, json_vars: str, password: str
+    ) -> None:
+        """Create an environment."""
+        opts = opts_from_ctx(ctx)
+        try:
+            client, pid = setup(opts)
+            item = client.create_environment(
+                pid,
+                name=name,
+                json_vars=_read_json(json_vars),
+                password=password,
+            )
+            if opts["output_json"]:
+                emit_json_single(item)
+            elif not opts["quiet"]:
+                click.echo(f"created environment id={item.id}")
+        except Exception as e:
+            handle_error(e, opts["verbose"])
+
+    @environments.command("update")
+    @click.argument("env_id", type=int)
+    @click.option("--name", default=None)
+    @click.option("--json", "json_vars", default=None, help="Prefix with @ to read from file.")
+    @click.option("--password", default=None)
+    @click.pass_context
+    def update_cmd(
+        ctx: click.Context,
+        env_id: int,
+        name: str | None,
+        json_vars: str | None,
+        password: str | None,
+    ) -> None:
+        """Update an environment."""
+        opts = opts_from_ctx(ctx)
+        try:
+            client, pid = setup(opts)
+            client.update_environment(
+                pid,
+                env_id,
+                name=name,
+                json=_read_json(json_vars) if json_vars else None,
+                password=password,
+            )
+            if not opts["quiet"]:
+                click.echo(f"updated environment id={env_id}")
+        except Exception as e:
+            handle_error(e, opts["verbose"])
+
+    @environments.command("delete")
+    @click.argument("env_id", type=int)
+    @click.option("--yes", is_flag=True)
+    @click.pass_context
+    def delete_cmd(ctx: click.Context, env_id: int, yes: bool) -> None:
+        """Delete an environment."""
+        opts = opts_from_ctx(ctx)
+        try:
+            client, pid = setup(opts)
+            confirm_delete(yes, "environment", env_id)
+            client.delete_environment(pid, env_id)
+            if not opts["quiet"]:
+                click.echo(f"deleted environment id={env_id}")
+        except Exception as e:
+            handle_error(e, opts["verbose"])
