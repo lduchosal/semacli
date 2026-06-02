@@ -1,0 +1,16 @@
+[semaphore]
+url = https://monitor.example.com/semaphore
+# Default project id (integer). Optional — many commands accept --project.
+# project = 1
+
+[auth]
+# Authentication method: bearer_token or env_var
+method = bearer_token
+# For method = bearer_token:
+bearer_token = your-api-token-here
+# For method = env_var:
+# env_var = SEMAPHORE_TOKEN
+
+[settings]
+timeout = 30
+verify_ssl = true

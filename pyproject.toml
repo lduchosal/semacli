@@ -1,0 +1,128 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+name = "semacli"
+dynamic = ["version"]
+authors = [
+    {name = "lduchosal", email = "lduchosal@github.com"},
+]
+description = "A CLI tool to manage Semaphore UI (ansible-semaphore) via HTTP REST API"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Systems Administration",
+]
+keywords = ["semaphore", "ansible", "cli", "api", "devops"]
+dependencies = [
+    "click>=8.0,<9.0",
+]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=21.0",
+    "mypy>=0.800",
+    "ruff>=0.1.0",
+    "pdm>=2.0.0",
+    "pdm-bump",
+    "interrogate>=1.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lduchosal/semacli"
+"Bug Reports" = "https://github.com/lduchosal/semacli/issues"
+Source = "https://github.com/lduchosal/semacli"
+Documentation = "https://github.com/lduchosal/semacli/blob/main/README.md"
+
+[project.scripts]
+semacli = "semacli.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v"
+
+[tool.pdm]
+distribution = true
+version = {source = "file", path = "semacli/__init__.py"}
+
+[tool.pdm.scripts]
+format = "ruff format"
+typecheck = "mypy semacli/"
+build = "python -m build"
+install = "pdm install"
+install-dev = "pdm install -G dev"
+clihelp = "semacli --help"
+cli = {composite = ["clihelp"]}
+all = {composite = ["install", "format", "build", "test", "cli"]}
+test = "env PYTHONPATH=src python -m pytest tests/ -v --cov=semacli --cov-report=term-missing"
+test-quick = "env PYTHONPATH=src python -m pytest tests/ --tb=no -q"
+test-unit = "env PYTHONPATH=src python -m pytest tests/unit/ -v"
+test-integration = "env PYTHONPATH=src python -m pytest tests/integration/ -v"
+test-cov = "env PYTHONPATH=src python -m pytest tests/ -v --cov=semacli --cov-report=html --cov-report=term-missing"
+lint = "ruff check semacli/ tests/"
+lint-fix = "ruff check --fix semacli/ tests/"
+format-check = "black --check semacli/ tests/"
+interrogate = "interrogate semacli/"
+test-cov-xml = "env PYTHONPATH=src python -m pytest tests/ --cov=semacli --cov-report=xml --cov-report=term --cov-fail-under=80"
+check = ["lint", "format-check", "typecheck", "test"]
+clean = "rm -rf .coverage htmlcov/ .pytest_cache/ __pycache__/ semacli/__pycache__/"
+version-patch = "pdm bump patch"
+version-minor = "pdm bump minor"
+version-major = "pdm bump major"
+
+[tool.pdm-bump]
+version-files = [
+    "semacli/__init__.py:__version__",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore = ["E501"]
+
+[tool.interrogate]
+fail-under = 0
+ignore-init-method = true
+ignore-init-module = true
+exclude = ["tests", "docs", "build", "dist"]
+generate-badge = "."
+badge-format = "svg"
