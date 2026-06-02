@@ -88,12 +88,13 @@ class TestInventory:
             project_id=2,
             name="hosts",
             type="static",
-            inventory="[all]\nhost1\n",
+            content="[all]\nhost1\n",
             ssh_key_id=3,
             become_key_id=4,
         )
         assert i.type == "static"
         assert i.ssh_key_id == 3
+        assert i.content.startswith("[all]")
 
 
 class TestEnvironment:

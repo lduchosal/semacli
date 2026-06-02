@@ -35,9 +35,7 @@ def register_ping_commands(main_group: Any) -> None:
 
             if output_json:
                 click.echo(json.dumps({"ping": pong}))
-            elif quiet:
-                pass
-            else:
+            elif not quiet:
                 click.echo(pong)
 
         except Exception as e:

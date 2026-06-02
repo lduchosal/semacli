@@ -53,9 +53,7 @@ def register_projects_commands(main_group: Any) -> None:
 
             if output_json:
                 _emit_projects_json(projects)
-            elif quiet:
-                pass
-            else:
+            elif not quiet:
                 _emit_projects_text(projects)
 
         except Exception as e:

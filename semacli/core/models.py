@@ -53,7 +53,7 @@ class Inventory:
     project_id: int
     name: str
     type: str = ""
-    inventory: str = ""
+    content: str = ""
     ssh_key_id: int = 0
     become_key_id: int = 0
 
