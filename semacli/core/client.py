@@ -2,6 +2,7 @@
 
 import json
 import ssl
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -12,6 +13,19 @@ from .exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
 from .models import Project
 
 
+def _build_insecure_ssl_context() -> ssl.SSLContext:
+    """Return an SSL context with verification disabled.
+
+    Opt-in path: only called when the user sets verify_ssl=false in their
+    config. The two assignments below are deliberate — see SEC ken #638
+    and sonar-project.properties for the scoped S4830 suppression.
+    """
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
 class SemaphoreClient:
     """HTTP client for Semaphore UI REST API."""
 
@@ -19,21 +33,31 @@ class SemaphoreClient:
         self.config = config
         self.verbose = verbose
         self._opener: urllib.request.OpenerDirector | None = None
+        self._warn_insecure()
+
+    def _warn_insecure(self) -> None:
+        if not self.config.verify_ssl:
+            print(
+                "WARNING: TLS certificate verification is DISABLED "
+                "(verify_ssl=false). Traffic is vulnerable to MITM.",
+                file=sys.stderr,
+            )
+        if self.config.url.startswith("http://"):
+            print(
+                "WARNING: connecting over plain HTTP. Credentials and data "
+                "travel in clear text.",
+                file=sys.stderr,
+            )
 
     def _get_opener(self) -> urllib.request.OpenerDirector:
         """Get or create HTTP opener with SSL handling."""
         if self._opener is None:
             handlers: list[urllib.request.BaseHandler] = []
-
             if not self.config.verify_ssl:
-                # Opt-in insecure mode for self-signed certs.
-                ssl_context = ssl.create_default_context()
-                ssl_context.check_hostname = False  # NOSONAR: explicit user opt-in via verify_ssl=False
-                ssl_context.verify_mode = ssl.CERT_NONE  # NOSONAR: explicit user opt-in via verify_ssl=False
-                handlers.append(urllib.request.HTTPSHandler(context=ssl_context))
-
+                handlers.append(
+                    urllib.request.HTTPSHandler(context=_build_insecure_ssl_context())
+                )
             self._opener = urllib.request.build_opener(*handlers)
-
         return self._opener
 
     def _build_request(

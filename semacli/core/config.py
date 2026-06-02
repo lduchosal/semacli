@@ -17,6 +17,7 @@ class SemaphoreConfig:
     project: int | None = None
     timeout: int = 30
     verify_ssl: bool = True
+    allow_http: bool = False
 
 
 def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
@@ -96,16 +97,26 @@ def _parse_config(config: configparser.ConfigParser) -> SemaphoreConfig:
 
     timeout = 30
     verify_ssl = True
+    allow_http = False
 
     if "settings" in config:
         settings_section = config["settings"]
         timeout = settings_section.getint("timeout", 30)
         verify_ssl = settings_section.getboolean("verify_ssl", True)
+        allow_http = settings_section.getboolean("allow_http", False)
+
+    clean_url = url.rstrip("/")
+    if clean_url.startswith("http://") and not allow_http:
+        raise ConfigurationError(
+            "Plain HTTP url is refused by default. Set 'allow_http = true' "
+            "in the [settings] section to enable it (not recommended)."
+        )
 
     return SemaphoreConfig(
-        url=url.rstrip("/"),
+        url=clean_url,
         bearer_token=bearer_token,
         project=project,
         timeout=timeout,
         verify_ssl=verify_ssl,
+        allow_http=allow_http,
     )

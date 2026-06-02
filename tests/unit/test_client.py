@@ -24,6 +24,7 @@ def _cfg(**overrides: Any) -> SemaphoreConfig:
         "bearer_token": "tok",
         "timeout": 5,
         "verify_ssl": True,
+        "allow_http": False,
     }
     base.update(overrides)
     return SemaphoreConfig(**base)
@@ -185,3 +186,27 @@ class TestErrorMapping:
             c.ping()
         out = capsys.readouterr().out
         assert "GET" in out and "Response:" in out
+
+
+class TestInsecureWarnings:
+    def test_no_warning_when_secure(self, capsys: pytest.CaptureFixture[str]) -> None:
+        SemaphoreClient(_cfg())
+        assert capsys.readouterr().err == ""
+
+    def test_warns_when_verify_ssl_false(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        SemaphoreClient(_cfg(verify_ssl=False))
+        err = capsys.readouterr().err
+        assert "TLS certificate verification is DISABLED" in err
+
+    def test_warns_when_http(self, capsys: pytest.CaptureFixture[str]) -> None:
+        SemaphoreClient(_cfg(url="http://sema.example", allow_http=True))
+        err = capsys.readouterr().err
+        assert "plain HTTP" in err
+
+    def test_warns_for_both(self, capsys: pytest.CaptureFixture[str]) -> None:
+        SemaphoreClient(_cfg(url="http://sema.example", allow_http=True, verify_ssl=False))
+        err = capsys.readouterr().err
+        assert "TLS certificate verification is DISABLED" in err
+        assert "plain HTTP" in err

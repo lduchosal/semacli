@@ -13,4 +13,12 @@ bearer_token = your-api-token-here
 
 [settings]
 timeout = 30
+
+# verify_ssl = true is the secure default. Set to false ONLY for self-signed
+# certificates in a trusted environment — traffic becomes vulnerable to MITM.
 verify_ssl = true
+
+# allow_http = false rejects plain http:// URLs (default). Set to true ONLY
+# to talk to a Semaphore instance over plain HTTP — credentials and data
+# travel in clear text.
+# allow_http = false

@@ -82,3 +82,44 @@ class TestLoadConfig:
         )
         cfg = load_config(str(ini))
         assert cfg.project == 7
+
+    def test_allow_http_default_false(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.allow_http is False
+        assert cfg.verify_ssl is True
+
+    def test_http_url_rejected_by_default(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = http://semaphore.example
+            bearer_token = t
+            """,
+        )
+        with pytest.raises(ConfigurationError, match="Plain HTTP"):
+            load_config(str(ini))
+
+    def test_http_url_allowed_with_flag(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = http://semaphore.example
+            bearer_token = t
+
+            [settings]
+            allow_http = true
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.allow_http is True
+        assert cfg.url == "http://semaphore.example"
