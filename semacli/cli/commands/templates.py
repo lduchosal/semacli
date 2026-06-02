@@ -1,7 +1,6 @@
 """Templates commands (list + show)."""
 
 import json
-from dataclasses import asdict
 from typing import Any
 
 import click
@@ -15,7 +14,7 @@ from ..handlers import OutputFormatter, handle_error
 
 
 def _emit_list_json(templates: list[Template]) -> None:
-    click.echo(json.dumps([asdict(t) for t in templates], indent=2))
+    click.echo(json.dumps([t.model_dump() for t in templates], indent=2))
 
 
 def _emit_list_text(templates: list[Template]) -> None:
@@ -28,7 +27,7 @@ def _emit_list_text(templates: list[Template]) -> None:
 
 
 def _emit_show_json(t: Template) -> None:
-    click.echo(json.dumps(asdict(t), indent=2))
+    click.echo(json.dumps(t.model_dump(), indent=2))
 
 
 def _emit_show_text(t: Template) -> None:

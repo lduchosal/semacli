@@ -36,9 +36,9 @@ def _emit_show_text(e: Environment) -> None:
     click.echo(f"project_id: {e.project_id}")
     if e.password:
         click.echo("password:   <set>")
-    if e.json:
+    if e.vars_json:
         click.echo("json:")
-        click.echo(e.json)
+        click.echo(e.vars_json)
 
 
 def register_environments_commands(main_group: Any) -> None:

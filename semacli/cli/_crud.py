@@ -3,10 +3,10 @@ repositories, keys, schedules)."""
 
 import json
 from collections.abc import Callable
-from dataclasses import asdict, is_dataclass
 from typing import Any
 
 import click
+from pydantic import BaseModel
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
@@ -23,15 +23,15 @@ def setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
 
 
 def emit_json_single(obj: Any) -> None:
-    """Emit a single dataclass instance (or dict) as JSON."""
-    payload = asdict(obj) if is_dataclass(obj) and not isinstance(obj, type) else obj
+    """Emit a single pydantic model (or dict) as JSON."""
+    payload = obj.model_dump(by_alias=True) if isinstance(obj, BaseModel) else obj
     click.echo(json.dumps(payload, indent=2))
 
 
 def emit_json_list(items: list[Any]) -> None:
-    """Emit a list of dataclass instances as JSON."""
+    """Emit a list of pydantic models as JSON."""
     payload = [
-        asdict(o) if is_dataclass(o) and not isinstance(o, type) else o
+        o.model_dump(by_alias=True) if isinstance(o, BaseModel) else o
         for o in items
     ]
     click.echo(json.dumps(payload, indent=2))

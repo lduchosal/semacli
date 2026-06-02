@@ -1,12 +1,15 @@
 """Semaphore HTTP API client."""
 
 import json
+import os
 import ssl
 import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any
+
+import certifi
 
 from .config import SemaphoreConfig
 from .exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
@@ -20,6 +23,15 @@ from .models import (
     Task,
     Template,
 )
+
+
+def _build_secure_ssl_context() -> ssl.SSLContext:
+    # urllib's default context follows openssl_cafile, which on Python.org
+    # macOS builds points at a non-existent path → every cert rejected.
+    # Pin to certifi unless the user explicitly overrode the bundle.
+    if os.environ.get("SSL_CERT_FILE") or os.environ.get("SSL_CERT_DIR"):
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def _build_insecure_ssl_context() -> ssl.SSLContext:
@@ -61,11 +73,14 @@ class SemaphoreClient:
     def _get_opener(self) -> urllib.request.OpenerDirector:
         """Get or create HTTP opener with SSL handling."""
         if self._opener is None:
-            handlers: list[urllib.request.BaseHandler] = []
-            if not self.config.verify_ssl:
-                handlers.append(
-                    urllib.request.HTTPSHandler(context=_build_insecure_ssl_context())
-                )
+            ctx = (
+                _build_insecure_ssl_context()
+                if not self.config.verify_ssl
+                else _build_secure_ssl_context()
+            )
+            handlers: list[urllib.request.BaseHandler] = [
+                urllib.request.HTTPSHandler(context=ctx)
+            ]
             self._opener = urllib.request.build_opener(*handlers)
         return self._opener
 
@@ -146,21 +161,21 @@ class SemaphoreClient:
         data = self._request("projects")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response format for /projects")
-        return [self._parse_project(item) for item in data]
+        return [Project.model_validate(item) for item in data]
 
     def get_templates(self, project_id: int) -> list[Template]:
         """GET /api/project/{pid}/templates."""
         data = self._request(f"project/{project_id}/templates")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /templates")
-        return [self._parse_template(t) for t in data]
+        return [Template.model_validate(t) for t in data]
 
     def get_template(self, project_id: int, template_id: int) -> Template:
         """GET /api/project/{pid}/templates/{tid}."""
         data = self._request(f"project/{project_id}/templates/{template_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /templates/{tid}")
-        return self._parse_template(data)
+        return Template.model_validate(data)
 
     def run_task(
         self,
@@ -190,14 +205,14 @@ class SemaphoreClient:
         )
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /tasks")
-        return self._parse_task(data)
+        return Task.model_validate(data)
 
     def get_task(self, project_id: int, task_id: int) -> Task:
         """GET /api/project/{pid}/tasks/{tid}."""
         data = self._request(f"project/{project_id}/tasks/{task_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /tasks/{tid}")
-        return self._parse_task(data)
+        return Task.model_validate(data)
 
     def get_task_output(
         self, project_id: int, task_id: int
@@ -220,7 +235,7 @@ class SemaphoreClient:
         data = self._request(f"project/{project_id}/tasks")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /tasks")
-        return [self._parse_task(t) for t in data]
+        return [Task.model_validate(t) for t in data]
 
     def stop_task(self, project_id: int, task_id: int) -> None:
         """POST /api/project/{pid}/tasks/{tid}/stop."""
@@ -234,14 +249,14 @@ class SemaphoreClient:
         data = self._request(f"project/{project_id}/inventory")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /inventory")
-        return [self._parse_inventory(i) for i in data]
+        return [Inventory.model_validate(i) for i in data]
 
     def get_inventory(self, project_id: int, inventory_id: int) -> Inventory:
         """GET /api/project/{pid}/inventory/{iid}."""
         data = self._request(f"project/{project_id}/inventory/{inventory_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /inventory/{iid}")
-        return self._parse_inventory(data)
+        return Inventory.model_validate(data)
 
     def create_inventory(
         self,
@@ -268,7 +283,7 @@ class SemaphoreClient:
         )
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /inventory")
-        return self._parse_inventory(data)
+        return Inventory.model_validate(data)
 
     def update_inventory(
         self,
@@ -298,14 +313,14 @@ class SemaphoreClient:
         data = self._request(f"project/{project_id}/environment")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /environment")
-        return [self._parse_environment(e) for e in data]
+        return [Environment.model_validate(e) for e in data]
 
     def get_environment(self, project_id: int, env_id: int) -> Environment:
         """GET /api/project/{pid}/environment/{eid}."""
         data = self._request(f"project/{project_id}/environment/{env_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /environment/{eid}")
-        return self._parse_environment(data)
+        return Environment.model_validate(data)
 
     def create_environment(
         self,
@@ -327,7 +342,7 @@ class SemaphoreClient:
         )
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /environment")
-        return self._parse_environment(data)
+        return Environment.model_validate(data)
 
     def update_environment(
         self,
@@ -357,14 +372,14 @@ class SemaphoreClient:
         data = self._request(f"project/{project_id}/repositories")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /repositories")
-        return [self._parse_repository(r) for r in data]
+        return [Repository.model_validate(r) for r in data]
 
     def get_repository(self, project_id: int, repo_id: int) -> Repository:
         """GET /api/project/{pid}/repositories/{rid}."""
         data = self._request(f"project/{project_id}/repositories/{repo_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /repositories/{rid}")
-        return self._parse_repository(data)
+        return Repository.model_validate(data)
 
     def create_repository(
         self,
@@ -387,7 +402,7 @@ class SemaphoreClient:
         )
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /repositories")
-        return self._parse_repository(data)
+        return Repository.model_validate(data)
 
     def update_repository(
         self,
@@ -417,14 +432,14 @@ class SemaphoreClient:
         data = self._request(f"project/{project_id}/keys")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /keys")
-        return [self._parse_key(k) for k in data]
+        return [Key.model_validate(k) for k in data]
 
     def get_key(self, project_id: int, key_id: int) -> Key:
         """GET /api/project/{pid}/keys/{kid}."""
         data = self._request(f"project/{project_id}/keys/{key_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /keys/{kid}")
-        return self._parse_key(data)
+        return Key.model_validate(data)
 
     def create_key(
         self,
@@ -458,7 +473,7 @@ class SemaphoreClient:
         )
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /keys")
-        return self._parse_key(data)
+        return Key.model_validate(data)
 
     def update_key(
         self, project_id: int, key_id: int, **fields: Any
@@ -483,14 +498,14 @@ class SemaphoreClient:
         data = self._request(f"project/{project_id}/schedules")
         if not isinstance(data, list):
             raise SemaphoreAPIError("Unexpected response for /schedules")
-        return [self._parse_schedule(s) for s in data]
+        return [Schedule.model_validate(s) for s in data]
 
     def get_schedule(self, project_id: int, sched_id: int) -> Schedule:
         """GET /api/project/{pid}/schedules/{sid}."""
         data = self._request(f"project/{project_id}/schedules/{sched_id}")
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for /schedules/{sid}")
-        return self._parse_schedule(data)
+        return Schedule.model_validate(data)
 
     def create_schedule(
         self,
@@ -513,7 +528,7 @@ class SemaphoreClient:
         )
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /schedules")
-        return self._parse_schedule(data)
+        return Schedule.model_validate(data)
 
     def update_schedule(
         self, project_id: int, sched_id: int, **fields: Any
@@ -532,96 +547,4 @@ class SemaphoreClient:
         """DELETE /api/project/{pid}/schedules/{sid}."""
         self._request(
             f"project/{project_id}/schedules/{sched_id}", method="DELETE"
-        )
-
-    @staticmethod
-    def _parse_project(data: dict[str, Any]) -> Project:
-        return Project(
-            id=int(data.get("id", 0)),
-            name=str(data.get("name", "")),
-            created=str(data.get("created", "")),
-            alert=bool(data.get("alert", False)),
-            alert_chat=str(data.get("alert_chat", "")),
-            max_parallel_tasks=int(data.get("max_parallel_tasks", 0)),
-        )
-
-    @staticmethod
-    def _parse_template(data: dict[str, Any]) -> Template:
-        return Template(
-            id=int(data.get("id", 0)),
-            project_id=int(data.get("project_id", 0)),
-            name=str(data.get("name", "")),
-            playbook=str(data.get("playbook", "")),
-            inventory_id=int(data.get("inventory_id", 0)),
-            repository_id=int(data.get("repository_id", 0)),
-            environment_id=int(data.get("environment_id", 0)),
-            description=str(data.get("description", "")),
-        )
-
-    @staticmethod
-    def _parse_task(data: dict[str, Any]) -> Task:
-        return Task(
-            id=int(data.get("id", 0)),
-            template_id=int(data.get("template_id", 0)),
-            status=str(data.get("status", "")),
-            debug=bool(data.get("debug", False)),
-            dry_run=bool(data.get("dry_run", False)),
-            playbook=str(data.get("playbook", "")),
-            environment=str(data.get("environment", "")),
-            created=str(data.get("created", "")),
-            start=str(data.get("start", "")),
-            end=str(data.get("end", "")),
-        )
-
-    @staticmethod
-    def _parse_inventory(data: dict[str, Any]) -> Inventory:
-        return Inventory(
-            id=int(data.get("id", 0)),
-            project_id=int(data.get("project_id", 0)),
-            name=str(data.get("name", "")),
-            type=str(data.get("type", "")),
-            content=str(data.get("inventory", "")),
-            ssh_key_id=int(data.get("ssh_key_id", 0)),
-            become_key_id=int(data.get("become_key_id", 0)),
-        )
-
-    @staticmethod
-    def _parse_environment(data: dict[str, Any]) -> Environment:
-        return Environment(
-            id=int(data.get("id", 0)),
-            project_id=int(data.get("project_id", 0)),
-            name=str(data.get("name", "")),
-            password=str(data.get("password", "")),
-            json=str(data.get("json", "")),
-        )
-
-    @staticmethod
-    def _parse_repository(data: dict[str, Any]) -> Repository:
-        return Repository(
-            id=int(data.get("id", 0)),
-            project_id=int(data.get("project_id", 0)),
-            name=str(data.get("name", "")),
-            git_url=str(data.get("git_url", "")),
-            git_branch=str(data.get("git_branch", "")),
-            ssh_key_id=int(data.get("ssh_key_id", 0)),
-        )
-
-    @staticmethod
-    def _parse_key(data: dict[str, Any]) -> Key:
-        return Key(
-            id=int(data.get("id", 0)),
-            project_id=int(data.get("project_id", 0)),
-            name=str(data.get("name", "")),
-            type=str(data.get("type", "")),
-        )
-
-    @staticmethod
-    def _parse_schedule(data: dict[str, Any]) -> Schedule:
-        return Schedule(
-            id=int(data.get("id", 0)),
-            project_id=int(data.get("project_id", 0)),
-            template_id=int(data.get("template_id", 0)),
-            cron_format=str(data.get("cron_format", "")),
-            name=str(data.get("name", "")),
-            active=bool(data.get("active", True)),
         )

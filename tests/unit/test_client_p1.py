@@ -115,7 +115,7 @@ class TestEnvironmentsClient:
         with patch.object(c, "_request", return_value=[{"id": 1, "name": "prod"}]):
             assert c.list_environments(5)[0].name == "prod"
         with patch.object(c, "_request", return_value={"id": 1, "json": '{"k":"v"}'}):
-            assert c.get_environment(5, 1).json == '{"k":"v"}'
+            assert c.get_environment(5, 1).vars_json == '{"k":"v"}'
 
     def test_create_body(self) -> None:
         c = SemaphoreClient(_cfg())

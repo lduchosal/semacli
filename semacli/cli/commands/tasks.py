@@ -2,7 +2,6 @@
 
 import json
 import time
-from dataclasses import asdict
 from typing import Any
 
 import click
@@ -18,7 +17,7 @@ _FINAL_STATES = {"success", "error", "stopped"}
 
 
 def _emit_task_json(t: Task) -> None:
-    click.echo(json.dumps(asdict(t), indent=2))
+    click.echo(json.dumps(t.model_dump(), indent=2))
 
 
 def _emit_task_text(t: Task) -> None:

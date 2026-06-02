@@ -101,7 +101,7 @@ class TestEnvironment:
     def test_minimal(self) -> None:
         e = Environment(id=1, project_id=2, name="prod")
         assert e.password == ""
-        assert e.json == ""
+        assert e.vars_json == ""
 
     def test_full(self) -> None:
         e = Environment(
@@ -109,7 +109,12 @@ class TestEnvironment:
             project_id=2,
             name="prod",
             password="secret",
-            json='{"k": "v"}',
+            vars_json='{"k": "v"}',
         )
         assert e.password == "secret"
-        assert e.json == '{"k": "v"}'
+        assert e.vars_json == '{"k": "v"}'
+
+    def test_accepts_api_alias(self) -> None:
+        # API returns the JSON content under the "json" key.
+        e = Environment.model_validate({"id": 1, "name": "x", "json": '{"k":"v"}'})
+        assert e.vars_json == '{"k":"v"}'

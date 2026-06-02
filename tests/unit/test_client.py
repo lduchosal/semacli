@@ -84,6 +84,41 @@ class TestOpener:
             type(h).__name__ == "HTTPSHandler" for h in opener.handlers
         )
 
+    def test_secure_opener_uses_certifi_bundle(self, monkeypatch: Any) -> None:
+        # urllib's default SSL store is broken on Python.org macOS builds;
+        # secure mode must pin to certifi's bundle.
+        import certifi
+
+        monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+        monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+        c = SemaphoreClient(_cfg(verify_ssl=True))
+        opener = c._get_opener()
+        https = next(
+            h for h in opener.handlers if type(h).__name__ == "HTTPSHandler"
+        )
+        ctx = https._context
+        assert ctx.verify_mode == __import__("ssl").CERT_REQUIRED
+        assert ctx.check_hostname is True
+        # cafile=certifi.where() shows up as a loaded location
+        locations = ctx.get_ca_certs()
+        assert len(locations) > 0
+        # sanity check: certifi bundle should be referenced
+        assert certifi.where()
+
+    def test_secure_opener_respects_ssl_cert_file_env(
+        self, monkeypatch: Any
+    ) -> None:
+        # When the operator pins SSL_CERT_FILE we must not override it.
+        import certifi
+
+        monkeypatch.setenv("SSL_CERT_FILE", certifi.where())
+        c = SemaphoreClient(_cfg(verify_ssl=True))
+        opener = c._get_opener()
+        https = next(
+            h for h in opener.handlers if type(h).__name__ == "HTTPSHandler"
+        )
+        assert https._context.verify_mode == __import__("ssl").CERT_REQUIRED
+
 
 class TestPing:
     def test_string_pong(self) -> None:

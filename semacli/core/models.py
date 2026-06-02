@@ -1,27 +1,31 @@
-"""Data models for semacli."""
+"""Data models for semacli (pydantic v2 BaseModel)."""
 
-from dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict, Field
 
 
-@dataclass
-class Project:
+class _ApiModel(BaseModel):
+    """Base class: allow field name OR API alias on input; ignore extras."""
+
+    model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
+
+class Project(_ApiModel):
     """A Semaphore project."""
 
-    id: int
-    name: str
+    id: int = 0
+    name: str = ""
     created: str = ""
     alert: bool = False
     alert_chat: str = ""
     max_parallel_tasks: int = 0
 
 
-@dataclass
-class Template:
+class Template(_ApiModel):
     """A Semaphore task template."""
 
-    id: int
-    project_id: int
-    name: str
+    id: int = 0
+    project_id: int = 0
+    name: str = ""
     playbook: str = ""
     inventory_id: int = 0
     repository_id: int = 0
@@ -29,12 +33,11 @@ class Template:
     description: str = ""
 
 
-@dataclass
-class Task:
+class Task(_ApiModel):
     """A Semaphore task (a run of a template)."""
 
-    id: int
-    template_id: int
+    id: int = 0
+    template_id: int = 0
     status: str = ""
     debug: bool = False
     dry_run: bool = False
@@ -45,59 +48,66 @@ class Task:
     end: str = ""
 
 
-@dataclass
-class Inventory:
-    """A Semaphore inventory."""
+class Inventory(_ApiModel):
+    """A Semaphore inventory.
 
-    id: int
-    project_id: int
-    name: str
+    The API field is named ``inventory`` (the textual content); we expose
+    it as ``content`` to avoid the field-matches-class-name confusion
+    (SonarCloud S1700, ken #639). ``populate_by_name=True`` lets callers
+    use either name; ``model_dump(by_alias=True)`` emits the API form.
+    """
+
+    id: int = 0
+    project_id: int = 0
+    name: str = ""
     type: str = ""
-    content: str = ""
+    content: str = Field("", alias="inventory")
     ssh_key_id: int = 0
     become_key_id: int = 0
 
 
-@dataclass
-class Environment:
-    """A Semaphore environment (extra vars + secrets)."""
+class Environment(_ApiModel):
+    """A Semaphore environment (extra vars + secrets).
 
-    id: int
-    project_id: int
-    name: str
+    The API field ``json`` (a JSON-encoded string of env vars) is exposed
+    as ``vars_json`` here to avoid shadowing BaseModel.json (deprecated
+    method) and to be less ambiguous. populate_by_name=True keeps both
+    forms accepted on input; model_dump(by_alias=True) emits ``json``.
+    """
+
+    id: int = 0
+    project_id: int = 0
+    name: str = ""
     password: str = ""
-    json: str = ""
+    vars_json: str = Field("", alias="json")
 
 
-@dataclass
-class Repository:
+class Repository(_ApiModel):
     """A Semaphore repository (git source for playbooks)."""
 
-    id: int
-    project_id: int
-    name: str
+    id: int = 0
+    project_id: int = 0
+    name: str = ""
     git_url: str = ""
     git_branch: str = ""
     ssh_key_id: int = 0
 
 
-@dataclass
-class Key:
+class Key(_ApiModel):
     """A Semaphore access key (SSH, login_password, none)."""
 
-    id: int
-    project_id: int
-    name: str
+    id: int = 0
+    project_id: int = 0
+    name: str = ""
     type: str = ""
 
 
-@dataclass
-class Schedule:
+class Schedule(_ApiModel):
     """A Semaphore cron schedule."""
 
-    id: int
-    project_id: int
-    template_id: int
+    id: int = 0
+    project_id: int = 0
+    template_id: int = 0
     cron_format: str = ""
     name: str = ""
     active: bool = True
