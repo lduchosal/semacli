@@ -142,7 +142,7 @@ class TestEnvironmentsCommands:
             )
             r = CliRunner().invoke(
                 main,
-                ["environments", "-c", str(cfg), "create", "--name", "dev", "--json", '{"k":"v"}'],
+                ["environments", "-c", str(cfg), "create", "--name", "dev", "--vars", '{"k":"v"}'],
             )
         assert r.exit_code == 0
         Mock.return_value.create_environment.assert_called_with(
@@ -227,7 +227,7 @@ class TestKeysCommands:
                     "ssh",
                     "--login",
                     "root",
-                    "--ssh-key",
+                    "--private-key",
                     f"@{pem}",
                 ],
             )

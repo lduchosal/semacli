@@ -30,11 +30,11 @@ class TestHandleError:
         assert exc.value.code == 4
         assert "API error" in capsys.readouterr().err
 
-    def test_not_found_exits_5(self, capsys: pytest.CaptureFixture[str]) -> None:
+    def test_not_found_exits_2(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
             handle_error(NotFoundError("project 42"))
-        assert exc.value.code == 5
-        assert "Not found" in capsys.readouterr().err
+        assert exc.value.code == 2
+        assert "error:" in capsys.readouterr().err
 
     def test_generic_error_exits_1(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:

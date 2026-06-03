@@ -40,7 +40,7 @@ Examples:
   semacli key                                            # list
   semacli key show 12                                    # metadata only
   semacli key create --name deploy-ssh --type ssh \\
-       --ssh-key @~/.ssh/id_ed25519
+       --private-key @~/.ssh/id_ed25519
   semacli key create --name vault-pw --type none --password 's3cr3t'
   semacli key create --name reg-login --type login_password \\
        --login admin --password 's3cr3t'
@@ -136,9 +136,10 @@ def register_keys_commands(main_group: Any) -> None:
         type=click.Choice(["ssh", "login_password", "none"]),
     )
     @click.option(
-        "--ssh-key",
+        "--private-key",
+        "ssh_key",
         default="",
-        help="SSH private key (or @file). Required for type=ssh.",
+        help="SSH private key body (or @file). Required for type=ssh.",
     )
     @click.option(
         "--login",
@@ -179,7 +180,9 @@ def register_keys_commands(main_group: Any) -> None:
     @keys.command("update")
     @click.argument("key_id", type=int)
     @click.option("--name", default=None)
-    @click.option("--ssh-key", default=None)
+    @click.option(
+        "--private-key", "ssh_key", default=None, help="Replacement private key body (or @file)."
+    )
     @click.option("--login", default=None)
     @click.option("--passphrase", default=None)
     @click.pass_context

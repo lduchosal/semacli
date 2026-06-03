@@ -6,6 +6,7 @@ from typing import NoReturn
 import click
 
 from semacli.core.exceptions import (
+    AmbiguousNameError,
     AuthenticationError,
     ConfigurationError,
     NotFoundError,
@@ -18,7 +19,7 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
 
     Exit codes:
         1 - General error
-        2 - Configuration error
+        2 - Configuration error / user error (unknown name, ambiguous)
         3 - Authentication error
         4 - API error
         5 - Not found
@@ -32,12 +33,15 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
     elif isinstance(error, AuthenticationError):
         click.echo(f"Authentication error: {error}", err=True)
         sys.exit(3)
+    elif isinstance(error, AmbiguousNameError):
+        click.echo(f"error: {error}", err=True)
+        sys.exit(2)
+    elif isinstance(error, NotFoundError):
+        click.echo(f"error: {error}", err=True)
+        sys.exit(2)
     elif isinstance(error, SemaphoreAPIError):
         click.echo(f"API error: {error}", err=True)
         sys.exit(4)
-    elif isinstance(error, NotFoundError):
-        click.echo(f"Not found: {error}", err=True)
-        sys.exit(5)
     else:
         click.echo(f"Error: {error}", err=True)
         sys.exit(1)

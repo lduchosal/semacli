@@ -34,9 +34,9 @@ Examples:
   semacli env                                    # list
   semacli env show 7
   semacli env create --name prod \\
-       --json '{"region":"eu-west-1"}'
-  semacli env create --name prod --json @vars.json --password 'vault-pw'
-  semacli env update 7 --json @vars.json
+       --vars '{"region":"eu-west-1"}'
+  semacli env create --name prod --vars @vars.json --password 'vault-pw'
+  semacli env update 7 --vars @vars.json
   semacli env delete 7
 """
 
@@ -118,10 +118,10 @@ def register_environments_commands(main_group: Any) -> None:
     @environments.command("create")
     @click.option("--name", required=True)
     @click.option(
-        "--json",
+        "--vars",
         "json_vars",
         required=True,
-        help="JSON env vars. Prefix with @ to read from a file.",
+        help="Variables as a JSON object. Prefix with @ to read from a file.",
     )
     @click.option("--password", default="")
     @click.pass_context
@@ -146,7 +146,12 @@ def register_environments_commands(main_group: Any) -> None:
     @environments.command("update")
     @click.argument("env_id", type=int)
     @click.option("--name", default=None)
-    @click.option("--json", "json_vars", default=None, help="Prefix with @ to read from file.")
+    @click.option(
+        "--vars",
+        "json_vars",
+        default=None,
+        help="Variables as a JSON object. Prefix with @ to read from file. Replaces wholesale.",
+    )
     @click.option("--password", default=None)
     @click.pass_context
     def update_cmd(
