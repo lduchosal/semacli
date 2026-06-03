@@ -18,6 +18,28 @@ from .._crud import (
 from ..decorators import common_options, output_options, project_option
 from ..handlers import handle_error
 
+INV_HELP = """\
+Inventories: lists of ansible hosts a template will target.
+
+Each inventory belongs to one project. Templates pick one inventory.
+Supported types: static (inline INI/YAML), file (a path inside the
+repository), and none.
+
+Calling `semacli inv` without a subcommand lists inventories.
+"""
+
+INV_EPILOG = """\
+Examples:
+  semacli inv                                # list
+  semacli inv show 42
+  semacli inv create --name prod-hosts --type static \\
+       --inventory '[prod]\\nweb1.0.2113.ch'
+  semacli inv create --name from-file --type file \\
+       --inventory-file @./hosts.ini
+  semacli inv update 42 --name prod-hosts-eu
+  semacli inv delete 42
+"""
+
 
 def _read_content(path_or_text: str) -> str:
     """Resolve @file syntax: returns file contents if value starts with '@'."""
@@ -46,7 +68,7 @@ def _emit_show_text(i: Inventory) -> None:
 def register_inventories_commands(main_group: Any) -> None:
     """Register the `inventories` command group."""
 
-    @main_group.group("inventories", invoke_without_command=True)
+    @main_group.group("inv", invoke_without_command=True, help=INV_HELP, epilog=INV_EPILOG)
     @click.pass_context
     @common_options
     @output_options
@@ -59,7 +81,6 @@ def register_inventories_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """List, show, create, update, delete inventories."""
         store_opts(
             ctx,
             config=config,
@@ -190,3 +211,6 @@ def register_inventories_commands(main_group: Any) -> None:
                 click.echo(f"deleted inventory id={inventory_id}")
         except Exception as e:
             handle_error(e, opts["verbose"])
+
+    main_group.commands["inv"].category = "read"
+    main_group.add_alias("inventories", "inv")

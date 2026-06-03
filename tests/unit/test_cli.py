@@ -21,11 +21,11 @@ class TestRootCli:
         assert result.exit_code == 0
         assert "Semaphore UI" in result.output
         assert "ping" in result.output
-        assert "projects" in result.output
+        assert "project" in result.output
 
     def test_subcommands_registered(self) -> None:
         assert "ping" in main.commands
-        assert "projects" in main.commands
+        assert "project" in main.commands
 
 
 class TestMainModule:

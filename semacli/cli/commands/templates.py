@@ -12,6 +12,29 @@ from semacli.core.models import Template
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, handle_error
 
+TEMPLATE_HELP = """\
+Templates: recipes that combine a repository, an inventory, an
+environment and a playbook path. A template is what you actually run
+via `semacli task run` (or the shortcut `semacli run`).
+
+A template references:
+  - 1 repository    (where the playbook lives)
+  - 1 inventory     (which hosts to target)
+  - 0/1 environment (extra_vars + secrets)
+  - playbook path   (relative to the repo)
+
+Calling `semacli template` without a subcommand lists templates.
+"""
+
+TEMPLATE_EPILOG = """\
+Examples:
+  semacli template                          # list
+  semacli template show 5
+  semacli run mtree                         # run by name (shortcut)
+  semacli task run 5                        # run by id
+  semacli template show 5 --json | jq '.playbook'
+"""
+
 
 def _emit_list_json(templates: list[Template]) -> None:
     click.echo(json.dumps([t.model_dump() for t in templates], indent=2))
@@ -45,7 +68,9 @@ def _emit_show_text(t: Template) -> None:
 def register_templates_commands(main_group: Any) -> None:
     """Register the `templates` command group."""
 
-    @main_group.group("templates", invoke_without_command=True)
+    @main_group.group(
+        "template", invoke_without_command=True, help=TEMPLATE_HELP, epilog=TEMPLATE_EPILOG
+    )
     @click.pass_context
     @common_options
     @output_options
@@ -58,7 +83,6 @@ def register_templates_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """List or show Semaphore templates."""
         ctx.ensure_object(dict)
         ctx.obj.update(
             {
@@ -103,3 +127,6 @@ def register_templates_commands(main_group: Any) -> None:
                 _emit_show_text(tpl)
         except Exception as e:
             handle_error(e, verbose)
+
+    main_group.commands["template"].category = "read"
+    main_group.add_alias("templates", "template")

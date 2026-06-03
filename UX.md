@@ -35,12 +35,13 @@ First-level group names use the **short, singular** form:
 | inventories   | `inv`          |
 | repositories  | `repo`         |
 | schedules     | `sched`        |
+| keys          | `key`          |
+| templates     | `template`     |
+| tasks         | `task`         |
+| projects      | `project`      |
 
-Long forms remain as **hidden aliases** for back-compat: they keep
-accepting all subcommands and flags but are not listed in `--help`.
-
-Open (#717): whether to extend the singular rule to `keys`,
-`templates`, `tasks`, `projects` (currently kept plural).
+Long forms (plural) remain as **hidden aliases** for back-compat: they
+keep accepting all subcommands and flags but are not listed in `--help`.
 
 ### 1.4 `semacli` ≡ `semacli --help`
 Invoking the binary with no argument prints the same help screen as
@@ -68,14 +69,14 @@ Every command's help page follows the same sections, in order:
 
 | Command     | Concept (≤ 60 chars)                              |
 |-------------|---------------------------------------------------|
-| `projects`  | Projects visible to your token.                   |
+| `project`   | Projects visible to your token.                   |
 | `inv`       | Inventories: ansible hosts.                       |
 | `env`       | Environments: runtime vars + secrets.             |
 | `repo`      | Repositories: git sources of playbooks.           |
-| `keys`      | Keys: SSH, vault password, login/password.        |
-| `templates` | Templates: job recipes (what you run).            |
+| `key`       | Keys: SSH, vault password, login/password.        |
+| `template`  | Templates: job recipes (what you run).            |
 | `sched`     | Schedules: cron triggers.                         |
-| `tasks`     | Tasks: executions of a template.                  |
+| `task`      | Tasks: executions of a template.                  |
 | `ping`      | Server reachability test (no auth).               |
 | `init`      | Create semacli.ini in guided mode.                |
 | `run`       | Shortcut: run a template by name (§ 3).           |
@@ -155,14 +156,14 @@ semacli inv delete prod-hosts
 
 | Object type   | Name-based addressing | Positional filter   |
 |---------------|-----------------------|---------------------|
-| templates     | yes                   | yes                 |
-| inventories   | yes                   | yes                 |
-| environments  | yes                   | yes                 |
-| repositories  | yes                   | yes                 |
-| keys          | yes                   | yes                 |
-| schedules     | by template name      | yes                 |
-| projects      | by project name       | yes                 |
-| tasks         | no (no human name)    | filter by status/template |
+| `template`    | yes                   | yes                 |
+| `inv`         | yes                   | yes                 |
+| `env`         | yes                   | yes                 |
+| `repo`        | yes                   | yes                 |
+| `key`         | yes                   | yes                 |
+| `sched`       | by template name      | yes                 |
+| `project`     | by project name       | yes                 |
+| `task`        | no (no human name)    | filter by status / template |
 
 ---
 
@@ -181,7 +182,7 @@ Resource groups expose the same vocabulary:
 - `update <id-or-name> [...]` — patch mutable fields.
 - `delete <id-or-name>` — fails if referenced elsewhere.
 
-`tasks` keeps verb-noun ordering but uses task-specific verbs
+`task` keeps verb-noun ordering but uses task-specific verbs
 (`run`, `watch`, `show`, `output`, `raw-output`, `stop`, `list`).
 
 ### 4.3 Shared options
@@ -219,6 +220,7 @@ error: ambiguous 'mtree' — 4 candidates; use --exact or a longer name
 
 Reference layout (frozen in #720). Implementations may polish wording
 but must preserve sections, order, and concept-first descriptions.
+Target width: **80 columns strict**.
 
 ```
 semacli 0.1.5 — Manage your ansible codebase through Semaphore UI.
@@ -227,46 +229,46 @@ USAGE
   semacli <command> [subcommand] [options]
 
 FIRST TIME?
-  semacli init              Interactive assistant (URL, token, project).
-  semacli ping              Check that the server responds.
+  semacli init           Interactive assistant (URL, token, project).
+  semacli ping           Check that the server responds.
 
 SEMAPHORE HIERARCHY
   project
-    ├── inv         ansible hosts (inventories)
-    ├── repo        git sources of playbooks
-    ├── env         variables and secrets passed at runtime
-    ├── keys        SSH / vault / login credentials
-    ├── templates   recipe = repo + inv + env + playbook
-    │     └── tasks   executions of a template
-    └── sched       cron triggers → template
+    ├── inv        ansible hosts (inventories)
+    ├── repo       git sources of playbooks
+    ├── env        variables and secrets passed at runtime
+    ├── key        SSH / vault / login credentials
+    ├── template   recipe = repo + inv + env + playbook
+    │     └── task   executions of a template
+    └── sched      cron triggers → template
 
 COMMANDS
   Connection
-    ping                    Server reachability test (no auth).
-    init                    Create semacli.ini in guided mode.
+    ping                 Server reachability test (no auth).
+    init                 Create semacli.ini in guided mode.
 
   Read / write
-    projects                Projects visible to your token.
-    inv                     Inventories: ansible hosts.
-    env                     Environments: runtime vars + secrets.
-    repo                    Repositories: git sources of playbooks.
-    keys                    Keys: SSH, vault password, login/password.
-    templates               Templates: job recipes (what you run).
-    sched                   Schedules: cron triggers.
+    project              Projects visible to your token.
+    inv                  Inventories: ansible hosts.
+    env                  Environments: runtime vars + secrets.
+    repo                 Repositories: git sources of playbooks.
+    key                  Keys: SSH, vault password, login/password.
+    template             Templates: job recipes (what you run).
+    sched                Schedules: cron triggers.
 
   Execution
-    run <name>              Shortcut: run a template by name.
-    tasks                   Manage running and historical tasks.
+    run <name>           Shortcut: run a template by name.
+    task                 Manage running and historical tasks.
 
 EXAMPLES
   semacli init
-  semacli projects
+  semacli project
   semacli run mtree --limit ans2.0.2113.ch
-  semacli env create --name prod --json @vars.json
-  semacli sched create --template 5 --cron '0 3 * * *'
+  semacli env create --name prod --vars @vars.json
+  semacli sched create --template mtree --cron '0 3 * * *'
 
 HELP
-  semacli <cmd> --help      Per-command details + examples.
+  semacli <cmd> --help   Per-command details + examples.
 
 Config: ./semacli.ini, ~/.semacli.ini, /usr/local/etc/semacli.ini
 ```
@@ -294,25 +296,24 @@ When wiring these rules into click:
 
 ---
 
-## 8. Open decisions
+## 8. Decision log
 
-Tracked on the listed ticket(s); update this section as they close.
+All UX questions have been arbitrated and folded into the rules above.
+This log records the answers for traceability.
 
-- Extend singular naming rule to `keys`, `templates`, `tasks`,
-  `projects`. (#717)
-- Terminal width target — 80 cols strict or 100. (#720)
-- Version line in header — keep duplicate of `--version`? (#720)
-- `--watch` opt-in or default on `run` ? (#729, #730)
-- Extend the top-level shortcut to `watch` / `stop` ? (#730)
-- Exact match wins over fuzzy on collision — confirm. (#730)
-- `env update --json` patch vs replace semantics. (#724)
-- Rename `--json` (payload) → `--vars` on `env`. (#724)
-- `--ssh-key TEXT` vs `--ssh-key-file FILE` convention across all
-  commands. (#723, #724, #726)
-- Restore or remove the `semacli docs` command (deleted locally,
-  still referenced in the root-screen footer). (#720)
-- `templates create` / `update` / `delete` — currently absent, scope
-  not yet decided. (#727)
+| Question                                                | Decision                                                       |
+|---------------------------------------------------------|----------------------------------------------------------------|
+| Extend singular to `key`/`template`/`task`/`project`?   | **Yes** — applied (§ 1.3).                                     |
+| Terminal width target.                                  | **80 columns strict**.                                         |
+| Version line duplicated in header?                      | **Yes** — kept (§ 6) for support traceability.                 |
+| `--watch` default on `semacli run`.                     | **On by default**; opt-out with `--no-watch`.                  |
+| Extend top-level shortcut to `watch` / `stop`?          | **No** — only `run` (because templates have names, tasks have only ids). |
+| Exact match wins over fuzzy on collision.               | **Yes** (§ 3.2 rule 3b).                                       |
+| `env update --vars` patch vs replace.                   | **Replace wholesale** — same semantics as PUT on the REST API. |
+| Rename `env --json` payload to `--vars`.                | **Yes** — `--json` only ever means "output as JSON".           |
+| `--ssh-key` flag overloading.                           | `repo create --key NAME-OR-ID` (reference an existing key); `key create --type ssh --private-key @file` (the actual key body). |
+| Keep `semacli docs` command?                            | **No** — removed (commit `a02624b`).                           |
+| `template` CRUD (create / update / delete)?             | **No** — `template` exposes only `list` (bare) and `show`.     |
 
 ---
 

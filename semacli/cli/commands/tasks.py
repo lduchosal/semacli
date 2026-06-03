@@ -15,6 +15,33 @@ from ..handlers import OutputFormatter, handle_error
 
 _FINAL_STATES = {"success", "error", "stopped"}
 
+TASK_HELP = """\
+Tasks: concrete executions of a template.
+
+Lifecycle:
+  run         starts a task (returns a task id)
+  watch       tails its output until it reaches a final state
+  show        reads metadata
+  output      dumps the full output (with timestamps)
+  raw-output  dumps the output without timestamps
+  stop        cancels a running task
+  list        history of recent tasks
+
+For day-to-day use, prefer the top-level shortcut `semacli run <name>`
+which resolves a template by name and runs it.
+"""
+
+TASK_EPILOG = """\
+Examples:
+  semacli task list                                 # recent runs
+  semacli task run 5 --limit web1.0.2113.ch         # run by template id
+  semacli task run 5 --dry-run                      # check mode
+  semacli task watch 142                            # follow output
+  semacli task show 142
+  semacli task raw-output 142 > task-142.log
+  semacli task stop 142
+"""
+
 
 def _emit_task_json(t: Task) -> None:
     click.echo(json.dumps(t.model_dump(), indent=2))
@@ -47,7 +74,7 @@ def _emit_output_lines(entries: list[dict[str, Any]], start: int = 0) -> int:
 def register_tasks_commands(main_group: Any) -> None:
     """Register the `tasks` command group."""
 
-    @main_group.group("tasks")
+    @main_group.group("task", help=TASK_HELP, epilog=TASK_EPILOG)
     @click.pass_context
     @common_options
     @output_options
@@ -60,7 +87,6 @@ def register_tasks_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """Run, inspect, and watch Semaphore tasks."""
         ctx.ensure_object(dict)
         ctx.obj.update(
             {
@@ -252,3 +278,6 @@ def register_tasks_commands(main_group: Any) -> None:
                 click.echo(raw, nl=False)
         except Exception as e:
             handle_error(e, verbose)
+
+    main_group.commands["task"].category = "execution"
+    main_group.add_alias("tasks", "task")

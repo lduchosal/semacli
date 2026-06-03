@@ -12,6 +12,26 @@ from semacli.core.models import Project
 from ..decorators import common_options, output_options
 from ..handlers import OutputFormatter, handle_error
 
+PROJECT_HELP = """\
+Projects visible to your token.
+
+A project is the top-level container — every inventory, repository,
+environment, key, template, schedule and task belongs to exactly one
+project. Set the default project once in semacli.ini ([semaphore]
+project = <id>) so the other commands don't need -p each time.
+"""
+
+PROJECT_EPILOG = """\
+Examples:
+  semacli project
+  semacli project --json
+  semacli project --json | jq -r '.[].name'
+
+Next steps:
+  semacli inv -p 2                inventories of project 2
+  semacli template -p 2           templates of project 2
+"""
+
 
 def _emit_projects_json(projects: list[Project]) -> None:
     output = [{"id": p.id, "name": p.name, "created": p.created} for p in projects]
@@ -30,16 +50,15 @@ def _emit_projects_text(projects: list[Project]) -> None:
 def register_projects_commands(main_group: Any) -> None:
     """Register projects commands with the main CLI group."""
 
-    @main_group.command("projects")
+    @main_group.command("project", help=PROJECT_HELP, epilog=PROJECT_EPILOG)
     @common_options
     @output_options
-    def projects_cmd(
+    def project_cmd(
         config: str,
         verbose: int,
         output_json: bool,
         quiet: bool,
     ) -> None:
-        """List all Semaphore projects."""
         try:
             cfg = load_config(config)
             client = SemaphoreClient(cfg, verbose=verbose)
@@ -55,3 +74,6 @@ def register_projects_commands(main_group: Any) -> None:
 
         except Exception as e:
             handle_error(e, verbose)
+
+    main_group.commands["project"].category = "read"
+    main_group.add_alias("projects", "project")

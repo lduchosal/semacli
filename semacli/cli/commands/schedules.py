@@ -18,6 +18,26 @@ from .._crud import (
 from ..decorators import common_options, output_options, project_option
 from ..handlers import handle_error
 
+SCHED_HELP = """\
+Schedules: cron triggers that launch a template on a recurring basis.
+
+Each schedule points to exactly one template; deleting the template
+invalidates the schedule. Cron format: standard 5-field POSIX, evaluated
+in the server's timezone.
+
+Calling `semacli sched` without a subcommand lists schedules.
+"""
+
+SCHED_EPILOG = """\
+Examples:
+  semacli sched                                            # list
+  semacli sched show 12
+  semacli sched create --template-id 5 --cron '0 3 * * *'  # nightly 3 am
+  semacli sched create --template-id 7 --cron '*/15 * * * *'
+  semacli sched update 12 --cron '0 4 * * *'
+  semacli sched delete 12
+"""
+
 
 def _fmt_row(s: Schedule) -> str:
     flag = "active" if s.active else "inactive"
@@ -36,7 +56,7 @@ def _emit_show_text(s: Schedule) -> None:
 def register_schedules_commands(main_group: Any) -> None:
     """Register the `schedules` command group."""
 
-    @main_group.group("schedules", invoke_without_command=True)
+    @main_group.group("sched", invoke_without_command=True, help=SCHED_HELP, epilog=SCHED_EPILOG)
     @click.pass_context
     @common_options
     @output_options
@@ -49,7 +69,6 @@ def register_schedules_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """List, show, create, update, delete cron schedules."""
         store_opts(
             ctx,
             config=config,
@@ -171,3 +190,6 @@ def register_schedules_commands(main_group: Any) -> None:
                 click.echo(f"deleted schedule id={sched_id}")
         except Exception as e:
             handle_error(e, opts["verbose"])
+
+    main_group.commands["sched"].category = "read"
+    main_group.add_alias("schedules", "sched")

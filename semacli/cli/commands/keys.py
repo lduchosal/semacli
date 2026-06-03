@@ -18,6 +18,35 @@ from .._crud import (
 from ..decorators import common_options, output_options, project_option
 from ..handlers import handle_error
 
+KEY_HELP = """\
+Access keys: credentials Semaphore stores to talk to repos, hosts and
+vaults.
+
+Three types:
+  - ssh             SSH private key (used by repo clones, by hosts that
+                    require key-based auth)
+  - login_password  username + password (used by HTTPS deploy tokens,
+                    registry logins)
+  - none            secret-only key (vault password, become password)
+
+Secrets (private key bodies, passwords) are write-only: they can be set
+on create/update but are never returned by show.
+
+Calling `semacli key` without a subcommand lists keys.
+"""
+
+KEY_EPILOG = """\
+Examples:
+  semacli key                                            # list
+  semacli key show 12                                    # metadata only
+  semacli key create --name deploy-ssh --type ssh \\
+       --ssh-key @~/.ssh/id_ed25519
+  semacli key create --name vault-pw --type none --password 's3cr3t'
+  semacli key create --name reg-login --type login_password \\
+       --login admin --password 's3cr3t'
+  semacli key delete 12
+"""
+
 
 def _read_private_key(path_or_text: str) -> str:
     if path_or_text.startswith("@"):
@@ -49,7 +78,7 @@ def _emit_show_text(k: Key) -> None:
 def register_keys_commands(main_group: Any) -> None:
     """Register the `keys` command group."""
 
-    @main_group.group("keys", invoke_without_command=True)
+    @main_group.group("key", invoke_without_command=True, help=KEY_HELP, epilog=KEY_EPILOG)
     @click.pass_context
     @common_options
     @output_options
@@ -62,7 +91,6 @@ def register_keys_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """List, show, create, update, delete access keys."""
         store_opts(
             ctx,
             config=config,
@@ -197,3 +225,6 @@ def register_keys_commands(main_group: Any) -> None:
                 click.echo(f"deleted key id={key_id}")
         except Exception as e:
             handle_error(e, opts["verbose"])
+
+    main_group.commands["key"].category = "read"
+    main_group.add_alias("keys", "key")

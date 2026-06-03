@@ -11,11 +11,28 @@ from semacli.core.config import load_config
 from ..decorators import common_options, output_options
 from ..handlers import OutputFormatter, handle_error
 
+PING_HELP = """\
+Check that the Semaphore server is reachable.
+
+No authentication required — useful as a first sanity check before
+generating a token, or to verify the URL in semacli.ini. Exits 0 on
+success, non-zero on failure.
+"""
+
+PING_EPILOG = """\
+Examples:
+  semacli ping
+  semacli ping --json
+  semacli -c ./staging.ini ping
+  semacli -vv ping
+  semacli ping -q && echo OK
+"""
+
 
 def register_ping_commands(main_group: Any) -> None:
     """Register ping commands with the main CLI group."""
 
-    @main_group.command("ping")
+    @main_group.command("ping", help=PING_HELP, epilog=PING_EPILOG)
     @common_options
     @output_options
     def ping_cmd(
@@ -24,7 +41,6 @@ def register_ping_commands(main_group: Any) -> None:
         output_json: bool,
         quiet: bool,
     ) -> None:
-        """Ping the Semaphore API (GET /api/ping)."""
         try:
             cfg = load_config(config)
             client = SemaphoreClient(cfg, verbose=verbose)
@@ -40,3 +56,5 @@ def register_ping_commands(main_group: Any) -> None:
 
         except Exception as e:
             handle_error(e, verbose)
+
+    main_group.commands["ping"].category = "connection"

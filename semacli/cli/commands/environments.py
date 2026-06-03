@@ -18,6 +18,28 @@ from .._crud import (
 from ..decorators import common_options, output_options, project_option
 from ..handlers import handle_error
 
+ENV_HELP = """\
+Environments: extra_vars and secrets passed to a playbook at runtime.
+
+Each environment belongs to one project. Templates may reference one.
+Variables are stored as a JSON object — use '@file.json' to load from
+disk. The optional --password field is the vault password Semaphore
+injects as VAULT_PASSWORD when the playbook runs.
+
+Calling `semacli env` without a subcommand lists environments.
+"""
+
+ENV_EPILOG = """\
+Examples:
+  semacli env                                    # list
+  semacli env show 7
+  semacli env create --name prod \\
+       --json '{"region":"eu-west-1"}'
+  semacli env create --name prod --json @vars.json --password 'vault-pw'
+  semacli env update 7 --json @vars.json
+  semacli env delete 7
+"""
+
 
 def _read_json(path_or_text: str) -> str:
     if path_or_text.startswith("@"):
@@ -44,7 +66,7 @@ def _emit_show_text(e: Environment) -> None:
 def register_environments_commands(main_group: Any) -> None:
     """Register the `environments` command group."""
 
-    @main_group.group("environments", invoke_without_command=True)
+    @main_group.group("env", invoke_without_command=True, help=ENV_HELP, epilog=ENV_EPILOG)
     @click.pass_context
     @common_options
     @output_options
@@ -57,7 +79,6 @@ def register_environments_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """List, show, create, update, delete environments (extra vars + secrets)."""
         store_opts(
             ctx,
             config=config,
@@ -166,3 +187,6 @@ def register_environments_commands(main_group: Any) -> None:
                 click.echo(f"deleted environment id={env_id}")
         except Exception as e:
             handle_error(e, opts["verbose"])
+
+    main_group.commands["env"].category = "read"
+    main_group.add_alias("environments", "env")

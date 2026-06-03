@@ -18,6 +18,27 @@ from .._crud import (
 from ..decorators import common_options, output_options, project_option
 from ..handlers import handle_error
 
+REPO_HELP = """\
+Repositories: git sources from which Semaphore pulls playbooks.
+
+Each repo belongs to one project and is bound to one SSH key (the key
+Semaphore uses to clone). Templates reference a repo + a playbook path
+inside it.
+
+Calling `semacli repo` without a subcommand lists repositories.
+"""
+
+REPO_EPILOG = """\
+Examples:
+  semacli repo                                  # list
+  semacli repo show 4
+  semacli repo create --name infra \\
+       --git-url git@github.com:org/infra.git \\
+       --branch main --ssh-key 12
+  semacli repo update 4 --branch release/2026
+  semacli repo delete 4
+"""
+
 
 def _fmt_row(r: Repository) -> str:
     return f"{r.id:>4}  {r.name}  {r.git_url}@{r.git_branch or 'HEAD'}"
@@ -35,7 +56,7 @@ def _emit_show_text(r: Repository) -> None:
 def register_repositories_commands(main_group: Any) -> None:
     """Register the `repositories` command group."""
 
-    @main_group.group("repositories", invoke_without_command=True)
+    @main_group.group("repo", invoke_without_command=True, help=REPO_HELP, epilog=REPO_EPILOG)
     @click.pass_context
     @common_options
     @output_options
@@ -48,7 +69,6 @@ def register_repositories_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
-        """List, show, create, update, delete repositories (git sources)."""
         store_opts(
             ctx,
             config=config,
@@ -159,3 +179,6 @@ def register_repositories_commands(main_group: Any) -> None:
                 click.echo(f"deleted repository id={repo_id}")
         except Exception as e:
             handle_error(e, opts["verbose"])
+
+    main_group.commands["repo"].category = "read"
+    main_group.add_alias("repositories", "repo")
