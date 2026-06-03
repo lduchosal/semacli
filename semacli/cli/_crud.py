@@ -30,10 +30,7 @@ def emit_json_single(obj: Any) -> None:
 
 def emit_json_list(items: list[Any]) -> None:
     """Emit a list of pydantic models as JSON."""
-    payload = [
-        o.model_dump(by_alias=True) if isinstance(o, BaseModel) else o
-        for o in items
-    ]
+    payload = [o.model_dump(by_alias=True) if isinstance(o, BaseModel) else o for o in items]
     click.echo(json.dumps(payload, indent=2))
 
 

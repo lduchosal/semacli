@@ -97,14 +97,14 @@ def register_environments_commands(main_group: Any) -> None:
     @environments.command("create")
     @click.option("--name", required=True)
     @click.option(
-        "--json", "json_vars", required=True,
+        "--json",
+        "json_vars",
+        required=True,
         help="JSON env vars. Prefix with @ to read from a file.",
     )
     @click.option("--password", default="")
     @click.pass_context
-    def create_cmd(
-        ctx: click.Context, name: str, json_vars: str, password: str
-    ) -> None:
+    def create_cmd(ctx: click.Context, name: str, json_vars: str, password: str) -> None:
         """Create an environment."""
         opts = opts_from_ctx(ctx)
         try:

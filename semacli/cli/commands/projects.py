@@ -14,10 +14,7 @@ from ..handlers import OutputFormatter, handle_error
 
 
 def _emit_projects_json(projects: list[Project]) -> None:
-    output = [
-        {"id": p.id, "name": p.name, "created": p.created}
-        for p in projects
-    ]
+    output = [{"id": p.id, "name": p.name, "created": p.created} for p in projects]
     click.echo(json.dumps(output, indent=2))
 
 

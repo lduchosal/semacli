@@ -99,12 +99,15 @@ def register_inventories_commands(main_group: Any) -> None:
     @inventories.command("create")
     @click.option("--name", required=True, help="Inventory name")
     @click.option(
-        "--type", "inv_type", required=True,
+        "--type",
+        "inv_type",
+        required=True,
         type=click.Choice(["static", "file"]),
         help="Inventory type",
     )
     @click.option(
-        "--content", required=True,
+        "--content",
+        required=True,
         help="Inventory content. Prefix with @ to read from a file.",
     )
     @click.option("--ssh-key-id", type=int, default=0)

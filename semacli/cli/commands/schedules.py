@@ -89,7 +89,9 @@ def register_schedules_commands(main_group: Any) -> None:
     @schedules.command("create")
     @click.option("--template-id", required=True, type=int)
     @click.option(
-        "--cron", "cron_format", required=True,
+        "--cron",
+        "cron_format",
+        required=True,
         help="Cron expression e.g. '0 3 * * *'",
     )
     @click.option("--name", default="")
@@ -125,7 +127,9 @@ def register_schedules_commands(main_group: Any) -> None:
     @click.option("--name", default=None)
     @click.option("--cron", "cron_format", default=None)
     @click.option(
-        "--active/--inactive", "active", default=None,
+        "--active/--inactive",
+        "active",
+        default=None,
         help="Enable or disable the schedule",
     )
     @click.pass_context
@@ -141,7 +145,8 @@ def register_schedules_commands(main_group: Any) -> None:
         try:
             client, pid = setup(opts)
             client.update_schedule(
-                pid, sched_id,
+                pid,
+                sched_id,
                 name=name,
                 cron_format=cron_format,
                 active=active,

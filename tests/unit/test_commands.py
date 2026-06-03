@@ -14,18 +14,14 @@ from semacli.core.models import Project
 
 def _write_cfg(tmp_path: Path) -> Path:
     path = tmp_path / "semacli.ini"
-    path.write_text(
-        textwrap.dedent(
-            """
+    path.write_text(textwrap.dedent("""
             [semaphore]
             url = https://sema.example
 
             [auth]
             method = bearer_token
             bearer_token = tok
-            """
-        ).lstrip()
-    )
+            """).lstrip())
     return path
 
 
@@ -55,9 +51,7 @@ class TestPingCommand:
         assert result.output == ""
 
     def test_missing_config_exits_2(self, tmp_path: Path) -> None:
-        result = CliRunner().invoke(
-            main, ["ping", "-c", str(tmp_path / "absent.ini")]
-        )
+        result = CliRunner().invoke(main, ["ping", "-c", str(tmp_path / "absent.ini")])
         assert result.exit_code == 2
         assert "Configuration error" in result.output
 
@@ -97,9 +91,7 @@ class TestProjectsCommand:
             Mock.return_value.get_projects.return_value = [
                 Project(id=1, name="alpha", created="c"),
             ]
-            result = CliRunner().invoke(
-                main, ["projects", "-c", str(cfg), "--json"]
-            )
+            result = CliRunner().invoke(main, ["projects", "-c", str(cfg), "--json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload == [{"id": 1, "name": "alpha", "created": "c"}]
@@ -116,9 +108,7 @@ class TestProjectsCommand:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
             Mock.return_value.get_projects.return_value = []
-            result = CliRunner().invoke(
-                main, ["projects", "-c", str(cfg), "-v"]
-            )
+            result = CliRunner().invoke(main, ["projects", "-c", str(cfg), "-v"])
         assert result.exit_code == 0
         # OutputFormatter.format_verbose writes to stderr — Click mixes stderr
         # into output by default in CliRunner.

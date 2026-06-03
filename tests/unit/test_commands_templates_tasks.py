@@ -14,9 +14,7 @@ from semacli.core.models import Task, Template
 def _write_cfg(tmp_path: Path, project: int | None = 1) -> Path:
     path = tmp_path / "semacli.ini"
     project_line = f"project = {project}" if project is not None else ""
-    path.write_text(
-        textwrap.dedent(
-            f"""
+    path.write_text(textwrap.dedent(f"""
             [semaphore]
             url = https://sema.example
             {project_line}
@@ -24,9 +22,7 @@ def _write_cfg(tmp_path: Path, project: int | None = 1) -> Path:
             [auth]
             method = bearer_token
             bearer_token = tok
-            """
-        ).lstrip()
-    )
+            """).lstrip())
     return path
 
 
@@ -56,9 +52,7 @@ class TestTemplatesList:
             Mock.return_value.get_templates.return_value = [
                 Template(id=1, project_id=1, name="deploy"),
             ]
-            result = CliRunner().invoke(
-                main, ["templates", "-c", str(cfg), "--json"]
-            )
+            result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "--json"])
         payload = json.loads(result.output)
         assert payload[0]["id"] == 1
 
@@ -72,9 +66,7 @@ class TestTemplatesList:
         cfg = _write_cfg(tmp_path, project=None)
         with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = []
-            result = CliRunner().invoke(
-                main, ["templates", "-c", str(cfg), "-p", "9"]
-            )
+            result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "-p", "9"])
         assert result.exit_code == 0
         Mock.return_value.get_templates.assert_called_with(9)
 
@@ -91,9 +83,7 @@ class TestTemplatesShow:
                 inventory_id=3,
                 description="prod",
             )
-            result = CliRunner().invoke(
-                main, ["templates", "-c", str(cfg), "show", "7"]
-            )
+            result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "show", "7"])
         assert result.exit_code == 0
         assert "playbook:" in result.output
         assert "site.yml" in result.output
@@ -105,9 +95,7 @@ class TestTemplatesShow:
             Mock.return_value.get_template.return_value = Template(
                 id=7, project_id=1, name="deploy"
             )
-            result = CliRunner().invoke(
-                main, ["templates", "-c", str(cfg), "--json", "show", "7"]
-            )
+            result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "--json", "show", "7"])
         assert json.loads(result.output)["id"] == 7
 
 
@@ -115,17 +103,14 @@ class TestTasksRun:
     def test_minimal(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
-            Mock.return_value.run_task.return_value = Task(
-                id=99, template_id=10, status="waiting"
-            )
-            result = CliRunner().invoke(
-                main, ["tasks", "-c", str(cfg), "run", "10"]
-            )
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=10, status="waiting")
+            result = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "run", "10"])
         assert result.exit_code == 0
         assert "id:" in result.output
         assert "99" in result.output
         Mock.return_value.run_task.assert_called_once_with(
-            1, 10,
+            1,
+            10,
             playbook=None,
             environment=None,
             limit=None,
@@ -140,14 +125,20 @@ class TestTasksRun:
             CliRunner().invoke(
                 main,
                 [
-                    "tasks", "-c", str(cfg), "run", "10",
-                    "--limit", "ans1",
+                    "tasks",
+                    "-c",
+                    str(cfg),
+                    "run",
+                    "10",
+                    "--limit",
+                    "ans1",
                     "--debug",
                     "--dry-run",
                 ],
             )
         Mock.return_value.run_task.assert_called_with(
-            1, 10,
+            1,
+            10,
             playbook=None,
             environment=None,
             limit="ans1",
@@ -163,9 +154,7 @@ class TestTasksShow:
             Mock.return_value.get_task.return_value = Task(
                 id=99, template_id=10, status="success", created="t1", end="t2"
             )
-            result = CliRunner().invoke(
-                main, ["tasks", "-c", str(cfg), "show", "99"]
-            )
+            result = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "show", "99"])
         assert result.exit_code == 0
         assert "status:      success" in result.output
 
@@ -178,9 +167,7 @@ class TestTasksOutput:
                 {"output": "PLAY [all]"},
                 {"output": "TASK [ping]"},
             ]
-            result = CliRunner().invoke(
-                main, ["tasks", "-c", str(cfg), "output", "99"]
-            )
+            result = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "output", "99"])
         assert "PLAY [all]" in result.output
         assert "TASK [ping]" in result.output
 
@@ -188,17 +175,16 @@ class TestTasksOutput:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
             Mock.return_value.get_task_output.return_value = [{"output": "x"}]
-            result = CliRunner().invoke(
-                main, ["tasks", "-c", str(cfg), "--json", "output", "99"]
-            )
+            result = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "--json", "output", "99"])
         assert json.loads(result.output) == [{"output": "x"}]
 
 
 class TestTasksWatch:
     def test_polls_until_final(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock, patch(
-            "semacli.cli.commands.tasks.time.sleep"
+        with (
+            patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.tasks.time.sleep"),
         ):
             client = Mock.return_value
             # Two polling rounds: first running, second success.

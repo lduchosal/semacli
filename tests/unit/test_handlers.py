@@ -56,15 +56,11 @@ class TestOutputFormatter:
         OutputFormatter.format_verbose("hello", verbose_level=0)
         assert capsys.readouterr().err == ""
 
-    def test_format_verbose_emitted_at_threshold(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_format_verbose_emitted_at_threshold(self, capsys: pytest.CaptureFixture[str]) -> None:
         OutputFormatter.format_verbose("hello", verbose_level=1)
         assert "DEBUG: hello" in capsys.readouterr().err
 
-    def test_format_verbose_custom_min_level(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_format_verbose_custom_min_level(self, capsys: pytest.CaptureFixture[str]) -> None:
         OutputFormatter.format_verbose("deep", verbose_level=2, min_level=3)
         assert capsys.readouterr().err == ""
         OutputFormatter.format_verbose("deep", verbose_level=3, min_level=3)

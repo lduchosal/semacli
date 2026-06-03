@@ -102,15 +102,19 @@ def register_keys_commands(main_group: Any) -> None:
     @keys.command("create")
     @click.option("--name", required=True)
     @click.option(
-        "--type", "key_type", required=True,
+        "--type",
+        "key_type",
+        required=True,
         type=click.Choice(["ssh", "login_password", "none"]),
     )
     @click.option(
-        "--ssh-key", default="",
+        "--ssh-key",
+        default="",
         help="SSH private key (or @file). Required for type=ssh.",
     )
     @click.option(
-        "--login", default="",
+        "--login",
+        default="",
         help="For type=ssh: ssh login. For type=login_password: 'user:pass'.",
     )
     @click.option("--passphrase", default="", help="SSH key passphrase")

@@ -78,8 +78,12 @@ class TestInventoriesClient:
         c = SemaphoreClient(_cfg())
         with patch.object(c, "_request", return_value={"id": 7}) as req:
             c.create_inventory(
-                5, name="hosts", type="static", content="[all]\nans1",
-                ssh_key_id=3, become_key_id=4,
+                5,
+                name="hosts",
+                type="static",
+                content="[all]\nans1",
+                ssh_key_id=3,
+                become_key_id=4,
             )
         body = req.call_args.kwargs["body"]
         assert body["name"] == "hosts"
@@ -122,9 +126,7 @@ class TestEnvironmentsClient:
         with patch.object(c, "_request", return_value={"id": 1}) as req:
             c.create_environment(5, name="prod", json_vars='{"k":"v"}', password="sekret")
         body = req.call_args.kwargs["body"]
-        assert body == {
-            "name": "prod", "json": '{"k":"v"}', "password": "sekret", "project_id": 5
-        }
+        assert body == {"name": "prod", "json": '{"k":"v"}', "password": "sekret", "project_id": 5}
 
     def test_update_delete(self) -> None:
         c = SemaphoreClient(_cfg())
@@ -147,13 +149,14 @@ class TestRepositoriesClient:
     def test_create_body(self) -> None:
         c = SemaphoreClient(_cfg())
         with patch.object(c, "_request", return_value={"id": 1}) as req:
-            c.create_repository(
-                5, name="r", git_url="git@x", git_branch="main", ssh_key_id=3
-            )
+            c.create_repository(5, name="r", git_url="git@x", git_branch="main", ssh_key_id=3)
         body = req.call_args.kwargs["body"]
         assert body == {
-            "name": "r", "git_url": "git@x", "git_branch": "main",
-            "ssh_key_id": 3, "project_id": 5,
+            "name": "r",
+            "git_url": "git@x",
+            "git_branch": "main",
+            "ssh_key_id": 3,
+            "project_id": 5,
         }
 
     def test_update_delete(self) -> None:
@@ -201,7 +204,8 @@ class TestSchedulesClient:
     def test_list_show(self) -> None:
         c = SemaphoreClient(_cfg())
         with patch.object(
-            c, "_request",
+            c,
+            "_request",
             return_value=[{"id": 1, "template_id": 10, "cron_format": "* * * * *"}],
         ):
             assert c.list_schedules(5)[0].cron_format == "* * * * *"
@@ -214,8 +218,11 @@ class TestSchedulesClient:
             c.create_schedule(5, template_id=10, cron_format="0 3 * * *", name="nightly")
         body = req.call_args.kwargs["body"]
         assert body == {
-            "template_id": 10, "cron_format": "0 3 * * *", "name": "nightly",
-            "project_id": 5, "active": True,
+            "template_id": 10,
+            "cron_format": "0 3 * * *",
+            "name": "nightly",
+            "project_id": 5,
+            "active": True,
         }
 
     def test_update_delete(self) -> None:

@@ -80,9 +80,7 @@ class TestOpener:
         c = SemaphoreClient(_cfg(verify_ssl=False))
         opener = c._get_opener()
         # one of the handlers should be an HTTPSHandler with a custom SSL ctx
-        assert any(
-            type(h).__name__ == "HTTPSHandler" for h in opener.handlers
-        )
+        assert any(type(h).__name__ == "HTTPSHandler" for h in opener.handlers)
 
     def test_secure_opener_uses_certifi_bundle(self, monkeypatch: Any) -> None:
         # urllib's default SSL store is broken on Python.org macOS builds;
@@ -93,9 +91,7 @@ class TestOpener:
         monkeypatch.delenv("SSL_CERT_DIR", raising=False)
         c = SemaphoreClient(_cfg(verify_ssl=True))
         opener = c._get_opener()
-        https = next(
-            h for h in opener.handlers if type(h).__name__ == "HTTPSHandler"
-        )
+        https = next(h for h in opener.handlers if type(h).__name__ == "HTTPSHandler")
         ctx = https._context
         assert ctx.verify_mode == __import__("ssl").CERT_REQUIRED
         assert ctx.check_hostname is True
@@ -105,18 +101,14 @@ class TestOpener:
         # sanity check: certifi bundle should be referenced
         assert certifi.where()
 
-    def test_secure_opener_respects_ssl_cert_file_env(
-        self, monkeypatch: Any
-    ) -> None:
+    def test_secure_opener_respects_ssl_cert_file_env(self, monkeypatch: Any) -> None:
         # When the operator pins SSL_CERT_FILE we must not override it.
         import certifi
 
         monkeypatch.setenv("SSL_CERT_FILE", certifi.where())
         c = SemaphoreClient(_cfg(verify_ssl=True))
         opener = c._get_opener()
-        https = next(
-            h for h in opener.handlers if type(h).__name__ == "HTTPSHandler"
-        )
+        https = next(h for h in opener.handlers if type(h).__name__ == "HTTPSHandler")
         assert https._context.verify_mode == __import__("ssl").CERT_REQUIRED
 
 
@@ -167,7 +159,11 @@ class TestErrorMapping:
     def test_401_to_auth_error(self) -> None:
         c = SemaphoreClient(_cfg())
         http_err = urllib.error.HTTPError(
-            "u", 401, "Unauthorized", {}, io.BytesIO(b"")  # type: ignore[arg-type]
+            "u",
+            401,
+            "Unauthorized",
+            {},
+            io.BytesIO(b""),  # type: ignore[arg-type]
         )
         with patch.object(c, "_get_opener", return_value=self._raise(http_err)):
             with pytest.raises(AuthenticationError):
@@ -176,7 +172,11 @@ class TestErrorMapping:
     def test_403_to_auth_error(self) -> None:
         c = SemaphoreClient(_cfg())
         http_err = urllib.error.HTTPError(
-            "u", 403, "Forbidden", {}, io.BytesIO(b"")  # type: ignore[arg-type]
+            "u",
+            403,
+            "Forbidden",
+            {},
+            io.BytesIO(b""),  # type: ignore[arg-type]
         )
         with patch.object(c, "_get_opener", return_value=self._raise(http_err)):
             with pytest.raises(AuthenticationError):
@@ -185,7 +185,11 @@ class TestErrorMapping:
     def test_404_to_not_found(self) -> None:
         c = SemaphoreClient(_cfg())
         http_err = urllib.error.HTTPError(
-            "u", 404, "Not Found", {}, io.BytesIO(b"")  # type: ignore[arg-type]
+            "u",
+            404,
+            "Not Found",
+            {},
+            io.BytesIO(b""),  # type: ignore[arg-type]
         )
         with patch.object(c, "_get_opener", return_value=self._raise(http_err)):
             with pytest.raises(NotFoundError):
@@ -194,7 +198,11 @@ class TestErrorMapping:
     def test_500_to_api_error(self) -> None:
         c = SemaphoreClient(_cfg())
         http_err = urllib.error.HTTPError(
-            "u", 500, "Server Error", {}, io.BytesIO(b"")  # type: ignore[arg-type]
+            "u",
+            500,
+            "Server Error",
+            {},
+            io.BytesIO(b""),  # type: ignore[arg-type]
         )
         with patch.object(c, "_get_opener", return_value=self._raise(http_err)):
             with pytest.raises(SemaphoreAPIError):
@@ -202,9 +210,7 @@ class TestErrorMapping:
 
     def test_urlerror_to_api_error(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(
-            c, "_get_opener", return_value=self._raise(urllib.error.URLError("nx"))
-        ):
+        with patch.object(c, "_get_opener", return_value=self._raise(urllib.error.URLError("nx"))):
             with pytest.raises(SemaphoreAPIError):
                 c.get_projects()
 
@@ -228,9 +234,7 @@ class TestInsecureWarnings:
         SemaphoreClient(_cfg())
         assert capsys.readouterr().err == ""
 
-    def test_warns_when_verify_ssl_false(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_warns_when_verify_ssl_false(self, capsys: pytest.CaptureFixture[str]) -> None:
         SemaphoreClient(_cfg(verify_ssl=False))
         err = capsys.readouterr().err
         assert "TLS certificate verification is DISABLED" in err

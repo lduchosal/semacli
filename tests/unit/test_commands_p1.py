@@ -20,9 +20,7 @@ from semacli.core.models import (
 
 def _write_cfg(tmp_path: Path) -> Path:
     path = tmp_path / "semacli.ini"
-    path.write_text(
-        textwrap.dedent(
-            """
+    path.write_text(textwrap.dedent("""
             [semaphore]
             url = https://sema.example
             project = 1
@@ -30,9 +28,7 @@ def _write_cfg(tmp_path: Path) -> Path:
             [auth]
             method = bearer_token
             bearer_token = tok
-            """
-        ).lstrip()
-    )
+            """).lstrip())
     return path
 
 
@@ -65,8 +61,19 @@ class TestInventoriesCommands:
                 id=9, project_id=1, name="x", type="static"
             )
             r = CliRunner().invoke(
-                main, ["inventories", "-c", str(cfg), "create",
-                       "--name", "x", "--type", "static", "--content", "[all]"]
+                main,
+                [
+                    "inventories",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "x",
+                    "--type",
+                    "static",
+                    "--content",
+                    "[all]",
+                ],
             )
         assert r.exit_code == 0
         Mock.return_value.create_inventory.assert_called_with(
@@ -82,9 +89,19 @@ class TestInventoriesCommands:
                 id=10, project_id=1, name="y", type="static"
             )
             CliRunner().invoke(
-                main, ["inventories", "-c", str(cfg), "create",
-                       "--name", "y", "--type", "static",
-                       "--content", f"@{hosts}"]
+                main,
+                [
+                    "inventories",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "y",
+                    "--type",
+                    "static",
+                    "--content",
+                    f"@{hosts}",
+                ],
             )
         call_kwargs = Mock.return_value.create_inventory.call_args.kwargs
         assert "ans2" in call_kwargs["content"]
@@ -92,9 +109,7 @@ class TestInventoriesCommands:
     def test_delete_with_yes(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
-            r = CliRunner().invoke(
-                main, ["inventories", "-c", str(cfg), "delete", "7", "--yes"]
-            )
+            r = CliRunner().invoke(main, ["inventories", "-c", str(cfg), "delete", "7", "--yes"])
         assert r.exit_code == 0
         Mock.return_value.delete_inventory.assert_called_once_with(1, 7)
 
@@ -126,8 +141,8 @@ class TestEnvironmentsCommands:
                 id=2, project_id=1, name="dev"
             )
             r = CliRunner().invoke(
-                main, ["environments", "-c", str(cfg), "create",
-                       "--name", "dev", "--json", '{"k":"v"}']
+                main,
+                ["environments", "-c", str(cfg), "create", "--name", "dev", "--json", '{"k":"v"}'],
             )
         assert r.exit_code == 0
         Mock.return_value.create_environment.assert_called_with(
@@ -160,8 +175,19 @@ class TestRepositoriesCommands:
                 id=2, project_id=1, name="r2"
             )
             r2 = CliRunner().invoke(
-                main, ["repositories", "-c", str(cfg), "create",
-                       "--name", "r2", "--git-url", "git@y", "--ssh-key-id", "1"]
+                main,
+                [
+                    "repositories",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "r2",
+                    "--git-url",
+                    "git@y",
+                    "--ssh-key-id",
+                    "1",
+                ],
             )
             assert r2.exit_code == 0
             Mock.return_value.create_repository.assert_called_with(
@@ -189,9 +215,21 @@ class TestKeysCommands:
                 id=9, project_id=1, name="root", type="ssh"
             )
             CliRunner().invoke(
-                main, ["keys", "-c", str(cfg), "create",
-                       "--name", "root", "--type", "ssh",
-                       "--login", "root", "--ssh-key", f"@{pem}"]
+                main,
+                [
+                    "keys",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "root",
+                    "--type",
+                    "ssh",
+                    "--login",
+                    "root",
+                    "--ssh-key",
+                    f"@{pem}",
+                ],
             )
         kwargs = Mock.return_value.create_key.call_args.kwargs
         assert kwargs["name"] == "root"
@@ -206,9 +244,19 @@ class TestKeysCommands:
                 id=10, project_id=1, name="creds", type="login_password"
             )
             CliRunner().invoke(
-                main, ["keys", "-c", str(cfg), "create",
-                       "--name", "creds", "--type", "login_password",
-                       "--login", "alice:wonderland"]
+                main,
+                [
+                    "keys",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "creds",
+                    "--type",
+                    "login_password",
+                    "--login",
+                    "alice:wonderland",
+                ],
             )
         kwargs = Mock.return_value.create_key.call_args.kwargs
         assert kwargs["login"] == "alice"
@@ -224,8 +272,19 @@ class TestSchedulesCommands:
                 id=1, project_id=1, template_id=10, cron_format="0 3 * * *", name="x", active=True
             )
             r = CliRunner().invoke(
-                main, ["schedules", "-c", str(cfg), "create",
-                       "--template-id", "10", "--cron", "0 3 * * *", "--name", "x"]
+                main,
+                [
+                    "schedules",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--template-id",
+                    "10",
+                    "--cron",
+                    "0 3 * * *",
+                    "--name",
+                    "x",
+                ],
             )
         assert r.exit_code == 0
         Mock.return_value.create_schedule.assert_called_with(
@@ -235,9 +294,7 @@ class TestSchedulesCommands:
     def test_update_active_flag(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
-            CliRunner().invoke(
-                main, ["schedules", "-c", str(cfg), "update", "5", "--inactive"]
-            )
+            CliRunner().invoke(main, ["schedules", "-c", str(cfg), "update", "5", "--inactive"])
         Mock.return_value.update_schedule.assert_called_with(
             1, 5, name=None, cron_format=None, active=False
         )
@@ -266,9 +323,7 @@ class TestTasksExtras:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
             Mock.return_value.get_task_raw_output.return_value = "PLAY [all]\nTASK [ping]"
-            r = CliRunner().invoke(
-                main, ["tasks", "-c", str(cfg), "raw-output", "99"]
-            )
+            r = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "raw-output", "99"])
         assert "PLAY [all]" in r.output
 
 

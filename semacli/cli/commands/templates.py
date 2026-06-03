@@ -95,9 +95,7 @@ def register_templates_commands(main_group: Any) -> None:
             cfg = load_config(opts["config"])
             client = SemaphoreClient(cfg, verbose=verbose)
             pid = resolve_project(cfg, opts["project_override"])
-            OutputFormatter.format_verbose(
-                f"GET /project/{pid}/templates/{template_id}", verbose
-            )
+            OutputFormatter.format_verbose(f"GET /project/{pid}/templates/{template_id}", verbose)
             tpl = client.get_template(pid, template_id)
             if opts["output_json"]:
                 _emit_show_json(tpl)

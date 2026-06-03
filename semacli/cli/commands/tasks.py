@@ -155,9 +155,7 @@ def register_tasks_commands(main_group: Any) -> None:
 
     @tasks_group.command("watch")
     @click.argument("task_id", type=int)
-    @click.option(
-        "--interval", default=2.0, type=float, help="Polling interval in seconds"
-    )
+    @click.option("--interval", default=2.0, type=float, help="Polling interval in seconds")
     @click.pass_context
     def watch_cmd(ctx: click.Context, task_id: int, interval: float) -> None:
         """Tail task output until the task reaches a final state."""
@@ -213,8 +211,7 @@ def register_tasks_commands(main_group: Any) -> None:
                 else:
                     for t in tasks:
                         click.echo(
-                            f"{t.id:>5}  tpl={t.template_id:<4}  "
-                            f"{t.status:<10}  {t.created}"
+                            f"{t.id:>5}  tpl={t.template_id:<4}  {t.status:<10}  {t.created}"
                         )
                     click.echo(f"\nTotal: {len(tasks)} task(s)")
         except Exception as e:

@@ -19,7 +19,7 @@ class TestRootCli:
         runner = CliRunner()
         result = runner.invoke(main, ["--help"])
         assert result.exit_code == 0
-        assert "Semaphore CLI" in result.output
+        assert "Semaphore UI" in result.output
         assert "ping" in result.output
         assert "projects" in result.output
 

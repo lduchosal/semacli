@@ -65,8 +65,7 @@ class SemaphoreClient:
             )
         if self.config.url.startswith("http://"):
             print(
-                "WARNING: connecting over plain HTTP. Credentials and data "
-                "travel in clear text.",
+                "WARNING: connecting over plain HTTP. Credentials and data travel in clear text.",
                 file=sys.stderr,
             )
 
@@ -78,9 +77,7 @@ class SemaphoreClient:
                 if not self.config.verify_ssl
                 else _build_secure_ssl_context()
             )
-            handlers: list[urllib.request.BaseHandler] = [
-                urllib.request.HTTPSHandler(context=ctx)
-            ]
+            handlers: list[urllib.request.BaseHandler] = [urllib.request.HTTPSHandler(context=ctx)]
             self._opener = urllib.request.build_opener(*handlers)
         return self._opener
 
@@ -200,9 +197,7 @@ class SemaphoreClient:
         if dry_run:
             body["dry_run"] = True
 
-        data = self._request(
-            f"project/{project_id}/tasks", method="POST", body=body
-        )
+        data = self._request(f"project/{project_id}/tasks", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /tasks")
         return Task.model_validate(data)
@@ -214,9 +209,7 @@ class SemaphoreClient:
             raise SemaphoreAPIError("Unexpected response for /tasks/{tid}")
         return Task.model_validate(data)
 
-    def get_task_output(
-        self, project_id: int, task_id: int
-    ) -> list[dict[str, Any]]:
+    def get_task_output(self, project_id: int, task_id: int) -> list[dict[str, Any]]:
         """GET /api/project/{pid}/tasks/{tid}/output — list of {time, output}."""
         data = self._request(f"project/{project_id}/tasks/{task_id}/output")
         if not isinstance(data, list):
@@ -239,9 +232,7 @@ class SemaphoreClient:
 
     def stop_task(self, project_id: int, task_id: int) -> None:
         """POST /api/project/{pid}/tasks/{tid}/stop."""
-        self._request(
-            f"project/{project_id}/tasks/{task_id}/stop", method="POST", body={}
-        )
+        self._request(f"project/{project_id}/tasks/{task_id}/stop", method="POST", body={})
 
     # ── inventories ──────────────────────────────────────────────────────
     def list_inventories(self, project_id: int) -> list[Inventory]:
@@ -278,9 +269,7 @@ class SemaphoreClient:
             body["ssh_key_id"] = ssh_key_id
         if become_key_id:
             body["become_key_id"] = become_key_id
-        data = self._request(
-            f"project/{project_id}/inventory", method="POST", body=body
-        )
+        data = self._request(f"project/{project_id}/inventory", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /inventory")
         return Inventory.model_validate(data)
@@ -303,9 +292,7 @@ class SemaphoreClient:
 
     def delete_inventory(self, project_id: int, inventory_id: int) -> None:
         """DELETE /api/project/{pid}/inventory/{iid}."""
-        self._request(
-            f"project/{project_id}/inventory/{inventory_id}", method="DELETE"
-        )
+        self._request(f"project/{project_id}/inventory/{inventory_id}", method="DELETE")
 
     # ── environments ─────────────────────────────────────────────────────
     def list_environments(self, project_id: int) -> list[Environment]:
@@ -337,9 +324,7 @@ class SemaphoreClient:
         }
         if password:
             body["password"] = password
-        data = self._request(
-            f"project/{project_id}/environment", method="POST", body=body
-        )
+        data = self._request(f"project/{project_id}/environment", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /environment")
         return Environment.model_validate(data)
@@ -362,9 +347,7 @@ class SemaphoreClient:
 
     def delete_environment(self, project_id: int, env_id: int) -> None:
         """DELETE /api/project/{pid}/environment/{eid}."""
-        self._request(
-            f"project/{project_id}/environment/{env_id}", method="DELETE"
-        )
+        self._request(f"project/{project_id}/environment/{env_id}", method="DELETE")
 
     # ── repositories ─────────────────────────────────────────────────────
     def list_repositories(self, project_id: int) -> list[Repository]:
@@ -397,9 +380,7 @@ class SemaphoreClient:
             "ssh_key_id": ssh_key_id,
             "project_id": project_id,
         }
-        data = self._request(
-            f"project/{project_id}/repositories", method="POST", body=body
-        )
+        data = self._request(f"project/{project_id}/repositories", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /repositories")
         return Repository.model_validate(data)
@@ -422,9 +403,7 @@ class SemaphoreClient:
 
     def delete_repository(self, project_id: int, repo_id: int) -> None:
         """DELETE /api/project/{pid}/repositories/{rid}."""
-        self._request(
-            f"project/{project_id}/repositories/{repo_id}", method="DELETE"
-        )
+        self._request(f"project/{project_id}/repositories/{repo_id}", method="DELETE")
 
     # ── keys ─────────────────────────────────────────────────────────────
     def list_keys(self, project_id: int) -> list[Key]:
@@ -468,29 +447,21 @@ class SemaphoreClient:
             }
         elif type == "login_password":
             body["login_password"] = {"login": login, "password": password}
-        data = self._request(
-            f"project/{project_id}/keys", method="POST", body=body
-        )
+        data = self._request(f"project/{project_id}/keys", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /keys")
         return Key.model_validate(data)
 
-    def update_key(
-        self, project_id: int, key_id: int, **fields: Any
-    ) -> None:
+    def update_key(self, project_id: int, key_id: int, **fields: Any) -> None:
         """PUT /api/project/{pid}/keys/{kid}."""
         body = {k: v for k, v in fields.items() if v is not None}
         body["id"] = key_id
         body["project_id"] = project_id
-        self._request(
-            f"project/{project_id}/keys/{key_id}", method="PUT", body=body
-        )
+        self._request(f"project/{project_id}/keys/{key_id}", method="PUT", body=body)
 
     def delete_key(self, project_id: int, key_id: int) -> None:
         """DELETE /api/project/{pid}/keys/{kid}."""
-        self._request(
-            f"project/{project_id}/keys/{key_id}", method="DELETE"
-        )
+        self._request(f"project/{project_id}/keys/{key_id}", method="DELETE")
 
     # ── schedules ────────────────────────────────────────────────────────
     def list_schedules(self, project_id: int) -> list[Schedule]:
@@ -523,16 +494,12 @@ class SemaphoreClient:
             "project_id": project_id,
             "active": active,
         }
-        data = self._request(
-            f"project/{project_id}/schedules", method="POST", body=body
-        )
+        data = self._request(f"project/{project_id}/schedules", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /schedules")
         return Schedule.model_validate(data)
 
-    def update_schedule(
-        self, project_id: int, sched_id: int, **fields: Any
-    ) -> None:
+    def update_schedule(self, project_id: int, sched_id: int, **fields: Any) -> None:
         """PUT /api/project/{pid}/schedules/{sid}."""
         body = {k: v for k, v in fields.items() if v is not None}
         body["id"] = sched_id
@@ -545,6 +512,4 @@ class SemaphoreClient:
 
     def delete_schedule(self, project_id: int, sched_id: int) -> None:
         """DELETE /api/project/{pid}/schedules/{sid}."""
-        self._request(
-            f"project/{project_id}/schedules/{sched_id}", method="DELETE"
-        )
+        self._request(f"project/{project_id}/schedules/{sched_id}", method="DELETE")
