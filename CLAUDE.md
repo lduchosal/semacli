@@ -8,6 +8,16 @@ Parent project conventions (SVN externals, ken CLI install, monitor stack,
 FreeBSD infra) live in `/Users/q/Projects/2113.ch/CLAUDE.md` — read that
 first for anything outside this directory.
 
+## UX standard
+
+**Any change to `--help` text, prompts, output, or command structure must
+follow [`UX.md`](UX.md).** It is the canonical reference for: English-only
+copy, ASCII formatting (no ANSI colors), short singular group names
+(`env`/`inv`/`repo`/`sched`), concept-first help text, realistic examples,
+name-first addressing (`semacli run mtree`), bare-group-as-list, and exit
+code conventions. When a rule is challenged or refined, update `UX.md` in
+the same commit as the code change.
+
 ## Work is tracked on kenboard
 
 All tasks for this repo are queued on the kenboard board and assigned to

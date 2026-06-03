@@ -37,6 +37,9 @@ wiki:
     - id: quality/doc
       title: Quality / Documentation qualité
       description: Guides contributeur, conventions de tests, badges (coverage/interrogate), checklists de review.
+    - id: ux
+      title: UX standard
+      description: User-facing surface (help pages, prompts, output, naming, examples). Canonical reference is UX.md.
 ---
 
 # semacli architecture
@@ -67,6 +70,9 @@ Cross-cutting concerns map to:
 - `tests` — anything under `tests/` (unit, integration, fixtures, mocks).
 - `packaging` — `pyproject.toml`, `pdm.lock`, `publish.sh`, CI workflows.
 - `docs` — `README.md`, this file.
+- `ux` — user-facing surface conventions live in [`UX.md`](UX.md). Any
+  change to `--help` text, prompts, output, naming, or examples must
+  comply with that file and be classified under `ux`.
 
 When a task spans several files, classify it by the file where the
 **root cause** lives, not the largest diff. For example, an enum value

@@ -10,7 +10,7 @@ from .commands import register_all_commands
 @click.group()
 @click.version_option(version=__version__, prog_name="semacli")
 def main() -> None:
-    """Semaphore CLI - Manage Semaphore UI via HTTP REST API."""
+    """Manage your ansible codebase through Semaphore UI."""
     pass
 
 
