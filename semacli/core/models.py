@@ -131,3 +131,19 @@ class UserToken(_ApiModel):
     created: str = ""
     expired: bool = False
     user_id: int = 0
+
+
+class ProjectMember(_ApiModel):
+    """A user attached to a project with a role (owner / manager / task_runner / guest)."""
+
+    user_id: int = 0
+    project_id: int = 0
+    role: str = ""
+    name: str = ""
+    username: str = ""
+
+
+class ApiInfo(_ApiModel):
+    """Semaphore server metadata returned by GET /api/info."""
+
+    version: str = ""

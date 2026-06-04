@@ -14,10 +14,12 @@ import certifi
 from .config import SemaphoreConfig
 from .exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
 from .models import (
+    ApiInfo,
     Environment,
     Inventory,
     Key,
     Project,
+    ProjectMember,
     Repository,
     Schedule,
     Task,
@@ -626,3 +628,98 @@ class SemaphoreClient:
     def delete_user_token(self, token_id: str) -> None:
         """DELETE /api/user/tokens/{tid}."""
         self._request(f"user/tokens/{token_id}", method="DELETE")
+
+    # ---- API info -------------------------------------------------------
+
+    def get_info(self) -> ApiInfo:
+        """GET /api/info — server metadata (no auth required)."""
+        data = self._request("info", require_auth=False)
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /info")
+        return ApiInfo.model_validate(data)
+
+    # ---- Project members ------------------------------------------------
+
+    def list_project_members(self, project_id: int) -> list[ProjectMember]:
+        """GET /api/project/{pid}/users."""
+        data = self._request(f"project/{project_id}/users")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /project/{pid}/users")
+        return [ProjectMember.model_validate(item) for item in data]
+
+    def add_project_member(self, project_id: int, user_id: int, role: str) -> None:
+        """POST /api/project/{pid}/users."""
+        body: dict[str, Any] = {
+            "user_id": user_id,
+            "role": role,
+            "project_id": project_id,
+        }
+        self._request(f"project/{project_id}/users", method="POST", body=body)
+
+    def update_project_member(self, project_id: int, user_id: int, role: str) -> None:
+        """PUT /api/project/{pid}/users/{uid}."""
+        body: dict[str, Any] = {
+            "user_id": user_id,
+            "role": role,
+            "project_id": project_id,
+        }
+        self._request(f"project/{project_id}/users/{user_id}", method="PUT", body=body)
+
+    def remove_project_member(self, project_id: int, user_id: int) -> None:
+        """DELETE /api/project/{pid}/users/{uid}."""
+        self._request(f"project/{project_id}/users/{user_id}", method="DELETE")
+
+    # ---- Admin users ----------------------------------------------------
+
+    def list_users(self) -> list[User]:
+        """GET /api/users — admin only."""
+        data = self._request("users")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /users")
+        return [User.model_validate(item) for item in data]
+
+    def get_user(self, user_id: int) -> User:
+        """GET /api/users/{uid} — admin only."""
+        data = self._request(f"users/{user_id}")
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /users/{uid}")
+        return User.model_validate(data)
+
+    def create_user(
+        self,
+        username: str,
+        name: str,
+        email: str,
+        password: str,
+        admin: bool = False,
+    ) -> User:
+        """POST /api/users — admin only."""
+        body: dict[str, Any] = {
+            "username": username,
+            "name": name,
+            "email": email,
+            "password": password,
+            "admin": admin,
+        }
+        data = self._request("users", method="POST", body=body)
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /users")
+        return User.model_validate(data)
+
+    def update_user(self, user_id: int, **fields: Any) -> None:
+        """PUT /api/users/{uid} — admin only."""
+        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
+        body["id"] = user_id
+        self._request(f"users/{user_id}", method="PUT", body=body)
+
+    def delete_user(self, user_id: int) -> None:
+        """DELETE /api/users/{uid} — admin only."""
+        self._request(f"users/{user_id}", method="DELETE")
+
+    def set_user_password(self, user_id: int, password: str) -> None:
+        """POST /api/users/{uid}/password — admin only."""
+        self._request(
+            f"users/{user_id}/password",
+            method="POST",
+            body={"password": password},
+        )

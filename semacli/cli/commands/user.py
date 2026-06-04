@@ -17,11 +17,12 @@ from ..decorators import common_options, output_options
 from ..handlers import handle_error
 
 USER_HELP = """\
-User: information about the currently-authenticated user.
+User: information about the currently-authenticated user, plus admin
+actions on other users.
 
 `whoami` returns the user the token belongs to. `tokens` manages the
-API tokens of that user (list / create / delete). To manage other users
-(admin-only) see the `users` command in a future release.
+API tokens of that user. `admin` is the admin-only surface to list /
+create / delete / promote other users (requires an admin token).
 
 Calling `semacli user` without a subcommand prints `whoami`.
 """
@@ -33,6 +34,31 @@ Examples:
   semacli user tokens                         # list tokens
   semacli user tokens create                  # mint a new token (printed once!)
   semacli user tokens delete <token-id>
+  semacli user admin list                     # admin: all users
+  semacli user admin create --username alice \\
+       --name "Alice" --email a@2113.ch
+"""
+
+ADMIN_HELP = """\
+Admin-only: list / show / create / update / delete / set-password
+other users (the `/api/users` surface, not `/api/user`).
+
+Requires an admin token. Non-admin tokens get a 403 on every command
+of this subgroup.
+
+Calling `semacli user admin` without a subcommand lists all users.
+"""
+
+ADMIN_EPILOG = """\
+Examples:
+  semacli user admin                                       # list (bare)
+  semacli user admin list
+  semacli user admin show 7
+  semacli user admin create --username alice \\
+       --name "Alice Smith" --email alice@2113.ch
+  semacli user admin update 7 --email new@x.com
+  semacli user admin set-password 7
+  semacli user admin delete 7
 """
 
 TOKENS_HELP = """\
@@ -178,4 +204,177 @@ def register_user_commands(main_group: Any) -> None:
         except Exception as e:
             handle_error(e, verbose)
 
+    @user_group.group("admin", invoke_without_command=True, help=ADMIN_HELP, epilog=ADMIN_EPILOG)
+    @click.pass_context
+    def admin_group(ctx: click.Context) -> None:
+        opts = ctx.obj
+        if ctx.invoked_subcommand is not None:
+            return
+        # Bare invocation = list (matches the UX.md pattern).
+        _do_list(opts)
+
+    @admin_group.command("list")
+    @click.pass_context
+    def admin_list_cmd(ctx: click.Context) -> None:
+        """List all users (admin)."""
+        _do_list(ctx.obj)
+
+    @admin_group.command("show")
+    @click.argument("user_id", type=int)
+    @click.pass_context
+    def admin_show_cmd(ctx: click.Context, user_id: int) -> None:
+        """Show one user (admin)."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            u = client.get_user(user_id)
+            if opts["output_json"]:
+                click.echo(json.dumps(u.model_dump(), indent=2))
+            elif not opts["quiet"]:
+                _emit_user_text(u)
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @admin_group.command("create")
+    @click.option("--username", required=True)
+    @click.option("--name", required=True, help="Display name (full name).")
+    @click.option("--email", required=True)
+    @click.option(
+        "--password",
+        prompt=True,
+        hide_input=True,
+        confirmation_prompt=True,
+        help="Initial password (prompted if omitted).",
+    )
+    @click.option("--admin", is_flag=True, help="Grant admin privileges.")
+    @click.pass_context
+    def admin_create_cmd(
+        ctx: click.Context,
+        username: str,
+        name: str,
+        email: str,
+        password: str,
+        admin: bool,
+    ) -> None:
+        """Create a new user (admin)."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            u = client.create_user(
+                username=username,
+                name=name,
+                email=email,
+                password=password,
+                admin=admin,
+            )
+            if opts["output_json"]:
+                click.echo(json.dumps(u.model_dump(), indent=2))
+            elif not opts["quiet"]:
+                click.echo(f"created user id={u.id} username={u.username}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @admin_group.command("update")
+    @click.argument("user_id", type=int)
+    @click.option("--username", default=None)
+    @click.option("--name", default=None)
+    @click.option("--email", default=None)
+    @click.option("--admin/--no-admin", default=None)
+    @click.pass_context
+    def admin_update_cmd(
+        ctx: click.Context,
+        user_id: int,
+        username: str | None,
+        name: str | None,
+        email: str | None,
+        admin: bool | None,
+    ) -> None:
+        """Update mutable fields of a user (admin)."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            client.update_user(
+                user_id,
+                username=username,
+                name=name,
+                email=email,
+                admin=admin,
+            )
+            if not opts["quiet"]:
+                click.echo(f"updated user id={user_id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @admin_group.command("delete")
+    @click.argument("user_id", type=int)
+    @click.option("--yes", is_flag=True, help="Skip confirmation")
+    @click.pass_context
+    def admin_delete_cmd(ctx: click.Context, user_id: int, yes: bool) -> None:
+        """Delete a user (admin). Irreversible."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        if not yes and not click.confirm(
+            f"Delete user id={user_id}? This is irreversible.", default=False
+        ):
+            click.echo("aborted.", err=True)
+            return
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            client.delete_user(user_id)
+            if not opts["quiet"]:
+                click.echo(f"deleted user id={user_id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @admin_group.command("set-password")
+    @click.argument("user_id", type=int)
+    @click.option(
+        "--password",
+        prompt=True,
+        hide_input=True,
+        confirmation_prompt=True,
+        help="New password (prompted if omitted).",
+    )
+    @click.pass_context
+    def admin_set_password_cmd(ctx: click.Context, user_id: int, password: str) -> None:
+        """Reset a user's password (admin)."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            client.set_user_password(user_id, password)
+            if not opts["quiet"]:
+                click.echo(f"reset password for user id={user_id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
     main_group.commands["user"].category = "connection"
+
+
+def _do_list(opts: dict[str, Any]) -> None:
+    """Shared list-users handler used by both `admin list` and bare `admin`."""
+    verbose = opts["verbose"]
+    try:
+        cfg = load_config(opts["config"])
+        client = SemaphoreClient(cfg, verbose=verbose)
+        users = client.list_users()
+        if opts["output_json"]:
+            click.echo(json.dumps([u.model_dump() for u in users], indent=2))
+        elif not opts["quiet"]:
+            if not users:
+                click.echo("No users found")
+                return
+            for u in users:
+                flag = "admin" if u.admin else "user "
+                click.echo(f"{u.id:>4}  {flag}  {u.username:<20}  {u.name}")
+            click.echo(f"\nTotal: {len(users)} user(s)")
+    except Exception as e:
+        handle_error(e, verbose)

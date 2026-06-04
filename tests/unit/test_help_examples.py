@@ -1,0 +1,1022 @@
+"""Validate every example cited in `semacli ... --help`.
+
+For each command whose ``--help`` epilog ships an ``Examples:`` block,
+this module replays the literal command line through Click's CliRunner
+with the HTTP layer mocked. A test asserts at minimum:
+
+* Click accepts the syntax (no UsageError).
+* The expected client method is invoked.
+* The exit code matches the documented golden path.
+
+Examples whose flags do not match the current Click signature are
+marked ``xfail(strict=True)`` so the help text and the code drift
+becomes visible without silently rotting the assertion. See ken #732
+for the discovery + the BUG cards to file for each xfail.
+
+Conventions inherited from ``test_commands*.py``:
+    * SemaphoreClient is patched at the call site
+      (``semacli.cli._crud.SemaphoreClient`` for crud groups,
+      ``semacli.cli.commands.<mod>.SemaphoreClient`` otherwise).
+    * A minimal ``semacli.ini`` is written under ``tmp_path`` so the
+      Click commands can load it via ``-c``.
+"""
+
+from __future__ import annotations
+
+import textwrap
+from pathlib import Path
+from typing import Any
+from unittest.mock import patch
+
+import pytest
+from click.testing import CliRunner
+
+from semacli.cli import main
+from semacli.core.models import (
+    Environment,
+    Inventory,
+    Key,
+    Project,
+    Repository,
+    Schedule,
+    Task,
+    Template,
+    User,
+    UserToken,
+)
+
+# ── helpers ───────────────────────────────────────────────────────────────
+
+
+def _write_cfg(tmp_path: Path, project: int | None = 1) -> Path:
+    path = tmp_path / "semacli.ini"
+    project_line = f"project = {project}" if project is not None else ""
+    path.write_text(textwrap.dedent(f"""
+            [semaphore]
+            url = https://sema.example
+            {project_line}
+
+            [auth]
+            method = bearer_token
+            bearer_token = tok
+            """).lstrip())
+    return path
+
+
+def _invoke(args: list[str]) -> Any:
+    return CliRunner().invoke(main, args)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli (root) — EXAMPLES block
+# ─────────────────────────────────────────────────────────────────────────
+class TestRootExamples:
+    """Examples in the root ``semacli --help`` epilog."""
+
+    def test_project_lists(self, tmp_path: Path) -> None:
+        # semacli project
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            Mock.return_value.get_projects.return_value = []
+            r = _invoke(["project", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_run_template_with_limit(self, tmp_path: Path) -> None:
+        # semacli run mtree --limit ans2.0.2113.ch
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli.commands.run.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.run.resolve_template", return_value=5),
+            patch("semacli.cli.commands.run._watch_task", return_value="success"),
+        ):
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "--limit", "ans2.0.2113.ch", "-c", str(cfg)])
+        assert r.exit_code == 0
+        Mock.return_value.run_task.assert_called_once_with(
+            1,
+            5,
+            playbook=None,
+            environment=None,
+            limit="ans2.0.2113.ch",
+            debug=False,
+            dry_run=False,
+        )
+
+    def test_env_create_from_vars_file(self, tmp_path: Path) -> None:
+        # semacli env create --name prod --vars @vars.json
+        cfg = _write_cfg(tmp_path)
+        vars_file = tmp_path / "vars.json"
+        vars_file.write_text('{"region":"eu-west-1"}')
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_environment.return_value = Environment(
+                id=1, project_id=1, name="prod"
+            )
+            r = _invoke(
+                [
+                    "env",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "prod",
+                    "--vars",
+                    f"@{vars_file}",
+                ]
+            )
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.create_environment.call_args.kwargs
+        assert kwargs["name"] == "prod"
+        assert "eu-west-1" in kwargs["json_vars"]
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "Root --help example uses `--template mtree` but `sched create` "
+            "only accepts `--template-id INTEGER`. See ken #732 — file a "
+            "BUG card to either accept template name (call resolve_template) "
+            "or update the example text."
+        ),
+    )
+    def test_sched_create_by_template_name(self, tmp_path: Path) -> None:
+        # semacli sched create --template mtree --cron '0 3 * * *'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_schedule.return_value = Schedule(
+                id=1, project_id=1, template_id=5
+            )
+            r = _invoke(
+                [
+                    "sched",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--template",
+                    "mtree",
+                    "--cron",
+                    "0 3 * * *",
+                ]
+            )
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli ping — Examples block
+# ─────────────────────────────────────────────────────────────────────────
+class TestPingExamples:
+    def test_plain(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
+            Mock.return_value.ping.return_value = "pong"
+            r = _invoke(["ping", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert "pong" in r.output
+
+    def test_json(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
+            Mock.return_value.ping.return_value = "pong"
+            r = _invoke(["ping", "--json", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert "pong" in r.output
+
+    def test_explicit_config(self, tmp_path: Path) -> None:
+        # semacli -c ./staging.ini ping  (Click accepts -c on the subcommand too)
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
+            Mock.return_value.ping.return_value = "pong"
+            r = _invoke(["ping", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_verbose_short(self, tmp_path: Path) -> None:
+        # semacli -vv ping  (verbose flag stacks on the subcommand)
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
+            Mock.return_value.ping.return_value = "pong"
+            r = _invoke(["ping", "-vv", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_quiet(self, tmp_path: Path) -> None:
+        # semacli ping -q
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
+            Mock.return_value.ping.return_value = "pong"
+            r = _invoke(["ping", "-q", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert r.output == ""
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli init — interactive, only flag parsing is validated here
+# ─────────────────────────────────────────────────────────────────────────
+class TestInitExamples:
+    """The interactive prompts are mocked; the assertion is that Click
+    parses the example flag combination and that the documented helpers
+    are reached in the expected order."""
+
+    def _run(self, extra: list[str], tmp_path: Path) -> Any:
+        target = tmp_path / "out.ini"
+        with (
+            patch("semacli.cli.commands.init._prompt_url", return_value=("https://x", True, False)),
+            patch("semacli.cli.commands.init._prompt_token", return_value="tok"),
+            patch("semacli.cli.commands.init._prompt_project", return_value=None),
+            patch("semacli.cli.commands.init._prompt_location", return_value=target),
+            patch("semacli.cli.commands.init.SemaphoreClient"),
+        ):
+            args = ["init", *extra]
+            # When --output is not in extra, the location prompt is used.
+            return CliRunner().invoke(main, args)
+
+    def test_prompt_for_everything(self, tmp_path: Path) -> None:
+        # semacli init
+        r = self._run([], tmp_path)
+        assert r.exit_code == 0
+
+    def test_with_url(self, tmp_path: Path) -> None:
+        # semacli init --url https://semaphore.1.2113.ch
+        r = self._run(["--url", "https://semaphore.1.2113.ch"], tmp_path)
+        assert r.exit_code == 0
+
+    def test_with_output(self, tmp_path: Path) -> None:
+        # semacli init --output ~/.semacli.ini  (use tmp instead of ~)
+        target = tmp_path / "custom.ini"
+        r = self._run(["--output", str(target)], tmp_path)
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli user / semacli user tokens — Examples blocks
+# ─────────────────────────────────────────────────────────────────────────
+class TestUserExamples:
+    def test_user_default_is_whoami(self, tmp_path: Path) -> None:
+        # semacli user
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+            Mock.return_value.whoami.return_value = User(id=1, username="luc")
+            r = _invoke(["user", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert "luc" in r.output
+
+    def test_user_whoami(self, tmp_path: Path) -> None:
+        # semacli user whoami
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+            Mock.return_value.whoami.return_value = User(id=1, username="luc")
+            r = _invoke(["user", "-c", str(cfg), "whoami"])
+        assert r.exit_code == 0
+        assert "luc" in r.output
+
+    def test_user_tokens_list(self, tmp_path: Path) -> None:
+        # semacli user tokens
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+            Mock.return_value.list_user_tokens.return_value = []
+            r = _invoke(["user", "-c", str(cfg), "tokens"])
+        assert r.exit_code == 0
+
+    def test_user_tokens_create(self, tmp_path: Path) -> None:
+        # semacli user tokens create
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+            Mock.return_value.create_user_token.return_value = UserToken(id="sem-new", created="t")
+            r = _invoke(["user", "-c", str(cfg), "tokens", "create"])
+        assert r.exit_code == 0
+        assert "sem-new" in r.output
+
+    def test_user_tokens_delete(self, tmp_path: Path) -> None:
+        # semacli user tokens delete sem-abc123
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+            r = _invoke(["user", "-c", str(cfg), "tokens", "delete", "sem-abc123", "--yes"])
+        assert r.exit_code == 0
+        Mock.return_value.delete_user_token.assert_called_once_with("sem-abc123")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli project — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestProjectExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            Mock.return_value.get_projects.return_value = []
+            r = _invoke(["project", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        # semacli project show 2
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            Mock.return_value.get_project.return_value = Project(id=2, name="x")
+            r = _invoke(["project", "-c", str(cfg), "show", "2"])
+        assert r.exit_code == 0
+        Mock.return_value.get_project.assert_called_once_with(2)
+
+    def test_create(self, tmp_path: Path) -> None:
+        # semacli project create --name infra-prod
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            Mock.return_value.create_project.return_value = Project(id=3, name="infra-prod")
+            r = _invoke(["project", "-c", str(cfg), "create", "--name", "infra-prod"])
+        assert r.exit_code == 0
+        Mock.return_value.create_project.assert_called_once()
+        assert Mock.return_value.create_project.call_args.kwargs["name"] == "infra-prod"
+
+    def test_update(self, tmp_path: Path) -> None:
+        # semacli project update 2 --name infra-eu
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            r = _invoke(["project", "-c", str(cfg), "update", "2", "--name", "infra-eu"])
+        assert r.exit_code == 0
+        Mock.return_value.update_project.assert_called_once()
+        args, kwargs = Mock.return_value.update_project.call_args
+        assert args[0] == 2 and kwargs["name"] == "infra-eu"
+
+    def test_delete(self, tmp_path: Path) -> None:
+        # semacli project delete 2  (--yes added so we don't deadlock on prompt)
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            r = _invoke(["project", "-c", str(cfg), "delete", "2", "--yes"])
+        assert r.exit_code == 0
+        Mock.return_value.delete_project.assert_called_once_with(2)
+
+    def test_json_for_pipe(self, tmp_path: Path) -> None:
+        # semacli project --json  (the | jq part is shell, not Click)
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.projects.SemaphoreClient") as Mock:
+            Mock.return_value.get_projects.return_value = [Project(id=1, name="a")]
+            r = _invoke(["project", "--json", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert '"a"' in r.output
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli template — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestTemplateExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+            Mock.return_value.get_templates.return_value = []
+            r = _invoke(["template", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+            Mock.return_value.get_template.return_value = Template(
+                id=5, project_id=1, name="deploy"
+            )
+            r = _invoke(["template", "-c", str(cfg), "show", "5"])
+        assert r.exit_code == 0
+
+    def test_create_full(self, tmp_path: Path) -> None:
+        # semacli template create --name deploy-prod --playbook deploy/prod.yml
+        #     --repository 4 --inventory 42 --environment 7
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+            Mock.return_value.create_template.return_value = Template(
+                id=10, project_id=1, name="deploy-prod"
+            )
+            r = _invoke(
+                [
+                    "template",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "deploy-prod",
+                    "--playbook",
+                    "deploy/prod.yml",
+                    "--repository",
+                    "4",
+                    "--inventory",
+                    "42",
+                    "--environment",
+                    "7",
+                ]
+            )
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.create_template.call_args.kwargs
+        assert kwargs["name"] == "deploy-prod"
+        assert kwargs["playbook"] == "deploy/prod.yml"
+        assert kwargs["repository_id"] == 4
+        assert kwargs["inventory_id"] == 42
+        assert kwargs["environment_id"] == 7
+
+    def test_update(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+            r = _invoke(["template", "-c", str(cfg), "update", "5", "--environment", "8"])
+        assert r.exit_code == 0
+        Mock.return_value.update_template.assert_called_once()
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+            r = _invoke(["template", "-c", str(cfg), "delete", "5", "--yes"])
+        assert r.exit_code == 0
+        Mock.return_value.delete_template.assert_called_once()
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli task — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestTaskExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.list_tasks.return_value = []
+            r = _invoke(["task", "-c", str(cfg), "list"])
+        assert r.exit_code == 0
+
+    def test_run_with_limit(self, tmp_path: Path) -> None:
+        # semacli task run 5 --limit web1.0.2113.ch
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["task", "-c", str(cfg), "run", "5", "--limit", "web1.0.2113.ch"])
+        assert r.exit_code == 0
+        Mock.return_value.run_task.assert_called_once_with(
+            1,
+            5,
+            playbook=None,
+            environment=None,
+            limit="web1.0.2113.ch",
+            debug=False,
+            dry_run=False,
+        )
+
+    def test_run_dry_run(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["task", "-c", str(cfg), "run", "5", "--dry-run"])
+        assert r.exit_code == 0
+        assert Mock.return_value.run_task.call_args.kwargs["dry_run"] is True
+
+    def test_watch(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.tasks.time.sleep"),
+        ):
+            client = Mock.return_value
+            client.get_task_output.return_value = [{"output": "done"}]
+            client.get_task.return_value = Task(id=142, status="success")
+            r = _invoke(["task", "-c", str(cfg), "watch", "142"])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.get_task.return_value = Task(id=142, template_id=5, status="success")
+            r = _invoke(["task", "-c", str(cfg), "show", "142"])
+        assert r.exit_code == 0
+
+    def test_raw_output(self, tmp_path: Path) -> None:
+        # semacli task raw-output 142  (> task-142.log is shell redirection)
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.get_task_raw_output.return_value = "PLAY [all]"
+            r = _invoke(["task", "-c", str(cfg), "raw-output", "142"])
+        assert r.exit_code == 0
+        assert "PLAY [all]" in r.output
+
+    def test_stop(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            r = _invoke(["task", "-c", str(cfg), "stop", "142"])
+        assert r.exit_code == 0
+        Mock.return_value.stop_task.assert_called_once_with(1, 142)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli inv — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestInvExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.list_inventories.return_value = []
+            r = _invoke(["inv", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_inventory.return_value = Inventory(
+                id=42, project_id=1, name="hosts", type="static"
+            )
+            r = _invoke(["inv", "-c", str(cfg), "show", "42"])
+        assert r.exit_code == 0
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "`inv` group epilog advertises `--inventory '...'` but the actual "
+            "Click signature accepts `--content`. See ken #732."
+        ),
+    )
+    def test_create_static_inline(self, tmp_path: Path) -> None:
+        # semacli inv create --name prod-hosts --type static \
+        #      --inventory '[prod]\nweb1.0.2113.ch'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_inventory.return_value = Inventory(
+                id=1, project_id=1, name="prod-hosts"
+            )
+            r = _invoke(
+                [
+                    "inv",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "prod-hosts",
+                    "--type",
+                    "static",
+                    "--inventory",
+                    "[prod]\nweb1.0.2113.ch",
+                ]
+            )
+        assert r.exit_code == 0
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "`inv` group epilog advertises `--inventory-file @path` but the "
+            "actual Click signature uses `--content @path`. See ken #732."
+        ),
+    )
+    def test_create_from_file(self, tmp_path: Path) -> None:
+        # semacli inv create --name from-file --type file \
+        #      --inventory-file @./hosts.ini
+        cfg = _write_cfg(tmp_path)
+        hosts = tmp_path / "hosts.ini"
+        hosts.write_text("[all]\nans1\n")
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_inventory.return_value = Inventory(
+                id=1, project_id=1, name="from-file"
+            )
+            r = _invoke(
+                [
+                    "inv",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "from-file",
+                    "--type",
+                    "file",
+                    "--inventory-file",
+                    f"@{hosts}",
+                ]
+            )
+        assert r.exit_code == 0
+
+    def test_update(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            r = _invoke(["inv", "-c", str(cfg), "update", "42", "--name", "prod-hosts-eu"])
+        assert r.exit_code == 0
+        Mock.return_value.update_inventory.assert_called_once()
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = _invoke(["inv", "-c", str(cfg), "delete", "42", "--yes"])
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli env — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestEnvExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.list_environments.return_value = []
+            r = _invoke(["env", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_environment.return_value = Environment(
+                id=7, project_id=1, name="prod"
+            )
+            r = _invoke(["env", "-c", str(cfg), "show", "7"])
+        assert r.exit_code == 0
+
+    def test_create_inline_json(self, tmp_path: Path) -> None:
+        # semacli env create --name prod --vars '{"region":"eu-west-1"}'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_environment.return_value = Environment(
+                id=1, project_id=1, name="prod"
+            )
+            r = _invoke(
+                [
+                    "env",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "prod",
+                    "--vars",
+                    '{"region":"eu-west-1"}',
+                ]
+            )
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.create_environment.call_args.kwargs
+        assert kwargs["json_vars"] == '{"region":"eu-west-1"}'
+
+    def test_create_from_file_with_password(self, tmp_path: Path) -> None:
+        # semacli env create --name prod --vars @vars.json --password 'vault-pw'
+        cfg = _write_cfg(tmp_path)
+        vars_file = tmp_path / "vars.json"
+        vars_file.write_text('{"k":"v"}')
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_environment.return_value = Environment(
+                id=1, project_id=1, name="prod"
+            )
+            r = _invoke(
+                [
+                    "env",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "prod",
+                    "--vars",
+                    f"@{vars_file}",
+                    "--password",
+                    "vault-pw",
+                ]
+            )
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.create_environment.call_args.kwargs
+        assert kwargs["password"] == "vault-pw"
+
+    def test_update_with_file(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        vars_file = tmp_path / "vars.json"
+        vars_file.write_text('{"k":"v"}')
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = _invoke(["env", "-c", str(cfg), "update", "7", "--vars", f"@{vars_file}"])
+        assert r.exit_code == 0
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = _invoke(["env", "-c", str(cfg), "delete", "7", "--yes"])
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli repo — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestRepoExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.list_repositories.return_value = []
+            r = _invoke(["repo", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_repository.return_value = Repository(
+                id=4, project_id=1, name="infra"
+            )
+            r = _invoke(["repo", "-c", str(cfg), "show", "4"])
+        assert r.exit_code == 0
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "`repo` epilog example uses `--ssh-key 12` but the Click "
+            "signature requires `--ssh-key-id 12`. See ken #732."
+        ),
+    )
+    def test_create_full(self, tmp_path: Path) -> None:
+        # semacli repo create --name infra \
+        #      --git-url git@github.com:org/infra.git \
+        #      --branch main --ssh-key 12
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_repository.return_value = Repository(
+                id=1, project_id=1, name="infra"
+            )
+            r = _invoke(
+                [
+                    "repo",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "infra",
+                    "--git-url",
+                    "git@github.com:org/infra.git",
+                    "--branch",
+                    "main",
+                    "--ssh-key",
+                    "12",
+                ]
+            )
+        assert r.exit_code == 0
+
+    def test_update_branch(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            r = _invoke(["repo", "-c", str(cfg), "update", "4", "--branch", "release/2026"])
+        assert r.exit_code == 0
+        Mock.return_value.update_repository.assert_called_once()
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = _invoke(["repo", "-c", str(cfg), "delete", "4", "--yes"])
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli key — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestKeyExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.list_keys.return_value = []
+            r = _invoke(["key", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_key.return_value = Key(
+                id=12, project_id=1, name="root", type="ssh"
+            )
+            r = _invoke(["key", "-c", str(cfg), "show", "12"])
+        assert r.exit_code == 0
+
+    def test_create_ssh_from_file(self, tmp_path: Path) -> None:
+        # semacli key create --name deploy-ssh --type ssh \
+        #      --private-key @~/.ssh/id_ed25519  (use tmp instead of ~)
+        cfg = _write_cfg(tmp_path)
+        pem = tmp_path / "id_ed25519"
+        pem.write_text("-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n")
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_key.return_value = Key(
+                id=1, project_id=1, name="deploy-ssh", type="ssh"
+            )
+            r = _invoke(
+                [
+                    "key",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "deploy-ssh",
+                    "--type",
+                    "ssh",
+                    "--private-key",
+                    f"@{pem}",
+                ]
+            )
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.create_key.call_args.kwargs
+        assert "OPENSSH" in kwargs["private_key"]
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "`key create` ships no `--password` flag — the example "
+            "`--type none --password 's3cr3t'` cannot parse. See ken #732."
+        ),
+    )
+    def test_create_vault_password(self, tmp_path: Path) -> None:
+        # semacli key create --name vault-pw --type none --password 's3cr3t'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_key.return_value = Key(
+                id=1, project_id=1, name="vault-pw", type="none"
+            )
+            r = _invoke(
+                [
+                    "key",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "vault-pw",
+                    "--type",
+                    "none",
+                    "--password",
+                    "s3cr3t",
+                ]
+            )
+        assert r.exit_code == 0
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason=(
+            "`key create --type login_password` advertises `--login admin "
+            "--password 's3cr3t'`, but the actual flag is `--login user:pass` "
+            "(single combined arg) and no `--password` exists. See ken #732."
+        ),
+    )
+    def test_create_login_password(self, tmp_path: Path) -> None:
+        # semacli key create --name reg-login --type login_password \
+        #      --login admin --password 's3cr3t'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_key.return_value = Key(
+                id=1, project_id=1, name="reg-login", type="login_password"
+            )
+            r = _invoke(
+                [
+                    "key",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--name",
+                    "reg-login",
+                    "--type",
+                    "login_password",
+                    "--login",
+                    "admin",
+                    "--password",
+                    "s3cr3t",
+                ]
+            )
+        assert r.exit_code == 0
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = _invoke(["key", "-c", str(cfg), "delete", "12", "--yes"])
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli sched — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestSchedExamples:
+    def test_list(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.list_schedules.return_value = []
+            r = _invoke(["sched", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_show(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_schedule.return_value = Schedule(
+                id=12, project_id=1, template_id=5, cron_format="0 3 * * *"
+            )
+            r = _invoke(["sched", "-c", str(cfg), "show", "12"])
+        assert r.exit_code == 0
+
+    def test_create_nightly(self, tmp_path: Path) -> None:
+        # semacli sched create --template-id 5 --cron '0 3 * * *'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_schedule.return_value = Schedule(
+                id=1, project_id=1, template_id=5, cron_format="0 3 * * *"
+            )
+            r = _invoke(
+                [
+                    "sched",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--template-id",
+                    "5",
+                    "--cron",
+                    "0 3 * * *",
+                ]
+            )
+        assert r.exit_code == 0
+        Mock.return_value.create_schedule.assert_called_once()
+        kwargs = Mock.return_value.create_schedule.call_args.kwargs
+        assert kwargs["template_id"] == 5
+        assert kwargs["cron_format"] == "0 3 * * *"
+
+    def test_create_quarter_hour(self, tmp_path: Path) -> None:
+        # semacli sched create --template-id 7 --cron '*/15 * * * *'
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.create_schedule.return_value = Schedule(
+                id=2, project_id=1, template_id=7
+            )
+            r = _invoke(
+                [
+                    "sched",
+                    "-c",
+                    str(cfg),
+                    "create",
+                    "--template-id",
+                    "7",
+                    "--cron",
+                    "*/15 * * * *",
+                ]
+            )
+        assert r.exit_code == 0
+        assert Mock.return_value.create_schedule.call_args.kwargs["cron_format"] == "*/15 * * * *"
+
+    def test_update(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            r = _invoke(["sched", "-c", str(cfg), "update", "12", "--cron", "0 4 * * *"])
+        assert r.exit_code == 0
+        Mock.return_value.update_schedule.assert_called_once()
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = _invoke(["sched", "-c", str(cfg), "delete", "12", "--yes"])
+        assert r.exit_code == 0
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# semacli run — Examples
+# ─────────────────────────────────────────────────────────────────────────
+class TestRunExamples:
+    """``run`` watches by default; we patch ``_watch_task`` to short-
+    circuit the polling loop, and ``resolve_template`` to skip the
+    name → id lookup against the mocked client list."""
+
+    def _patch_run(self, tmp_path: Path) -> tuple[Any, Any, Any, Any]:
+        cfg = _write_cfg(tmp_path)
+        client_p = patch("semacli.cli.commands.run.SemaphoreClient")
+        resolve_p = patch("semacli.cli.commands.run.resolve_template", return_value=5)
+        watch_p = patch("semacli.cli.commands.run._watch_task", return_value="success")
+        return cfg, client_p, resolve_p, watch_p
+
+    def test_by_name_watch(self, tmp_path: Path) -> None:
+        # semacli run mtree
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_by_name_with_limit(self, tmp_path: Path) -> None:
+        # semacli run mtree --limit ans2.0.2113.ch
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "--limit", "ans2.0.2113.ch", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert Mock.return_value.run_task.call_args.kwargs["limit"] == "ans2.0.2113.ch"
+
+    def test_dry_run_debug(self, tmp_path: Path) -> None:
+        # semacli run mtree --dry-run --debug
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "--dry-run", "--debug", "-c", str(cfg)])
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.run_task.call_args.kwargs
+        assert kwargs["dry_run"] is True
+        assert kwargs["debug"] is True
+
+    def test_no_watch(self, tmp_path: Path) -> None:
+        # semacli run mtree --no-watch
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli.commands.run.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.run.resolve_template", return_value=5),
+        ):
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "--no-watch", "-c", str(cfg)])
+        assert r.exit_code == 0
+        # Watcher should not have been called — but task id must be emitted.
+        assert "99" in r.output
+
+    def test_by_id_skips_resolve(self, tmp_path: Path) -> None:
+        # semacli run 5 --limit web1.0.2113.ch
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli.commands.run.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.run.resolve_template", return_value=5) as resolve_mock,
+            patch("semacli.cli.commands.run._watch_task", return_value="success"),
+        ):
+            Mock.return_value.run_task.return_value = Task(id=42, template_id=5)
+            r = _invoke(["run", "5", "--limit", "web1.0.2113.ch", "-c", str(cfg)])
+        assert r.exit_code == 0
+        # The id form still passes through resolve_template, which is the
+        # documented behavior (the resolver handles "numeric == id" itself).
+        resolve_mock.assert_called_once()
+
+    def test_exact_flag(self, tmp_path: Path) -> None:
+        # semacli run --exact mtree
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p as resolve_mock, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "--exact", "mtree", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert resolve_mock.call_args.kwargs["exact"] is True

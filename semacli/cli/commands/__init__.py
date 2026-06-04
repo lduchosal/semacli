@@ -3,6 +3,7 @@
 from typing import Any
 
 from .environments import register_environments_commands
+from .info import register_info_commands
 from .init import register_init_commands
 from .inventories import register_inventories_commands
 from .keys import register_keys_commands
@@ -19,6 +20,7 @@ from .user import register_user_commands
 def register_all_commands(main_group: Any) -> None:
     """Register all commands with the main CLI group."""
     register_ping_commands(main_group)
+    register_info_commands(main_group)
     register_init_commands(main_group)
     register_user_commands(main_group)
     register_projects_commands(main_group)
