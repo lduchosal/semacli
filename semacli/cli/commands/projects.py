@@ -18,16 +18,16 @@ Manage the users that have access to a project, and their role.
 Roles (Semaphore RBAC): owner / manager / task_runner / guest. The
 project owner cannot be removed.
 
-Calling `semacli project members` without a subcommand lists members.
+Calling `sem project members` without a subcommand lists members.
 """
 
 MEMBERS_EPILOG = """\
 Examples:
-  semacli project members                              # list members of default project
-  semacli project members -p 2                         # list members of project 2
-  semacli project members add --user 7 --role manager
-  semacli project members update 7 --role task_runner
-  semacli project members remove 7
+  sem project members                              # list members of default project
+  sem project members -p 2                         # list members of project 2
+  sem project members add --user 7 --role manager
+  sem project members update 7 --role task_runner
+  sem project members remove 7
 """
 
 PROJECT_HELP = """\
@@ -38,23 +38,23 @@ environment, key, template, schedule and task belongs to exactly one
 project. Set the default project once in semacli.ini ([semaphore]
 project = <id>) so the other commands don't need -p each time.
 
-Calling `semacli project` without a subcommand lists projects.
+Calling `sem project` without a subcommand lists projects.
 """
 
 PROJECT_EPILOG = """\
 Examples:
-  semacli project                                       # list
-  semacli project show 2
-  semacli project create --name infra-prod
-  semacli project update 2 --name infra-eu
-  semacli project delete 2
-  semacli project members -p 2                          # list members
-  semacli project members add --user 7 --role manager
-  semacli project --json | jq -r '.[].name'
+  sem project                                       # list
+  sem project show 2
+  sem project create --name infra-prod
+  sem project update 2 --name infra-eu
+  sem project delete 2
+  sem project members -p 2                          # list members
+  sem project members add --user 7 --role manager
+  sem project --json | jq -r '.[].name'
 
 Next steps:
-  semacli inv -p 2                inventories of project 2
-  semacli template -p 2           templates of project 2
+  sem inv -p 2                inventories of project 2
+  sem template -p 2           templates of project 2
 """
 
 

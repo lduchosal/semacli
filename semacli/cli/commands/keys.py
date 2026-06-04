@@ -32,19 +32,19 @@ Three types:
 Secrets (private key bodies, passwords) are write-only: they can be set
 on create/update but are never returned by show.
 
-Calling `semacli key` without a subcommand lists keys.
+Calling `sem key` without a subcommand lists keys.
 """
 
 KEY_EPILOG = """\
 Examples:
-  semacli key                                            # list
-  semacli key show 12                                    # metadata only
-  semacli key create --name deploy-ssh --type ssh \\
+  sem key                                            # list
+  sem key show 12                                    # metadata only
+  sem key create --name deploy-ssh --type ssh \\
        --private-key @~/.ssh/id_ed25519
-  semacli key create --name vault-pw --type none --password 's3cr3t'
-  semacli key create --name reg-login --type login_password \\
+  sem key create --name vault-pw --type none --password 's3cr3t'
+  sem key create --name reg-login --type login_password \\
        --login admin --password 's3cr3t'
-  semacli key delete 12
+  sem key delete 12
 """
 
 

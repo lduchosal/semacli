@@ -1,4 +1,4 @@
-"""`semacli view` — saved filters / dashboards inside a project."""
+"""`sem view` — saved filters / dashboards inside a project."""
 
 import json
 from typing import Any
@@ -19,16 +19,16 @@ A view groups templates and tasks together for quick navigation in the
 Semaphore UI. Each view belongs to one project; the `position` field
 controls display order.
 
-Calling `semacli view` without a subcommand lists views.
+Calling `sem view` without a subcommand lists views.
 """
 
 VIEW_EPILOG = """\
 Examples:
-  semacli view                                       # list
-  semacli view show 3
-  semacli view create --title 'Nightly jobs' --position 0
-  semacli view update 3 --position 1
-  semacli view delete 3
+  sem view                                       # list
+  sem view show 3
+  sem view create --title 'Nightly jobs' --position 0
+  sem view update 3 --position 1
+  sem view delete 3
 """
 
 
@@ -49,7 +49,7 @@ def _emit_show_text(v: View) -> None:
 
 
 def register_views_commands(main_group: Any) -> None:
-    """Register `semacli view`."""
+    """Register `sem view`."""
 
     @main_group.group("view", invoke_without_command=True, help=VIEW_HELP, epilog=VIEW_EPILOG)
     @click.pass_context

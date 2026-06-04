@@ -15,7 +15,7 @@ from ..handlers import OutputFormatter, handle_error
 TEMPLATE_HELP = """\
 Templates: recipes that combine a repository, an inventory, an
 environment and a playbook path. A template is what you actually run
-via `semacli task run` (or the shortcut `semacli run`).
+via `sem task run` (or the shortcut `sem run`).
 
 A template references:
   - 1 repository    (where the playbook lives)
@@ -23,19 +23,19 @@ A template references:
   - 0/1 environment (extra_vars + secrets)
   - playbook path   (relative to the repo)
 
-Calling `semacli template` without a subcommand lists templates.
+Calling `sem template` without a subcommand lists templates.
 """
 
 TEMPLATE_EPILOG = """\
 Examples:
-  semacli template                          # list
-  semacli template show 5
-  semacli template create --name deploy-prod \\
+  sem template                          # list
+  sem template show 5
+  sem template create --name deploy-prod \\
        --playbook deploy/prod.yml \\
        --repository 4 --inventory 42 --environment 7
-  semacli template update 5 --environment 8
-  semacli template delete 5
-  semacli run mtree                         # run by name (shortcut)
+  sem template update 5 --environment 8
+  sem template delete 5
+  sem run mtree                         # run by name (shortcut)
 """
 
 

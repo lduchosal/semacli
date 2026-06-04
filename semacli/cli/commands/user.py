@@ -24,18 +24,18 @@ actions on other users.
 API tokens of that user. `admin` is the admin-only surface to list /
 create / delete / promote other users (requires an admin token).
 
-Calling `semacli user` without a subcommand prints `whoami`.
+Calling `sem user` without a subcommand prints `whoami`.
 """
 
 USER_EPILOG = """\
 Examples:
-  semacli user                                # whoami
-  semacli user whoami
-  semacli user tokens                         # list tokens
-  semacli user tokens create                  # mint a new token (printed once!)
-  semacli user tokens delete <token-id>
-  semacli user admin list                     # admin: all users
-  semacli user admin create --username alice \\
+  sem user                                # whoami
+  sem user whoami
+  sem user tokens                         # list tokens
+  sem user tokens create                  # mint a new token (printed once!)
+  sem user tokens delete <token-id>
+  sem user admin list                     # admin: all users
+  sem user admin create --username alice \\
        --name "Alice" --email a@2113.ch
 """
 
@@ -46,19 +46,19 @@ other users (the `/api/users` surface, not `/api/user`).
 Requires an admin token. Non-admin tokens get a 403 on every command
 of this subgroup.
 
-Calling `semacli user admin` without a subcommand lists all users.
+Calling `sem user admin` without a subcommand lists all users.
 """
 
 ADMIN_EPILOG = """\
 Examples:
-  semacli user admin                                       # list (bare)
-  semacli user admin list
-  semacli user admin show 7
-  semacli user admin create --username alice \\
+  sem user admin                                       # list (bare)
+  sem user admin list
+  sem user admin show 7
+  sem user admin create --username alice \\
        --name "Alice Smith" --email alice@2113.ch
-  semacli user admin update 7 --email new@x.com
-  semacli user admin set-password 7
-  semacli user admin delete 7
+  sem user admin update 7 --email new@x.com
+  sem user admin set-password 7
+  sem user admin delete 7
 """
 
 TOKENS_HELP = """\
@@ -70,9 +70,9 @@ secret is irrecoverable thereafter); `delete <id>` revokes one.
 
 TOKENS_EPILOG = """\
 Examples:
-  semacli user tokens                         # list
-  semacli user tokens create                  # mint
-  semacli user tokens delete sem-abc123
+  sem user tokens                         # list
+  sem user tokens create                  # mint
+  sem user tokens delete sem-abc123
 """
 
 
@@ -96,7 +96,7 @@ def _emit_tokens_text(tokens: list[UserToken]) -> None:
 
 
 def register_user_commands(main_group: Any) -> None:
-    """Register `semacli user` and its subcommands."""
+    """Register `sem user` and its subcommands."""
 
     @main_group.group("user", invoke_without_command=True, help=USER_HELP, epilog=USER_EPILOG)
     @click.pass_context

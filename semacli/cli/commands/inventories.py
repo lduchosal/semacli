@@ -25,19 +25,19 @@ Each inventory belongs to one project. Templates pick one inventory.
 Supported types: static (inline INI/YAML), file (a path inside the
 repository), and none.
 
-Calling `semacli inv` without a subcommand lists inventories.
+Calling `sem inv` without a subcommand lists inventories.
 """
 
 INV_EPILOG = """\
 Examples:
-  semacli inv                                # list
-  semacli inv show 42
-  semacli inv create --name prod-hosts --type static \\
+  sem inv                                # list
+  sem inv show 42
+  sem inv create --name prod-hosts --type static \\
        --inventory '[prod]\\nweb1.0.2113.ch'
-  semacli inv create --name from-file --type file \\
+  sem inv create --name from-file --type file \\
        --inventory ./hosts.ini       # path inside the repo
-  semacli inv update 42 --name prod-hosts-eu
-  semacli inv delete 42
+  sem inv update 42 --name prod-hosts-eu
+  sem inv delete 42
 """
 
 

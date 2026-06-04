@@ -21,11 +21,11 @@ success, non-zero on failure.
 
 PING_EPILOG = """\
 Examples:
-  semacli ping
-  semacli ping --json
-  semacli -c ./staging.ini ping
-  semacli -vv ping
-  semacli ping -q && echo OK
+  sem ping
+  sem ping --json
+  sem -c ./staging.ini ping
+  sem -vv ping
+  sem ping -q && echo OK
 """
 
 

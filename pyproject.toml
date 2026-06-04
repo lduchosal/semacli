@@ -54,6 +54,7 @@ Source = "https://github.com/lduchosal/semacli"
 Documentation = "https://github.com/lduchosal/semacli/blob/main/README.md"
 
 [project.scripts]
+sem = "semacli.cli:main"
 semacli = "semacli.cli:main"
 
 [tool.black]

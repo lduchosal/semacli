@@ -1,4 +1,4 @@
-"""`semacli integration` — inbound webhooks + their matchers."""
+"""`sem integration` — inbound webhooks + their matchers."""
 
 import json
 from typing import Any
@@ -25,19 +25,19 @@ Each integration:
 Use the `matchers` subgroup to gate which incoming payloads trigger
 the template.
 
-Calling `semacli integration` without a subcommand lists integrations.
+Calling `sem integration` without a subcommand lists integrations.
 """
 
 INTEGRATION_EPILOG = """\
 Examples:
-  semacli integration                                          # list
-  semacli integration show 4
-  semacli integration create --name gh-push --template 5 \\
+  sem integration                                          # list
+  sem integration show 4
+  sem integration create --name gh-push --template 5 \\
        --auth-method github --auth-secret-id 12
-  semacli integration update 4 --template 8
-  semacli integration delete 4
-  semacli integration matchers 4                               # list matchers of integration 4
-  semacli integration matchers 4 add --name only-main \\
+  sem integration update 4 --template 8
+  sem integration delete 4
+  sem integration matchers 4                               # list matchers of integration 4
+  sem integration matchers 4 add --name only-main \\
        --match-type equals --method body --key ref --value refs/heads/main
 """
 
@@ -51,19 +51,19 @@ the template.
   method      = body | header
   match_type  = equals | contains | regex
 
-Calling `semacli integration matchers <iid>` without a subcommand
+Calling `sem integration matchers <iid>` without a subcommand
 lists the matchers attached to that integration.
 """
 
 MATCHERS_EPILOG = """\
 Examples:
-  semacli integration matchers 4                                # list
-  semacli integration matchers 4 add --name only-main \\
+  sem integration matchers 4                                # list
+  sem integration matchers 4 add --name only-main \\
        --match-type equals --method body --key ref --value refs/heads/main
-  semacli integration matchers 4 add --name only-prod-tag \\
+  sem integration matchers 4 add --name only-prod-tag \\
        --match-type regex --method body --key ref --value '^refs/tags/v[0-9]+'
-  semacli integration matchers 4 update 7 --value refs/heads/release
-  semacli integration matchers 4 remove 7
+  sem integration matchers 4 update 7 --value refs/heads/release
+  sem integration matchers 4 remove 7
 """
 
 
@@ -96,7 +96,7 @@ def _emit_matchers_text(items: list[IntegrationMatcher]) -> None:
 
 
 def register_integrations_commands(main_group: Any) -> None:
-    """Register `semacli integration` and its `matchers` subgroup."""
+    """Register `sem integration` and its `matchers` subgroup."""
 
     @main_group.group(
         "integration",

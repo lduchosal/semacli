@@ -26,18 +26,18 @@ Variables are stored as a JSON object — use '@file.json' to load from
 disk. The optional --password field is the vault password Semaphore
 injects as VAULT_PASSWORD when the playbook runs.
 
-Calling `semacli env` without a subcommand lists environments.
+Calling `sem env` without a subcommand lists environments.
 """
 
 ENV_EPILOG = """\
 Examples:
-  semacli env                                    # list
-  semacli env show 7
-  semacli env create --name prod \\
+  sem env                                    # list
+  sem env show 7
+  sem env create --name prod \\
        --vars '{"region":"eu-west-1"}'
-  semacli env create --name prod --vars @vars.json --password 'vault-pw'
-  semacli env update 7 --vars @vars.json
-  semacli env delete 7
+  sem env create --name prod --vars @vars.json --password 'vault-pw'
+  sem env update 7 --vars @vars.json
+  sem env delete 7
 """
 
 

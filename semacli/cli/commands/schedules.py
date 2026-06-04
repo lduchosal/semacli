@@ -26,17 +26,17 @@ Each schedule points to exactly one template; deleting the template
 invalidates the schedule. Cron format: standard 5-field POSIX, evaluated
 in the server's timezone.
 
-Calling `semacli sched` without a subcommand lists schedules.
+Calling `sem sched` without a subcommand lists schedules.
 """
 
 SCHED_EPILOG = """\
 Examples:
-  semacli sched                                          # list
-  semacli sched show 12
-  semacli sched create --template mtree --cron '0 3 * * *'  # nightly 3 am
-  semacli sched create --template 7 --cron '*/15 * * * *'   # by id
-  semacli sched update 12 --cron '0 4 * * *'
-  semacli sched delete 12
+  sem sched                                          # list
+  sem sched show 12
+  sem sched create --template mtree --cron '0 3 * * *'  # nightly 3 am
+  sem sched create --template 7 --cron '*/15 * * * *'   # by id
+  sem sched update 12 --cron '0 4 * * *'
+  sem sched delete 12
 """
 
 

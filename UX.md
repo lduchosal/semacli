@@ -43,7 +43,7 @@ First-level group names use the **short, singular** form:
 Long forms (plural) remain as **hidden aliases** for back-compat: they
 keep accepting all subcommands and flags but are not listed in `--help`.
 
-### 1.4 `semacli` ≡ `semacli --help`
+### 1.4 `sem` ≡ `sem --help`
 Invoking the binary with no argument prints the same help screen as
 `--help`. Implementation: `invoke_without_command=True` on the root
 group plus an explicit call to `ctx.get_help()` in the root callback
@@ -110,30 +110,30 @@ The CLI must accept **names everywhere it accepts IDs**.
 
 ### 3.1 Three forms
 
-**A. Top-level `semacli run <template-name>`** — runs a template by
+**A. Top-level `sem run <template-name>`** — runs a template by
 name without going through `tasks run`:
 
 ```
-semacli run mtree --limit ans2.0.2113.ch
-semacli run mtree --dry-run --debug
-semacli run mtree --watch
+sem run mtree --limit ans2.0.2113.ch
+sem run mtree --dry-run --debug
+sem run mtree --watch
 ```
 
 **B. Positional filter on group commands.** Bare invocation with one
 extra word filters the listing:
 
 ```
-semacli templates             # all templates of default project
-semacli templates mtree       # only those whose name contains 'mtree'
-semacli inv prod              # inventories containing 'prod'
+sem templates             # all templates of default project
+sem templates mtree       # only those whose name contains 'mtree'
+sem inv prod              # inventories containing 'prod'
 ```
 
 **C. Name accepted wherever an ID is accepted.**
 
 ```
-semacli templates show mtree
-semacli env update prod --json @vars.json
-semacli inv delete prod-hosts
+sem templates show mtree
+sem env update prod --json @vars.json
+sem inv delete prod-hosts
 ```
 
 ### 3.2 Resolution rules
@@ -223,14 +223,14 @@ but must preserve sections, order, and concept-first descriptions.
 Target width: **80 columns strict**.
 
 ```
-semacli 0.1.5 — Manage your ansible codebase through Semaphore UI.
+sem 0.1.5 — Manage your ansible codebase through Semaphore UI.
 
 USAGE
-  semacli <command> [subcommand] [options]
+  sem <command> [subcommand] [options]
 
 FIRST TIME?
-  semacli init           Interactive assistant (URL, token, project).
-  semacli ping           Check that the server responds.
+  sem init           Interactive assistant (URL, token, project).
+  sem ping           Check that the server responds.
 
 SEMAPHORE HIERARCHY
   project
@@ -261,14 +261,14 @@ COMMANDS
     task                 Manage running and historical tasks.
 
 EXAMPLES
-  semacli init
-  semacli project
-  semacli run mtree --limit ans2.0.2113.ch
-  semacli env create --name prod --vars @vars.json
-  semacli sched create --template mtree --cron '0 3 * * *'
+  sem init
+  sem project
+  sem run mtree --limit ans2.0.2113.ch
+  sem env create --name prod --vars @vars.json
+  sem sched create --template mtree --cron '0 3 * * *'
 
 HELP
-  semacli <cmd> --help   Per-command details + examples.
+  sem <cmd> --help   Per-command details + examples.
 
 Config: ./semacli.ini, ~/.semacli.ini, /usr/local/etc/semacli.ini
 ```
@@ -306,13 +306,13 @@ This log records the answers for traceability.
 | Extend singular to `key`/`template`/`task`/`project`?   | **Yes** — applied (§ 1.3).                                     |
 | Terminal width target.                                  | **80 columns strict**.                                         |
 | Version line duplicated in header?                      | **Yes** — kept (§ 6) for support traceability.                 |
-| `--watch` default on `semacli run`.                     | **On by default**; opt-out with `--no-watch`.                  |
+| `--watch` default on `sem run`.                     | **On by default**; opt-out with `--no-watch`.                  |
 | Extend top-level shortcut to `watch` / `stop`?          | **No** — only `run` (because templates have names, tasks have only ids). |
 | Exact match wins over fuzzy on collision.               | **Yes** (§ 3.2 rule 3b).                                       |
 | `env update --vars` patch vs replace.                   | **Replace wholesale** — same semantics as PUT on the REST API. |
 | Rename `env --json` payload to `--vars`.                | **Yes** — `--json` only ever means "output as JSON".           |
 | `--ssh-key` flag overloading.                           | `repo create --key NAME-OR-ID` (reference an existing key); `key create --type ssh --private-key @file` (the actual key body). |
-| Keep `semacli docs` command?                            | **No** — removed (commit `a02624b`).                           |
+| Keep `sem docs` command?                            | **No** — removed (commit `a02624b`).                           |
 | `template` CRUD (create / update / delete)?             | **No** — `template` exposes only `list` (bare) and `show`.     |
 
 ---
@@ -321,7 +321,7 @@ This log records the answers for traceability.
 
 | Topic                                | Ticket |
 |--------------------------------------|--------|
-| Onboarding flow (`semacli init`)     | #716   |
+| Onboarding flow (`sem init`)     | #716   |
 | Short singular command names         | #717   |
 | Concept-oriented descriptions        | #718   |
 | Concrete examples in help            | #719   |

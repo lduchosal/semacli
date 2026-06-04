@@ -8,10 +8,11 @@ with the HTTP layer mocked. A test asserts at minimum:
 * The expected client method is invoked.
 * The exit code matches the documented golden path.
 
-Examples whose flags do not match the current Click signature are
-marked ``xfail(strict=True)`` so the help text and the code drift
-becomes visible without silently rotting the assertion. See ken #732
-for the discovery + the BUG cards to file for each xfail.
+The initial pass (ken #732) flagged 6 examples that diverged from
+the Click signature as ``xfail(strict=True)``. Each became its own
+BUG card and was reconciled (kens #733/#734/#735/#736/#737); the
+markers have been removed and the tests now serve as plain
+regression coverage.
 
 Conventions inherited from ``test_commands*.py``:
     * SemaphoreClient is patched at the call site
@@ -860,9 +861,7 @@ class TestSchedExamples:
         cfg = _write_cfg(tmp_path)
         with (
             patch("semacli.cli._crud.SemaphoreClient") as Mock,
-            patch(
-                "semacli.cli.commands.schedules.resolve_template", return_value=5
-            ),
+            patch("semacli.cli.commands.schedules.resolve_template", return_value=5),
         ):
             Mock.return_value.create_schedule.return_value = Schedule(
                 id=1, project_id=1, template_id=5, cron_format="0 3 * * *"
@@ -890,9 +889,7 @@ class TestSchedExamples:
         cfg = _write_cfg(tmp_path)
         with (
             patch("semacli.cli._crud.SemaphoreClient") as Mock,
-            patch(
-                "semacli.cli.commands.schedules.resolve_template", return_value=7
-            ),
+            patch("semacli.cli.commands.schedules.resolve_template", return_value=7),
         ):
             Mock.return_value.create_schedule.return_value = Schedule(
                 id=2, project_id=1, template_id=7

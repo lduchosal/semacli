@@ -1,4 +1,4 @@
-"""Interactive `semacli init` — bootstrap a working semacli.ini.
+"""Interactive `sem init` — bootstrap a working semacli.ini.
 
 Walks the user through URL, TLS verification, bearer token, project
 selection, then writes a chmod-600 ini file at the chosen location.
@@ -26,9 +26,9 @@ mode 0600 so the token is not world-readable.
 
 INIT_EPILOG = """\
 Examples:
-  semacli init                          # prompts for everything
-  semacli init --url https://semaphore.1.2113.ch
-  semacli init --output ~/.semacli.ini
+  sem init                          # prompts for everything
+  sem init --url https://semaphore.1.2113.ch
+  sem init --output ~/.semacli.ini
 """
 
 _LOCATIONS = {
@@ -198,7 +198,7 @@ def register_init_commands(main_group: Any) -> None:
         help="Write the ini file to this path (skips the location prompt).",
     )
     def init_cmd(url: str | None, output_path: str | None) -> None:
-        click.echo("semacli init — create a working semacli.ini.\n")
+        click.echo("sem init — create a working semacli.ini.\n")
         try:
             if url:
                 url = _normalize_url(url)
@@ -223,7 +223,7 @@ def register_init_commands(main_group: Any) -> None:
 
             _write_ini(target, chosen_url, token, verify_ssl, allow_http, project)
             click.echo(f"\nwrote {target} (mode 0600).")
-            click.echo("\nTry:\n  semacli ping\n  semacli project\n  semacli template")
+            click.echo("\nTry:\n  sem ping\n  sem project\n  sem template")
         except click.Abort:
             raise
         except SemaCliError as e:

@@ -27,19 +27,19 @@ Lifecycle:
   stop        cancels a running task
   list        history of recent tasks
 
-For day-to-day use, prefer the top-level shortcut `semacli run <name>`
+For day-to-day use, prefer the top-level shortcut `sem run <name>`
 which resolves a template by name and runs it.
 """
 
 TASK_EPILOG = """\
 Examples:
-  semacli task list                                 # recent runs
-  semacli task run 5 --limit web1.0.2113.ch         # run by template id
-  semacli task run 5 --dry-run                      # check mode
-  semacli task watch 142                            # follow output
-  semacli task show 142
-  semacli task raw-output 142 > task-142.log
-  semacli task stop 142
+  sem task list                                 # recent runs
+  sem task run 5 --limit web1.0.2113.ch         # run by template id
+  sem task run 5 --dry-run                      # check mode
+  sem task watch 142                            # follow output
+  sem task show 142
+  sem task raw-output 142 > task-142.log
+  sem task stop 142
 """
 
 

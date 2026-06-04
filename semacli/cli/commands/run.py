@@ -1,4 +1,4 @@
-"""Top-level `semacli run <template>` shortcut.
+"""Top-level `sem run <template>` shortcut.
 
 Resolves a template by name (or id) and launches a task from it.
 Default behavior tails the task output until it reaches a final state
@@ -34,12 +34,12 @@ code (0 / 1). Pass --no-watch to return immediately after submission.
 
 RUN_EPILOG = """\
 Examples:
-  semacli run mtree                              # default: run + watch
-  semacli run mtree --limit ans2.0.2113.ch
-  semacli run mtree --dry-run --debug
-  semacli run mtree --no-watch                   # fire and return id
-  semacli run 5 --limit web1.0.2113.ch           # by id
-  semacli run --exact mtree                      # disallow substring fuzz
+  sem run mtree                              # default: run + watch
+  sem run mtree --limit ans2.0.2113.ch
+  sem run mtree --dry-run --debug
+  sem run mtree --no-watch                   # fire and return id
+  sem run 5 --limit web1.0.2113.ch           # by id
+  sem run --exact mtree                      # disallow substring fuzz
 """
 
 

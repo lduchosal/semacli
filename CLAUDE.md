@@ -14,7 +14,7 @@ first for anything outside this directory.
 follow [`UX.md`](UX.md).** It is the canonical reference for: English-only
 copy, ASCII formatting (no ANSI colors), short singular group names
 (`env`/`inv`/`repo`/`sched`), concept-first help text, realistic examples,
-name-first addressing (`semacli run mtree`), bare-group-as-list, and exit
+name-first addressing (`sem run mtree`), bare-group-as-list, and exit
 code conventions. When a rule is challenged or refined, update `UX.md` in
 the same commit as the code change.
 

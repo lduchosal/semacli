@@ -25,18 +25,18 @@ Each repo belongs to one project and is bound to one SSH key (the key
 Semaphore uses to clone). Templates reference a repo + a playbook path
 inside it.
 
-Calling `semacli repo` without a subcommand lists repositories.
+Calling `sem repo` without a subcommand lists repositories.
 """
 
 REPO_EPILOG = """\
 Examples:
-  semacli repo                                  # list
-  semacli repo show 4
-  semacli repo create --name infra \\
+  sem repo                                  # list
+  sem repo show 4
+  sem repo create --name infra \\
        --git-url git@github.com:org/infra.git \\
        --branch main --ssh-key-id 12
-  semacli repo update 4 --branch release/2026
-  semacli repo delete 4
+  sem repo update 4 --branch release/2026
+  sem repo delete 4
 """
 
 

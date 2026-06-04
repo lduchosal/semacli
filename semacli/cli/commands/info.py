@@ -1,4 +1,4 @@
-"""`semacli info` — read server metadata from /api/info."""
+"""`sem info` — read server metadata from /api/info."""
 
 import json
 from typing import Any
@@ -21,9 +21,9 @@ configuring a token.
 
 INFO_EPILOG = """\
 Examples:
-  semacli info
-  semacli info --json
-  semacli -c ./staging.ini info
+  sem info
+  sem info --json
+  sem -c ./staging.ini info
 """
 
 

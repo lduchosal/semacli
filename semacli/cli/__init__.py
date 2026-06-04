@@ -19,22 +19,22 @@ SEMAPHORE HIERARCHY
     +-- sched      cron triggers -> template
 
 FIRST TIME?
-  semacli init           Interactive assistant (URL, token, project).
-  semacli ping           Check that the server responds.
+  sem init           Interactive assistant (URL, token, project).
+  sem ping           Check that the server responds.
 
 EXAMPLES
-  semacli init
-  semacli project
-  semacli run mtree --limit ans2.0.2113.ch
-  semacli env create --name prod --vars @vars.json
-  semacli sched create --template mtree --cron '0 3 * * *'
+  sem init
+  sem project
+  sem run mtree --limit ans2.0.2113.ch
+  sem env create --name prod --vars @vars.json
+  sem sched create --template mtree --cron '0 3 * * *'
 
 Config: ./semacli.ini, ~/.semacli.ini, /usr/local/etc/semacli.ini
 """
 
 
 @click.group(cls=SectionedRootGroup, invoke_without_command=True, epilog=ROOT_EPILOG)
-@click.version_option(version=__version__, prog_name="semacli")
+@click.version_option(version=__version__, prog_name="sem")
 @click.pass_context
 def main(ctx: click.Context) -> None:
     """Manage your ansible codebase through Semaphore UI."""

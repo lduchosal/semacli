@@ -69,10 +69,10 @@ Get a bearer token from the Semaphore UI: **User Settings → API Tokens → Cre
 
 ```bash
 # Ping the API
-semacli ping
+sem ping
 
 # List projects
-semacli projects
+sem projects
 
 # (more commands wired in as the CLI grows)
 ```
@@ -81,12 +81,12 @@ semacli projects
 
 ```bash
 # JSON output
-semacli projects --json
+sem projects --json
 
 # Verbose debugging
-semacli projects -v
-semacli projects -vv
-semacli projects -vvv
+sem projects -v
+sem projects -vv
+sem projects -vvv
 ```
 
 ## Configuration Options
