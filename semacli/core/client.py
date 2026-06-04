@@ -16,9 +16,12 @@ from .exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
 from .models import (
     ApiInfo,
     Environment,
+    Integration,
+    IntegrationMatcher,
     Inventory,
     Key,
     Project,
+    ProjectEvent,
     ProjectMember,
     Repository,
     Schedule,
@@ -26,6 +29,7 @@ from .models import (
     Template,
     User,
     UserToken,
+    View,
 )
 
 
@@ -451,6 +455,10 @@ class SemaphoreClient:
             }
         elif type == "login_password":
             body["login_password"] = {"login": login, "password": password}
+        elif type == "none" and password:
+            # Semaphore stores secret-only keys (vault pw, become pw) in the
+            # top-level `string` field.
+            body["string"] = password
         data = self._request(f"project/{project_id}/keys", method="POST", body=body)
         if not isinstance(data, dict):
             raise SemaphoreAPIError("Unexpected response for POST /keys")
@@ -723,3 +731,179 @@ class SemaphoreClient:
             method="POST",
             body={"password": password},
         )
+
+    # ---- Views ----------------------------------------------------------
+
+    def list_views(self, project_id: int) -> list[View]:
+        """GET /api/project/{pid}/views."""
+        data = self._request(f"project/{project_id}/views")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /project/{pid}/views")
+        return [View.model_validate(v) for v in data]
+
+    def get_view(self, project_id: int, view_id: int) -> View:
+        """GET /api/project/{pid}/views/{vid}."""
+        data = self._request(f"project/{project_id}/views/{view_id}")
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /project/{pid}/views/{vid}")
+        return View.model_validate(data)
+
+    def create_view(self, project_id: int, title: str, position: int = 0) -> View:
+        """POST /api/project/{pid}/views."""
+        body: dict[str, Any] = {
+            "project_id": project_id,
+            "title": title,
+            "position": position,
+        }
+        data = self._request(f"project/{project_id}/views", method="POST", body=body)
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /views")
+        return View.model_validate(data)
+
+    def update_view(self, project_id: int, view_id: int, **fields: Any) -> None:
+        """PUT /api/project/{pid}/views/{vid}."""
+        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
+        body["id"] = view_id
+        body["project_id"] = project_id
+        self._request(f"project/{project_id}/views/{view_id}", method="PUT", body=body)
+
+    def delete_view(self, project_id: int, view_id: int) -> None:
+        """DELETE /api/project/{pid}/views/{vid}."""
+        self._request(f"project/{project_id}/views/{view_id}", method="DELETE")
+
+    # ---- Integrations ---------------------------------------------------
+
+    def list_integrations(self, project_id: int) -> list[Integration]:
+        """GET /api/project/{pid}/integrations."""
+        data = self._request(f"project/{project_id}/integrations")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /project/{pid}/integrations")
+        return [Integration.model_validate(i) for i in data]
+
+    def get_integration(self, project_id: int, integration_id: int) -> Integration:
+        """GET /api/project/{pid}/integrations/{iid}."""
+        data = self._request(f"project/{project_id}/integrations/{integration_id}")
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /integrations/{iid}")
+        return Integration.model_validate(data)
+
+    def create_integration(
+        self,
+        project_id: int,
+        name: str,
+        template_id: int,
+        auth_method: str = "none",
+        auth_header: str = "",
+        auth_secret_id: int = 0,
+    ) -> Integration:
+        """POST /api/project/{pid}/integrations."""
+        body: dict[str, Any] = {
+            "project_id": project_id,
+            "name": name,
+            "template_id": template_id,
+            "auth_method": auth_method,
+        }
+        if auth_header:
+            body["auth_header"] = auth_header
+        if auth_secret_id:
+            body["auth_secret_id"] = auth_secret_id
+        data = self._request(f"project/{project_id}/integrations", method="POST", body=body)
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /integrations")
+        return Integration.model_validate(data)
+
+    def update_integration(self, project_id: int, integration_id: int, **fields: Any) -> None:
+        """PUT /api/project/{pid}/integrations/{iid}."""
+        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
+        body["id"] = integration_id
+        body["project_id"] = project_id
+        self._request(
+            f"project/{project_id}/integrations/{integration_id}",
+            method="PUT",
+            body=body,
+        )
+
+    def delete_integration(self, project_id: int, integration_id: int) -> None:
+        """DELETE /api/project/{pid}/integrations/{iid}."""
+        self._request(f"project/{project_id}/integrations/{integration_id}", method="DELETE")
+
+    # ---- Integration matchers -------------------------------------------
+
+    def list_integration_matchers(
+        self, project_id: int, integration_id: int
+    ) -> list[IntegrationMatcher]:
+        """GET /api/project/{pid}/integrations/{iid}/matchers."""
+        data = self._request(f"project/{project_id}/integrations/{integration_id}/matchers")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /matchers")
+        return [IntegrationMatcher.model_validate(m) for m in data]
+
+    def add_integration_matcher(
+        self,
+        project_id: int,
+        integration_id: int,
+        name: str,
+        match_type: str,
+        method: str,
+        key: str,
+        value: str,
+    ) -> IntegrationMatcher:
+        """POST /api/project/{pid}/integrations/{iid}/matchers."""
+        body: dict[str, Any] = {
+            "integration_id": integration_id,
+            "name": name,
+            "match_type": match_type,
+            "method": method,
+            "key": key,
+            "value": value,
+        }
+        data = self._request(
+            f"project/{project_id}/integrations/{integration_id}/matchers",
+            method="POST",
+            body=body,
+        )
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /matchers")
+        return IntegrationMatcher.model_validate(data)
+
+    def update_integration_matcher(
+        self,
+        project_id: int,
+        integration_id: int,
+        matcher_id: int,
+        **fields: Any,
+    ) -> None:
+        """PUT /api/project/{pid}/integrations/{iid}/matchers/{mid}."""
+        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
+        body["id"] = matcher_id
+        body["integration_id"] = integration_id
+        self._request(
+            f"project/{project_id}/integrations/{integration_id}/matchers/{matcher_id}",
+            method="PUT",
+            body=body,
+        )
+
+    def remove_integration_matcher(
+        self, project_id: int, integration_id: int, matcher_id: int
+    ) -> None:
+        """DELETE /api/project/{pid}/integrations/{iid}/matchers/{mid}."""
+        self._request(
+            f"project/{project_id}/integrations/{integration_id}/matchers/{matcher_id}",
+            method="DELETE",
+        )
+
+    # ---- Project events + backup ----------------------------------------
+
+    def list_project_events(self, project_id: int) -> list[ProjectEvent]:
+        """GET /api/project/{pid}/events."""
+        data = self._request(f"project/{project_id}/events")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /events")
+        return [ProjectEvent.model_validate(e) for e in data]
+
+    def export_project_backup(self, project_id: int) -> dict[str, Any]:
+        """GET /api/project/{pid}/backup — returns the full project as JSON."""
+        data = self._request(f"project/{project_id}/backup")
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /backup")
+        return data

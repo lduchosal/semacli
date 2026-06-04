@@ -330,5 +330,55 @@ def register_projects_commands(main_group: Any) -> None:
         except Exception as e:
             handle_error(e, verbose)
 
+    @project_group.command("events")
+    @project_option
+    @click.pass_context
+    def events_cmd(ctx: click.Context, project_override: int | None) -> None:
+        """List recent audit-log events of the project."""
+        opts = ctx.obj
+        opts["project_override"] = project_override
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, project_override)
+            events = client.list_project_events(pid)
+            if opts["output_json"]:
+                click.echo(json.dumps([e.model_dump() for e in events], indent=2))
+            elif not opts["quiet"]:
+                if not events:
+                    click.echo("No events found")
+                    return
+                for e in events:
+                    click.echo(
+                        f"{e.created}  user={e.user_id:<4}  "
+                        f"{e.object_type:<10}  {e.description}"
+                    )
+                click.echo(f"\nTotal: {len(events)} event(s)")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @project_group.command("backup")
+    @project_option
+    @click.pass_context
+    def backup_cmd(ctx: click.Context, project_override: int | None) -> None:
+        """Export the full project as a JSON document on stdout.
+
+        The output is always JSON (regardless of --json). Redirect to a
+        file to keep the backup; the format is what `semacli` would
+        ingest in a future `restore` command.
+        """
+        opts = ctx.obj
+        opts["project_override"] = project_override
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, project_override)
+            data = client.export_project_backup(pid)
+            click.echo(json.dumps(data, indent=2))
+        except Exception as e:
+            handle_error(e, verbose)
+
     main_group.commands["project"].category = "read"
     main_group.add_alias("projects", "project")

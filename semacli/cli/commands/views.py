@@ -1,0 +1,176 @@
+"""`semacli view` — saved filters / dashboards inside a project."""
+
+import json
+from typing import Any
+
+import click
+
+from semacli.core.client import SemaphoreClient
+from semacli.core.config import load_config
+from semacli.core.models import View
+
+from ..decorators import common_options, output_options, project_option, resolve_project
+from ..handlers import handle_error
+
+VIEW_HELP = """\
+Views: saved filters / dashboards scoped to a project.
+
+A view groups templates and tasks together for quick navigation in the
+Semaphore UI. Each view belongs to one project; the `position` field
+controls display order.
+
+Calling `semacli view` without a subcommand lists views.
+"""
+
+VIEW_EPILOG = """\
+Examples:
+  semacli view                                       # list
+  semacli view show 3
+  semacli view create --title 'Nightly jobs' --position 0
+  semacli view update 3 --position 1
+  semacli view delete 3
+"""
+
+
+def _emit_list_text(views: list[View]) -> None:
+    if not views:
+        click.echo("No views found")
+        return
+    for v in sorted(views, key=lambda x: x.position):
+        click.echo(f"{v.id:>4}  pos={v.position:<3}  {v.title}")
+    click.echo(f"\nTotal: {len(views)} view(s)")
+
+
+def _emit_show_text(v: View) -> None:
+    click.echo(f"id:         {v.id}")
+    click.echo(f"title:      {v.title}")
+    click.echo(f"position:   {v.position}")
+    click.echo(f"project_id: {v.project_id}")
+
+
+def register_views_commands(main_group: Any) -> None:
+    """Register `semacli view`."""
+
+    @main_group.group("view", invoke_without_command=True, help=VIEW_HELP, epilog=VIEW_EPILOG)
+    @click.pass_context
+    @common_options
+    @output_options
+    @project_option
+    def view_group(
+        ctx: click.Context,
+        config: str,
+        verbose: int,
+        output_json: bool,
+        quiet: bool,
+        project_override: int | None,
+    ) -> None:
+        ctx.ensure_object(dict)
+        ctx.obj.update(
+            {
+                "config": config,
+                "verbose": verbose,
+                "output_json": output_json,
+                "quiet": quiet,
+                "project_override": project_override,
+            }
+        )
+        if ctx.invoked_subcommand is not None:
+            return
+        try:
+            cfg = load_config(config)
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, project_override)
+            views = client.list_views(pid)
+            if output_json:
+                click.echo(json.dumps([v.model_dump() for v in views], indent=2))
+            elif not quiet:
+                _emit_list_text(views)
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @view_group.command("show")
+    @click.argument("view_id", type=int)
+    @click.pass_context
+    def show_cmd(ctx: click.Context, view_id: int) -> None:
+        """Show one view."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            v = client.get_view(pid, view_id)
+            if opts["output_json"]:
+                click.echo(json.dumps(v.model_dump(), indent=2))
+            elif not opts["quiet"]:
+                _emit_show_text(v)
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @view_group.command("create")
+    @click.option("--title", required=True)
+    @click.option("--position", default=0, type=int, help="Display order; lower comes first.")
+    @click.pass_context
+    def create_cmd(ctx: click.Context, title: str, position: int) -> None:
+        """Create a view."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            v = client.create_view(pid, title=title, position=position)
+            if opts["output_json"]:
+                click.echo(json.dumps(v.model_dump(), indent=2))
+            elif not opts["quiet"]:
+                click.echo(f"created view id={v.id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @view_group.command("update")
+    @click.argument("view_id", type=int)
+    @click.option("--title", default=None)
+    @click.option("--position", default=None, type=int)
+    @click.pass_context
+    def update_cmd(
+        ctx: click.Context,
+        view_id: int,
+        title: str | None,
+        position: int | None,
+    ) -> None:
+        """Update mutable fields of a view."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            client.update_view(pid, view_id, title=title, position=position)
+            if not opts["quiet"]:
+                click.echo(f"updated view id={view_id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    @view_group.command("delete")
+    @click.argument("view_id", type=int)
+    @click.option("--yes", is_flag=True)
+    @click.pass_context
+    def delete_cmd(ctx: click.Context, view_id: int, yes: bool) -> None:
+        """Delete a view."""
+        opts = ctx.obj
+        verbose = opts["verbose"]
+        if not yes and not click.confirm(f"Delete view id={view_id}?", default=False):
+            click.echo("aborted.", err=True)
+            return
+        try:
+            cfg = load_config(opts["config"])
+            client = SemaphoreClient(cfg, verbose=verbose)
+            pid = resolve_project(cfg, opts["project_override"])
+            client.delete_view(pid, view_id)
+            if not opts["quiet"]:
+                click.echo(f"deleted view id={view_id}")
+        except Exception as e:
+            handle_error(e, verbose)
+
+    main_group.commands["view"].category = "read"
+    main_group.add_alias("views", "view")

@@ -147,3 +147,47 @@ class ApiInfo(_ApiModel):
     """Semaphore server metadata returned by GET /api/info."""
 
     version: str = ""
+
+
+class View(_ApiModel):
+    """A saved-filter / dashboard scoped to a project."""
+
+    id: int = 0
+    project_id: int = 0
+    title: str = ""
+    position: int = 0
+
+
+class Integration(_ApiModel):
+    """An inbound webhook attached to a template inside a project."""
+
+    id: int = 0
+    project_id: int = 0
+    name: str = ""
+    template_id: int = 0
+    auth_method: str = ""
+    auth_header: str = ""
+    auth_secret_id: int = 0
+
+
+class IntegrationMatcher(_ApiModel):
+    """A pattern matcher gating an integration's incoming requests."""
+
+    id: int = 0
+    integration_id: int = 0
+    name: str = ""
+    match_type: str = ""
+    method: str = ""
+    key: str = ""
+    value: str = ""
+
+
+class ProjectEvent(_ApiModel):
+    """An audit-log entry inside a project."""
+
+    user_id: int = 0
+    project_id: int = 0
+    object_id: int = 0
+    object_type: str = ""
+    description: str = ""
+    created: str = ""

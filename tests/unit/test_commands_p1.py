@@ -71,7 +71,7 @@ class TestInventoriesCommands:
                     "x",
                     "--type",
                     "static",
-                    "--content",
+                    "--inventory",
                     "[all]",
                 ],
             )
@@ -99,7 +99,7 @@ class TestInventoriesCommands:
                     "y",
                     "--type",
                     "static",
-                    "--content",
+                    "--inventory",
                     f"@{hosts}",
                 ],
             )
@@ -266,8 +266,13 @@ class TestKeysCommands:
 # ── Schedules ─────────────────────────────────────────────────────────────
 class TestSchedulesCommands:
     def test_create(self, tmp_path: Path) -> None:
+        # `sched create` now exposes `--template <name|id>` (resolved via
+        # resolve_template). See ken #736.
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.schedules.resolve_template", return_value=10),
+        ):
             Mock.return_value.create_schedule.return_value = Schedule(
                 id=1, project_id=1, template_id=10, cron_format="0 3 * * *", name="x", active=True
             )
@@ -278,7 +283,7 @@ class TestSchedulesCommands:
                     "-c",
                     str(cfg),
                     "create",
-                    "--template-id",
+                    "--template",
                     "10",
                     "--cron",
                     "0 3 * * *",

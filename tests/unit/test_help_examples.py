@@ -28,7 +28,6 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-import pytest
 from click.testing import CliRunner
 
 from semacli.cli import main
@@ -128,19 +127,17 @@ class TestRootExamples:
         assert kwargs["name"] == "prod"
         assert "eu-west-1" in kwargs["json_vars"]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Root --help example uses `--template mtree` but `sched create` "
-            "only accepts `--template-id INTEGER`. See ken #732 — file a "
-            "BUG card to either accept template name (call resolve_template) "
-            "or update the example text."
-        ),
-    )
     def test_sched_create_by_template_name(self, tmp_path: Path) -> None:
         # semacli sched create --template mtree --cron '0 3 * * *'
+        # Fixed by ken #736 — `sched create` resolves a name via
+        # resolve_template, matching the name-first convention.
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch(
+                "semacli.cli.commands.schedules.resolve_template", return_value=5
+            ) as resolve_mock,
+        ):
             Mock.return_value.create_schedule.return_value = Schedule(
                 id=1, project_id=1, template_id=5
             )
@@ -157,6 +154,8 @@ class TestRootExamples:
                 ]
             )
         assert r.exit_code == 0
+        resolve_mock.assert_called_once()
+        assert Mock.return_value.create_schedule.call_args.kwargs["template_id"] == 5
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -510,14 +509,8 @@ class TestInvExamples:
             r = _invoke(["inv", "-c", str(cfg), "show", "42"])
         assert r.exit_code == 0
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "`inv` group epilog advertises `--inventory '...'` but the actual "
-            "Click signature accepts `--content`. See ken #732."
-        ),
-    )
     def test_create_static_inline(self, tmp_path: Path) -> None:
+        # Fixed by ken #733 — `inv create --content` renamed to `--inventory`.
         # semacli inv create --name prod-hosts --type static \
         #      --inventory '[prod]\nweb1.0.2113.ch'
         cfg = _write_cfg(tmp_path)
@@ -541,19 +534,12 @@ class TestInvExamples:
             )
         assert r.exit_code == 0
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "`inv` group epilog advertises `--inventory-file @path` but the "
-            "actual Click signature uses `--content @path`. See ken #732."
-        ),
-    )
     def test_create_from_file(self, tmp_path: Path) -> None:
+        # Fixed by ken #733 — epilog now uses `--inventory <path>` (no @)
+        # for type=file, where the value is a path inside the repo.
         # semacli inv create --name from-file --type file \
-        #      --inventory-file @./hosts.ini
+        #      --inventory ./hosts.ini
         cfg = _write_cfg(tmp_path)
-        hosts = tmp_path / "hosts.ini"
-        hosts.write_text("[all]\nans1\n")
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.create_inventory.return_value = Inventory(
                 id=1, project_id=1, name="from-file"
@@ -568,11 +554,12 @@ class TestInvExamples:
                     "from-file",
                     "--type",
                     "file",
-                    "--inventory-file",
-                    f"@{hosts}",
+                    "--inventory",
+                    "./hosts.ini",
                 ]
             )
         assert r.exit_code == 0
+        assert Mock.return_value.create_inventory.call_args.kwargs["content"] == "./hosts.ini"
 
     def test_update(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
@@ -693,17 +680,11 @@ class TestRepoExamples:
             r = _invoke(["repo", "-c", str(cfg), "show", "4"])
         assert r.exit_code == 0
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "`repo` epilog example uses `--ssh-key 12` but the Click "
-            "signature requires `--ssh-key-id 12`. See ken #732."
-        ),
-    )
     def test_create_full(self, tmp_path: Path) -> None:
+        # Fixed by ken #737 — epilog typo `--ssh-key` -> `--ssh-key-id`.
         # semacli repo create --name infra \
         #      --git-url git@github.com:org/infra.git \
-        #      --branch main --ssh-key 12
+        #      --branch main --ssh-key-id 12
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.create_repository.return_value = Repository(
@@ -721,11 +702,12 @@ class TestRepoExamples:
                     "git@github.com:org/infra.git",
                     "--branch",
                     "main",
-                    "--ssh-key",
+                    "--ssh-key-id",
                     "12",
                 ]
             )
         assert r.exit_code == 0
+        assert Mock.return_value.create_repository.call_args.kwargs["ssh_key_id"] == 12
 
     def test_update_branch(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
@@ -789,14 +771,8 @@ class TestKeyExamples:
         kwargs = Mock.return_value.create_key.call_args.kwargs
         assert "OPENSSH" in kwargs["private_key"]
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "`key create` ships no `--password` flag — the example "
-            "`--type none --password 's3cr3t'` cannot parse. See ken #732."
-        ),
-    )
     def test_create_vault_password(self, tmp_path: Path) -> None:
+        # Fixed by ken #734 — `key create --password` accepted on type=none.
         # semacli key create --name vault-pw --type none --password 's3cr3t'
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
@@ -818,16 +794,12 @@ class TestKeyExamples:
                 ]
             )
         assert r.exit_code == 0
+        assert Mock.return_value.create_key.call_args.kwargs["password"] == "s3cr3t"
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "`key create --type login_password` advertises `--login admin "
-            "--password 's3cr3t'`, but the actual flag is `--login user:pass` "
-            "(single combined arg) and no `--password` exists. See ken #732."
-        ),
-    )
     def test_create_login_password(self, tmp_path: Path) -> None:
+        # Fixed by ken #735 — `--login` + `--password` accepted as separate
+        # flags; the legacy `user:pass` combined form still works when
+        # `--password` is omitted.
         # semacli key create --name reg-login --type login_password \
         #      --login admin --password 's3cr3t'
         cfg = _write_cfg(tmp_path)
@@ -852,6 +824,9 @@ class TestKeyExamples:
                 ]
             )
         assert r.exit_code == 0
+        kwargs = Mock.return_value.create_key.call_args.kwargs
+        assert kwargs["login"] == "admin"
+        assert kwargs["password"] == "s3cr3t"
 
     def test_delete(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
@@ -881,9 +856,14 @@ class TestSchedExamples:
         assert r.exit_code == 0
 
     def test_create_nightly(self, tmp_path: Path) -> None:
-        # semacli sched create --template-id 5 --cron '0 3 * * *'
+        # semacli sched create --template mtree --cron '0 3 * * *'
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch(
+                "semacli.cli.commands.schedules.resolve_template", return_value=5
+            ),
+        ):
             Mock.return_value.create_schedule.return_value = Schedule(
                 id=1, project_id=1, template_id=5, cron_format="0 3 * * *"
             )
@@ -893,8 +873,8 @@ class TestSchedExamples:
                     "-c",
                     str(cfg),
                     "create",
-                    "--template-id",
-                    "5",
+                    "--template",
+                    "mtree",
                     "--cron",
                     "0 3 * * *",
                 ]
@@ -906,9 +886,14 @@ class TestSchedExamples:
         assert kwargs["cron_format"] == "0 3 * * *"
 
     def test_create_quarter_hour(self, tmp_path: Path) -> None:
-        # semacli sched create --template-id 7 --cron '*/15 * * * *'
+        # semacli sched create --template 7 --cron '*/15 * * * *'
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch(
+                "semacli.cli.commands.schedules.resolve_template", return_value=7
+            ),
+        ):
             Mock.return_value.create_schedule.return_value = Schedule(
                 id=2, project_id=1, template_id=7
             )
@@ -918,7 +903,7 @@ class TestSchedExamples:
                     "-c",
                     str(cfg),
                     "create",
-                    "--template-id",
+                    "--template",
                     "7",
                     "--cron",
                     "*/15 * * * *",

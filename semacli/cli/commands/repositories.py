@@ -34,7 +34,7 @@ Examples:
   semacli repo show 4
   semacli repo create --name infra \\
        --git-url git@github.com:org/infra.git \\
-       --branch main --ssh-key 12
+       --branch main --ssh-key-id 12
   semacli repo update 4 --branch release/2026
   semacli repo delete 4
 """

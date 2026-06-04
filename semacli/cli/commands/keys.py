@@ -144,7 +144,18 @@ def register_keys_commands(main_group: Any) -> None:
     @click.option(
         "--login",
         default="",
-        help="For type=ssh: ssh login. For type=login_password: 'user:pass'.",
+        help=(
+            "For type=ssh: ssh login. For type=login_password: username "
+            "(legacy: 'user:pass' is split if --password is not given)."
+        ),
+    )
+    @click.option(
+        "--password",
+        default="",
+        help=(
+            "For type=login_password: the password. For type=none: the "
+            "stored secret (vault password / become password)."
+        ),
     )
     @click.option("--passphrase", default="", help="SSH key passphrase")
     @click.pass_context
@@ -154,6 +165,7 @@ def register_keys_commands(main_group: Any) -> None:
         key_type: str,
         ssh_key: str,
         login: str,
+        password: str,
         passphrase: str,
     ) -> None:
         """Create an access key."""
@@ -166,9 +178,17 @@ def register_keys_commands(main_group: Any) -> None:
                 kwargs["passphrase"] = passphrase
                 kwargs["private_key"] = _read_private_key(ssh_key)
             elif key_type == "login_password":
-                user, pwd = _split_login(login)
-                kwargs["login"] = user
-                kwargs["password"] = pwd
+                # Prefer the explicit --password flag; fall back to splitting
+                # a legacy 'user:pass' --login value if --password is empty.
+                if password:
+                    kwargs["login"] = login
+                    kwargs["password"] = password
+                else:
+                    user, pwd = _split_login(login)
+                    kwargs["login"] = user
+                    kwargs["password"] = pwd
+            elif key_type == "none":
+                kwargs["password"] = password
             item = client.create_key(pid, **kwargs)
             if opts["output_json"]:
                 emit_json_single(item)

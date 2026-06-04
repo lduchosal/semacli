@@ -5,6 +5,7 @@ from typing import Any
 import click
 
 from semacli.core.models import Schedule
+from semacli.core.resolve import resolve_template
 
 from .._crud import (
     confirm_delete,
@@ -30,10 +31,10 @@ Calling `semacli sched` without a subcommand lists schedules.
 
 SCHED_EPILOG = """\
 Examples:
-  semacli sched                                            # list
+  semacli sched                                          # list
   semacli sched show 12
-  semacli sched create --template-id 5 --cron '0 3 * * *'  # nightly 3 am
-  semacli sched create --template-id 7 --cron '*/15 * * * *'
+  semacli sched create --template mtree --cron '0 3 * * *'  # nightly 3 am
+  semacli sched create --template 7 --cron '*/15 * * * *'   # by id
   semacli sched update 12 --cron '0 4 * * *'
   semacli sched delete 12
 """
@@ -106,7 +107,12 @@ def register_schedules_commands(main_group: Any) -> None:
             handle_error(e, opts["verbose"])
 
     @schedules.command("create")
-    @click.option("--template-id", required=True, type=int)
+    @click.option(
+        "--template",
+        "template",
+        required=True,
+        help="Template name or numeric id (resolved against the project).",
+    )
     @click.option(
         "--cron",
         "cron_format",
@@ -118,7 +124,7 @@ def register_schedules_commands(main_group: Any) -> None:
     @click.pass_context
     def create_cmd(
         ctx: click.Context,
-        template_id: int,
+        template: str,
         cron_format: str,
         name: str,
         inactive: bool,
@@ -127,6 +133,7 @@ def register_schedules_commands(main_group: Any) -> None:
         opts = opts_from_ctx(ctx)
         try:
             client, pid = setup(opts)
+            template_id = resolve_template(client, pid, template)
             item = client.create_schedule(
                 pid,
                 template_id=template_id,

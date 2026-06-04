@@ -35,7 +35,7 @@ Examples:
   semacli inv create --name prod-hosts --type static \\
        --inventory '[prod]\\nweb1.0.2113.ch'
   semacli inv create --name from-file --type file \\
-       --inventory-file @./hosts.ini
+       --inventory ./hosts.ini       # path inside the repo
   semacli inv update 42 --name prod-hosts-eu
   semacli inv delete 42
 """
@@ -127,9 +127,14 @@ def register_inventories_commands(main_group: Any) -> None:
         help="Inventory type",
     )
     @click.option(
-        "--content",
+        "--inventory",
+        "inventory",
         required=True,
-        help="Inventory content. Prefix with @ to read from a file.",
+        help=(
+            "Inventory body. For --type static: inline INI/YAML (use @file "
+            "to read from a local file). For --type file: a path inside the "
+            "repository (no @)."
+        ),
     )
     @click.option("--ssh-key-id", type=int, default=0)
     @click.option("--become-key-id", type=int, default=0)
@@ -138,7 +143,7 @@ def register_inventories_commands(main_group: Any) -> None:
         ctx: click.Context,
         name: str,
         inv_type: str,
-        content: str,
+        inventory: str,
         ssh_key_id: int,
         become_key_id: int,
     ) -> None:
@@ -150,7 +155,7 @@ def register_inventories_commands(main_group: Any) -> None:
                 pid,
                 name=name,
                 type=inv_type,
-                content=_read_content(content),
+                content=_read_content(inventory),
                 ssh_key_id=ssh_key_id,
                 become_key_id=become_key_id,
             )
@@ -165,7 +170,12 @@ def register_inventories_commands(main_group: Any) -> None:
     @click.argument("inventory_id", type=int)
     @click.option("--name", default=None)
     @click.option("--type", "inv_type", default=None, type=click.Choice(["static", "file"]))
-    @click.option("--content", default=None, help="Prefix with @ to read from file.")
+    @click.option(
+        "--inventory",
+        "inventory",
+        default=None,
+        help="New inventory body. Use @file to read inline content from a local file.",
+    )
     @click.option("--ssh-key-id", type=int, default=None)
     @click.option("--become-key-id", type=int, default=None)
     @click.pass_context
@@ -174,7 +184,7 @@ def register_inventories_commands(main_group: Any) -> None:
         inventory_id: int,
         name: str | None,
         inv_type: str | None,
-        content: str | None,
+        inventory: str | None,
         ssh_key_id: int | None,
         become_key_id: int | None,
     ) -> None:
@@ -187,7 +197,7 @@ def register_inventories_commands(main_group: Any) -> None:
                 inventory_id,
                 name=name,
                 type=inv_type,
-                inventory=_read_content(content) if content else None,
+                inventory=_read_content(inventory) if inventory else None,
                 ssh_key_id=ssh_key_id,
                 become_key_id=become_key_id,
             )
