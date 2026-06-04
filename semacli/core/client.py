@@ -22,6 +22,8 @@ from .models import (
     Schedule,
     Task,
     Template,
+    User,
+    UserToken,
 )
 
 
@@ -513,3 +515,114 @@ class SemaphoreClient:
     def delete_schedule(self, project_id: int, sched_id: int) -> None:
         """DELETE /api/project/{pid}/schedules/{sid}."""
         self._request(f"project/{project_id}/schedules/{sched_id}", method="DELETE")
+
+    # ---- Projects CRUD --------------------------------------------------
+
+    def get_project(self, project_id: int) -> Project:
+        """GET /api/project/{pid}."""
+        data = self._request(f"project/{project_id}")
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /project/{pid}")
+        return Project.model_validate(data)
+
+    def create_project(
+        self,
+        name: str,
+        alert: bool = False,
+        alert_chat: str = "",
+        max_parallel_tasks: int = 0,
+    ) -> Project:
+        """POST /api/projects."""
+        body: dict[str, Any] = {"name": name, "alert": alert}
+        if alert_chat:
+            body["alert_chat"] = alert_chat
+        if max_parallel_tasks:
+            body["max_parallel_tasks"] = max_parallel_tasks
+        data = self._request("projects", method="POST", body=body)
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /projects")
+        return Project.model_validate(data)
+
+    def update_project(self, project_id: int, **fields: Any) -> None:
+        """PUT /api/project/{pid}."""
+        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
+        body["id"] = project_id
+        self._request(f"project/{project_id}", method="PUT", body=body)
+
+    def delete_project(self, project_id: int) -> None:
+        """DELETE /api/project/{pid}."""
+        self._request(f"project/{project_id}", method="DELETE")
+
+    # ---- Templates CRUD -------------------------------------------------
+
+    def create_template(
+        self,
+        project_id: int,
+        name: str,
+        playbook: str,
+        inventory_id: int,
+        repository_id: int,
+        environment_id: int | None = None,
+        description: str = "",
+        arguments: str = "",
+    ) -> Template:
+        """POST /api/project/{pid}/templates."""
+        body: dict[str, Any] = {
+            "project_id": project_id,
+            "name": name,
+            "playbook": playbook,
+            "inventory_id": inventory_id,
+            "repository_id": repository_id,
+        }
+        if environment_id is not None:
+            body["environment_id"] = environment_id
+        if description:
+            body["description"] = description
+        if arguments:
+            body["arguments"] = arguments
+        data = self._request(f"project/{project_id}/templates", method="POST", body=body)
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /templates")
+        return Template.model_validate(data)
+
+    def update_template(self, project_id: int, template_id: int, **fields: Any) -> None:
+        """PUT /api/project/{pid}/templates/{tid}."""
+        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
+        body["id"] = template_id
+        body["project_id"] = project_id
+        self._request(f"project/{project_id}/templates/{template_id}", method="PUT", body=body)
+
+    def delete_template(self, project_id: int, template_id: int) -> None:
+        """DELETE /api/project/{pid}/templates/{tid}."""
+        self._request(f"project/{project_id}/templates/{template_id}", method="DELETE")
+
+    # ---- User (self) ----------------------------------------------------
+
+    def whoami(self) -> User:
+        """GET /api/user."""
+        data = self._request("user")
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for /user")
+        return User.model_validate(data)
+
+    def list_user_tokens(self) -> list[UserToken]:
+        """GET /api/user/tokens."""
+        data = self._request("user/tokens")
+        if not isinstance(data, list):
+            raise SemaphoreAPIError("Unexpected response for /user/tokens")
+        return [UserToken.model_validate(item) for item in data]
+
+    def create_user_token(self) -> UserToken:
+        """POST /api/user/tokens — returns the freshly minted token id.
+
+        The response is the only chance to read the secret; subsequent
+        ``list_user_tokens`` calls expose only the metadata.
+        """
+        data = self._request("user/tokens", method="POST", body={})
+        if not isinstance(data, dict):
+            raise SemaphoreAPIError("Unexpected response for POST /user/tokens")
+        return UserToken.model_validate(data)
+
+    def delete_user_token(self, token_id: str) -> None:
+        """DELETE /api/user/tokens/{tid}."""
+        self._request(f"user/tokens/{token_id}", method="DELETE")

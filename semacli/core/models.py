@@ -111,3 +111,23 @@ class Schedule(_ApiModel):
     cron_format: str = ""
     name: str = ""
     active: bool = True
+
+
+class User(_ApiModel):
+    """A Semaphore user."""
+
+    id: int = 0
+    name: str = ""
+    username: str = ""
+    email: str = ""
+    admin: bool = False
+    created: str = ""
+
+
+class UserToken(_ApiModel):
+    """A Semaphore user API token (created by `user tokens create`)."""
+
+    id: str = ""
+    created: str = ""
+    expired: bool = False
+    user_id: int = 0
