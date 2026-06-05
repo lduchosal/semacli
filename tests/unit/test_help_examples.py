@@ -82,7 +82,7 @@ class TestRootExamples:
         assert r.exit_code == 0
 
     def test_run_template_with_limit(self, tmp_path: Path) -> None:
-        # semacli run mtree --limit ans2.0.2113.ch
+        # semacli run mtree --limit ans2
         cfg = _write_cfg(tmp_path)
         with (
             patch("semacli.cli.commands.run.SemaphoreClient") as Mock,
@@ -90,16 +90,19 @@ class TestRootExamples:
             patch("semacli.cli.commands.run._watch_task", return_value="success"),
         ):
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
-            r = _invoke(["run", "mtree", "--limit", "ans2.0.2113.ch", "-c", str(cfg)])
+            r = _invoke(["run", "mtree", "--limit", "ans2", "-c", str(cfg)])
         assert r.exit_code == 0
         Mock.return_value.run_task.assert_called_once_with(
             1,
             5,
             playbook=None,
             environment=None,
-            limit="ans2.0.2113.ch",
-            debug=False,
+            limit="ans2",
+            tags=None,
+            skip_tags=None,
+            debug=0,
             dry_run=False,
+            diff=False,
         )
 
     def test_env_create_from_vars_file(self, tmp_path: Path) -> None:
@@ -187,12 +190,20 @@ class TestPingExamples:
             r = _invoke(["ping", "-c", str(cfg)])
         assert r.exit_code == 0
 
-    def test_verbose_short(self, tmp_path: Path) -> None:
-        # semacli -vv ping  (verbose flag stacks on the subcommand)
+    def test_verbose_short_on_subcommand(self, tmp_path: Path) -> None:
+        # sem ping -vv  (verbose flag on the subcommand)
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
             Mock.return_value.ping.return_value = "pong"
             r = _invoke(["ping", "-vv", "-c", str(cfg)])
+        assert r.exit_code == 0
+
+    def test_verbose_short_at_root(self, tmp_path: Path) -> None:
+        # sem -vv ping  (verbose flag at the root, inherited by subcommand)
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.ping.SemaphoreClient") as Mock:
+            Mock.return_value.ping.return_value = "pong"
+            r = _invoke(["-vv", "ping", "-c", str(cfg)])
         assert r.exit_code == 0
 
     def test_quiet(self, tmp_path: Path) -> None:
@@ -232,8 +243,8 @@ class TestInitExamples:
         assert r.exit_code == 0
 
     def test_with_url(self, tmp_path: Path) -> None:
-        # semacli init --url https://semaphore.1.2113.ch
-        r = self._run(["--url", "https://semaphore.1.2113.ch"], tmp_path)
+        # sem init --url https://semaphore.domain.com
+        r = self._run(["--url", "https://semaphore.domain.com"], tmp_path)
         assert r.exit_code == 0
 
     def test_with_output(self, tmp_path: Path) -> None:
@@ -430,29 +441,35 @@ class TestTaskExamples:
         assert r.exit_code == 0
 
     def test_run_with_limit(self, tmp_path: Path) -> None:
-        # semacli task run 5 --limit web1.0.2113.ch
+        # sem task run 5 --limit web1
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
-            r = _invoke(["task", "-c", str(cfg), "run", "5", "--limit", "web1.0.2113.ch"])
+            r = _invoke(["task", "-c", str(cfg), "run", "5", "--limit", "web1"])
         assert r.exit_code == 0
         Mock.return_value.run_task.assert_called_once_with(
             1,
             5,
             playbook=None,
             environment=None,
-            limit="web1.0.2113.ch",
-            debug=False,
+            limit="web1",
+            tags=None,
+            skip_tags=None,
+            debug=0,
             dry_run=False,
+            diff=False,
         )
 
-    def test_run_dry_run(self, tmp_path: Path) -> None:
+    def test_run_check(self, tmp_path: Path) -> None:
+        # sem task run 5 --check --diff
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
-            r = _invoke(["task", "-c", str(cfg), "run", "5", "--dry-run"])
+            r = _invoke(["task", "-c", str(cfg), "run", "5", "--check", "--diff"])
         assert r.exit_code == 0
-        assert Mock.return_value.run_task.call_args.kwargs["dry_run"] is True
+        kwargs = Mock.return_value.run_task.call_args.kwargs
+        assert kwargs["dry_run"] is True
+        assert kwargs["diff"] is True
 
     def test_watch(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
@@ -513,7 +530,7 @@ class TestInvExamples:
     def test_create_static_inline(self, tmp_path: Path) -> None:
         # Fixed by ken #733 — `inv create --content` renamed to `--inventory`.
         # semacli inv create --name prod-hosts --type static \
-        #      --inventory '[prod]\nweb1.0.2113.ch'
+        #      --inventory '[prod]\nweb1'
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.create_inventory.return_value = Inventory(
@@ -530,7 +547,7 @@ class TestInvExamples:
                     "--type",
                     "static",
                     "--inventory",
-                    "[prod]\nweb1.0.2113.ch",
+                    "[prod]\nweb1",
                 ]
             )
         assert r.exit_code == 0
@@ -947,24 +964,69 @@ class TestRunExamples:
         assert r.exit_code == 0
 
     def test_by_name_with_limit(self, tmp_path: Path) -> None:
-        # semacli run mtree --limit ans2.0.2113.ch
+        # semacli run mtree --limit ans2
         cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
         with client_p as Mock, resolve_p, watch_p:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
-            r = _invoke(["run", "mtree", "--limit", "ans2.0.2113.ch", "-c", str(cfg)])
+            r = _invoke(["run", "mtree", "--limit", "ans2", "-c", str(cfg)])
         assert r.exit_code == 0
-        assert Mock.return_value.run_task.call_args.kwargs["limit"] == "ans2.0.2113.ch"
+        assert Mock.return_value.run_task.call_args.kwargs["limit"] == "ans2"
 
-    def test_dry_run_debug(self, tmp_path: Path) -> None:
-        # semacli run mtree --dry-run --debug
+    def test_check_diff(self, tmp_path: Path) -> None:
+        # sem run mtree --check --diff
         cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
         with client_p as Mock, resolve_p, watch_p:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
-            r = _invoke(["run", "mtree", "--dry-run", "--debug", "-c", str(cfg)])
+            r = _invoke(["run", "mtree", "--check", "--diff", "-c", str(cfg)])
         assert r.exit_code == 0
         kwargs = Mock.return_value.run_task.call_args.kwargs
         assert kwargs["dry_run"] is True
-        assert kwargs["debug"] is True
+        assert kwargs["diff"] is True
+
+    def test_debug_level(self, tmp_path: Path) -> None:
+        # sem run mtree --debug 2
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "--debug", "2", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert Mock.return_value.run_task.call_args.kwargs["debug"] == 2
+
+    def test_tags(self, tmp_path: Path) -> None:
+        # sem run mtree --tags ntp,users
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "mtree", "--tags", "ntp,users", "-c", str(cfg)])
+        assert r.exit_code == 0
+        assert Mock.return_value.run_task.call_args.kwargs["tags"] == "ntp,users"
+
+    def test_environment_key_val_sugar(self, tmp_path: Path) -> None:
+        # sem run echo --environment 'msg=coucou' (ken #745)
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "echo", "--environment", "msg=coucou", "-c", str(cfg)])
+        assert r.exit_code == 0
+        env = Mock.return_value.run_task.call_args.kwargs["environment"]
+        assert env == '{"msg": "coucou"}'
+
+    def test_environment_json_passthrough(self, tmp_path: Path) -> None:
+        # sem run echo --environment '{"msg":"x"}' (ken #745)
+        cfg, client_p, resolve_p, watch_p = self._patch_run(tmp_path)
+        with client_p as Mock, resolve_p, watch_p:
+            Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
+            r = _invoke(["run", "echo", "--environment", '{"msg":"x"}', "-c", str(cfg)])
+        assert r.exit_code == 0
+        env = Mock.return_value.run_task.call_args.kwargs["environment"]
+        assert env == '{"msg":"x"}'
+
+    def test_environment_invalid_json_exits_2(self, tmp_path: Path) -> None:
+        # ken #745: malformed JSON must give a clean UsageError, not an HTTP 500.
+        cfg = _write_cfg(tmp_path)
+        r = _invoke(["run", "echo", "--environment", '{"msg":"x"', "-c", str(cfg)])
+        assert r.exit_code == 2
+        assert "not valid JSON" in r.output
 
     def test_no_watch(self, tmp_path: Path) -> None:
         # semacli run mtree --no-watch
@@ -980,7 +1042,7 @@ class TestRunExamples:
         assert "99" in r.output
 
     def test_by_id_skips_resolve(self, tmp_path: Path) -> None:
-        # semacli run 5 --limit web1.0.2113.ch
+        # semacli run 5 --limit web1
         cfg = _write_cfg(tmp_path)
         with (
             patch("semacli.cli.commands.run.SemaphoreClient") as Mock,
@@ -988,7 +1050,7 @@ class TestRunExamples:
             patch("semacli.cli.commands.run._watch_task", return_value="success"),
         ):
             Mock.return_value.run_task.return_value = Task(id=42, template_id=5)
-            r = _invoke(["run", "5", "--limit", "web1.0.2113.ch", "-c", str(cfg)])
+            r = _invoke(["run", "5", "--limit", "web1", "-c", str(cfg)])
         assert r.exit_code == 0
         # The id form still passes through resolve_template, which is the
         # documented behavior (the resolver handles "numeric == id" itself).

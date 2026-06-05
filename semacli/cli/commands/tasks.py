@@ -10,6 +10,7 @@ from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 from semacli.core.models import Task
 
+from .._envvars import normalize_environment
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, handle_error
 
@@ -34,8 +35,9 @@ which resolves a template by name and runs it.
 TASK_EPILOG = """\
 Examples:
   sem task list                                 # recent runs
-  sem task run 5 --limit web1.0.2113.ch         # run by template id
-  sem task run 5 --dry-run                      # check mode
+  sem task run 5 --limit web1                   # run by template id
+  sem task run 5 --check --diff                 # ansible --check --diff
+  sem task run 5 --tags ntp,users               # ansible --tags
   sem task watch 142                            # follow output
   sem task show 142
   sem task raw-output 142 > task-142.log
@@ -101,23 +103,41 @@ def register_tasks_commands(main_group: Any) -> None:
     @tasks_group.command("run")
     @click.argument("template_id", type=int)
     @click.option("--limit", default=None, help="ansible --limit pattern")
+    @click.option("--tags", default=None, help="ansible --tags (comma-separated list)")
+    @click.option("--skip-tags", default=None, help="ansible --skip-tags (comma-separated list)")
     @click.option("--playbook", default=None, help="Override template playbook")
     @click.option("--environment", default=None, help="JSON env vars override")
-    @click.option("--debug", is_flag=True, help="Enable debug mode")
-    @click.option("--dry-run", is_flag=True, help="Run in check mode")
+    @click.option(
+        "--debug",
+        type=click.IntRange(0, 4),
+        default=0,
+        show_default=True,
+        help="Ansible verbosity level (0=off, 1=-v, 2=-vv, 3=-vvv, 4=-vvvv).",
+    )
+    @click.option(
+        "--check",
+        "dry_run",
+        is_flag=True,
+        help="Run in check mode (ansible --check) — no changes applied.",
+    )
+    @click.option("--diff", is_flag=True, help="Show diff of file changes (ansible --diff)")
     @click.pass_context
     def run_cmd(
         ctx: click.Context,
         template_id: int,
         limit: str | None,
+        tags: str | None,
+        skip_tags: str | None,
         playbook: str | None,
         environment: str | None,
-        debug: bool,
+        debug: int,
         dry_run: bool,
+        diff: bool,
     ) -> None:
         """Launch a task from a template."""
         opts = ctx.obj
         verbose = opts["verbose"]
+        environment = normalize_environment(environment)
         try:
             cfg = load_config(opts["config"])
             client = SemaphoreClient(cfg, verbose=verbose)
@@ -131,8 +151,11 @@ def register_tasks_commands(main_group: Any) -> None:
                 playbook=playbook,
                 environment=environment,
                 limit=limit,
+                tags=tags,
+                skip_tags=skip_tags,
                 debug=debug,
                 dry_run=dry_run,
+                diff=diff,
             )
             if opts["output_json"]:
                 _emit_task_json(task)

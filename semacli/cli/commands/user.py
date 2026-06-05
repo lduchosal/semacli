@@ -36,7 +36,7 @@ Examples:
   sem user tokens delete <token-id>
   sem user admin list                     # admin: all users
   sem user admin create --username alice \\
-       --name "Alice" --email a@2113.ch
+       --name "Alice" --email alice@example.com
 """
 
 ADMIN_HELP = """\
@@ -55,7 +55,7 @@ Examples:
   sem user admin list
   sem user admin show 7
   sem user admin create --username alice \\
-       --name "Alice Smith" --email alice@2113.ch
+       --name "Alice Smith" --email alice@example.com
   sem user admin update 7 --email new@x.com
   sem user admin set-password 7
   sem user admin delete 7

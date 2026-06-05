@@ -1,12 +1,28 @@
 """Data models for semacli (pydantic v2 BaseModel)."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _ApiModel(BaseModel):
-    """Base class: allow field name OR API alias on input; ignore extras."""
+    """Base class: allow field name OR API alias on input; ignore extras.
+
+    Semaphore frequently returns ``null`` for fields that were never set
+    (e.g. ``password: null`` on a key with no secret, ``ssh_key_id: null``
+    on an inventory without a key). Without intervention pydantic would
+    reject those against our non-Optional field types. Drop nulls before
+    validation so the field defaults take over.
+    """
 
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_null_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if v is not None}
+        return data
 
 
 class Project(_ApiModel):

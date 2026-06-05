@@ -25,7 +25,7 @@ FIRST TIME?
 EXAMPLES
   sem init
   sem project
-  sem run mtree --limit ans2.0.2113.ch
+  sem run mtree --limit ans2
   sem env create --name prod --vars @vars.json
   sem sched create --template mtree --cron '0 3 * * *'
 
@@ -35,9 +35,17 @@ Config: ./semacli.ini, ~/.semacli.ini, /usr/local/etc/semacli.ini
 
 @click.group(cls=SectionedRootGroup, invoke_without_command=True, epilog=ROOT_EPILOG)
 @click.version_option(version=__version__, prog_name="sem")
+@click.option(
+    "-v",
+    "--verbose",
+    count=True,
+    help="Increase verbosity (also accepted on each subcommand).",
+)
 @click.pass_context
-def main(ctx: click.Context) -> None:
+def main(ctx: click.Context, verbose: int) -> None:
     """Manage your ansible codebase through Semaphore UI."""
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 

@@ -27,7 +27,7 @@ mode 0600 so the token is not world-readable.
 INIT_EPILOG = """\
 Examples:
   sem init                          # prompts for everything
-  sem init --url https://semaphore.1.2113.ch
+  sem init --url https://semaphore.domain.com
   sem init --output ~/.semacli.ini
 """
 

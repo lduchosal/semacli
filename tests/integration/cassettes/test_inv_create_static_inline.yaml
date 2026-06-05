@@ -1,0 +1,101 @@
+interactions:
+- request:
+    body: '{"name": "semacli-vcr-inv", "type": "static", "inventory": "[prod]\nweb1\n",
+      "project_id": 1}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '103'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: POST
+    uri: https://semaphore.domain.com/api/project/1/inventory
+  response:
+    body:
+      string: '{"id":9,"name":"semacli-vcr-inv","project_id":1,"inventory":"[prod]\nweb1\n","ssh_key_id":null,"become_key_id":null,"type":"static","template_id":null,"repository_id":null}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '183'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 05 Jun 2026 17:20:19 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 201
+      message: Created
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: DELETE
+    uri: https://semaphore.domain.com/api/project/1/inventory/9
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Fri, 05 Jun 2026 17:20:19 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+version: 1

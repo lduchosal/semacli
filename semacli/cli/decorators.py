@@ -9,12 +9,36 @@ from semacli.core.config import SemaphoreConfig
 from semacli.core.exceptions import ConfigurationError
 
 
+def _inherit_verbose(ctx: click.Context, _param: click.Parameter, value: int) -> int:
+    """Pull the root group's ``-v`` count if the subcommand received none.
+
+    ``sem -vv ping`` → root captures 2, subcommand's own ``-v`` defaults to
+    0, this callback returns 2.
+    ``sem ping -vv``     → subcommand captures 2, returned as-is.
+    ``sem -v ping -vv``  → subcommand value wins (2).
+    """
+    if value:
+        return value
+    parent = ctx.parent
+    while parent is not None:
+        if parent.obj and "verbose" in parent.obj:
+            return int(parent.obj["verbose"])
+        parent = parent.parent
+    return 0
+
+
 def common_options(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for common CLI options."""
     func = click.option("-c", "--config", default="semacli.ini", help="Configuration file path")(
         func
     )
-    func = click.option("-v", "--verbose", count=True, help="Increase verbosity")(func)
+    func = click.option(
+        "-v",
+        "--verbose",
+        count=True,
+        callback=_inherit_verbose,
+        help="Increase verbosity (inherits the root -v if not given here).",
+    )(func)
 
     return func
 

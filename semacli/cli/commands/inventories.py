@@ -33,7 +33,7 @@ Examples:
   sem inv                                # list
   sem inv show 42
   sem inv create --name prod-hosts --type static \\
-       --inventory '[prod]\\nweb1.0.2113.ch'
+       --inventory '[prod]\\nweb1'
   sem inv create --name from-file --type file \\
        --inventory ./hosts.ini       # path inside the repo
   sem inv update 42 --name prod-hosts-eu

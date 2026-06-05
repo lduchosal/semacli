@@ -5,7 +5,7 @@ API. Python 3.10+, PDM-managed, click-based. See `README.md` / `ARCHITECTURE.md`
 for the user-facing docs.
 
 Parent project conventions (SVN externals, ken CLI install, monitor stack,
-FreeBSD infra) live in `/Users/q/Projects/2113.ch/CLAUDE.md` — read that
+FreeBSD infra) live in the parent meta-repo's `CLAUDE.md` — read that
 first for anything outside this directory.
 
 ## UX standard
@@ -57,17 +57,43 @@ to semacli.
    Individual gates (use during iteration):
 
    ```sh
-   pdm run lint         # ruff check semacli/ tests/
-   pdm run lint-fix     # ruff check --fix
-   pdm run format       # ruff format
-   pdm run format-check # black --check (CI-equivalent)
-   pdm run typecheck    # mypy semacli/
-   pdm run test         # pytest + coverage
-   pdm run test-quick   # pytest --tb=no -q
+   pdm run lint              # ruff check semacli/ tests/
+   pdm run lint-fix          # ruff check --fix
+   pdm run format            # ruff format
+   pdm run format-check      # black --check (CI-equivalent)
+   pdm run typecheck         # mypy semacli/
+   pdm run test              # pytest + coverage (unit + integration replay)
+   pdm run test-quick        # pytest --tb=no -q (everything)
+   pdm run test-unit         # unit only, with coverage
+   pdm run test-integration  # cassette replay strict (--vcr-record=none)
    ```
 
    If a failure shows up in an area you didn't touch, confirm it's
    pre-existing before continuing.
+
+### Integration tests (VCR cassettes)
+
+`tests/integration/` exercises the real HTTP contract against a recorded
+Semaphore. Replay is strict, runs offline, and gates `publish.sh` before
+`python -m build` — a stale cassette fails the release.
+
+To **add** a new cassette:
+
+```sh
+# 1. Write the test under tests/integration/, decorate with @pytest.mark.vcr.
+# 2. Record against the real server (uses semacli.ini for URL + token):
+SEMACLI_RECORD=1 pdm run test-integration-record \
+    tests/integration/test_my_new_thing.py
+# 3. Verify replay strict still passes (no network):
+pdm run test-integration
+# 4. Confirm no token leaked into the YAML:
+grep -i 'bearer' tests/integration/cassettes/test_my_new_thing.yaml
+# Must print only `Bearer REDACTED`.
+```
+
+Resource-creating cassettes (`create_xxx` calls) must wrap their assertions
+in `try: ... finally: client.delete_xxx(...)` so the cassette captures the
+DELETE and the server is left clean.
 
 4. **Update the task description BEFORE moving to review.** Append a
    `## Résolution` block — the board accumulates the audit trail; commit

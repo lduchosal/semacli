@@ -1,15 +1,11 @@
 """Semaphore HTTP API client."""
 
 import json
-import os
-import ssl
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from typing import Any
 
-import certifi
+import requests
+import urllib3
 
 from .config import SemaphoreConfig
 from .exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
@@ -33,35 +29,21 @@ from .models import (
 )
 
 
-def _build_secure_ssl_context() -> ssl.SSLContext:
-    # urllib's default context follows openssl_cafile, which on Python.org
-    # macOS builds points at a non-existent path → every cert rejected.
-    # Pin to certifi unless the user explicitly overrode the bundle.
-    if os.environ.get("SSL_CERT_FILE") or os.environ.get("SSL_CERT_DIR"):
-        return ssl.create_default_context()
-    return ssl.create_default_context(cafile=certifi.where())
-
-
-def _build_insecure_ssl_context() -> ssl.SSLContext:
-    """Return an SSL context with verification disabled.
-
-    Opt-in path: only called when the user sets verify_ssl=false in their
-    config. The two assignments below are deliberate — see SEC ken #638
-    and sonar-project.properties for the scoped S4830 suppression.
-    """
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
-
-
 class SemaphoreClient:
-    """HTTP client for Semaphore UI REST API."""
+    """HTTP client for Semaphore UI REST API.
+
+    Transport: a single ``requests.Session`` per client instance. SSL is
+    secure-by-default (``session.verify = True`` → certifi bundle that
+    `requests` ships). Opt-in insecure mode flips ``verify`` off and
+    silences the urllib3 ``InsecureRequestWarning`` once at session
+    init (our own stderr warning, emitted by ``_warn_insecure``,
+    replaces it).
+    """
 
     def __init__(self, config: SemaphoreConfig, verbose: int = 0) -> None:
         self.config = config
         self.verbose = verbose
-        self._opener: urllib.request.OpenerDirector | None = None
+        self._session: requests.Session | None = None
         self._warn_insecure()
 
     def _warn_insecure(self) -> None:
@@ -77,17 +59,17 @@ class SemaphoreClient:
                 file=sys.stderr,
             )
 
-    def _get_opener(self) -> urllib.request.OpenerDirector:
-        """Get or create HTTP opener with SSL handling."""
-        if self._opener is None:
-            ctx = (
-                _build_insecure_ssl_context()
-                if not self.config.verify_ssl
-                else _build_secure_ssl_context()
-            )
-            handlers: list[urllib.request.BaseHandler] = [urllib.request.HTTPSHandler(context=ctx)]
-            self._opener = urllib.request.build_opener(*handlers)
-        return self._opener
+    def _get_session(self) -> requests.Session:
+        """Get or create the underlying ``requests.Session``."""
+        if self._session is None:
+            s = requests.Session()
+            s.verify = bool(self.config.verify_ssl)
+            if not self.config.verify_ssl:
+                # The user already saw our own stderr warning at init —
+                # suppress the per-request urllib3 follow-on noise.
+                urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            self._session = s
+        return self._session
 
     def _build_request(
         self,
@@ -96,29 +78,34 @@ class SemaphoreClient:
         params: dict[str, str] | None = None,
         body: dict[str, Any] | None = None,
         require_auth: bool = True,
-    ) -> urllib.request.Request:
+    ) -> dict[str, Any]:
+        """Return the kwargs ready to be passed to ``session.request(**kwargs)``.
+
+        Exposed for tests that want to inspect URL/headers/body without
+        a network call.
+        """
         url = f"{self.config.url}/api/{endpoint.lstrip('/')}"
-        if params:
-            url = f"{url}?{urllib.parse.urlencode(params)}"
-
-        if self.verbose >= 2:
-            print(f"DEBUG: {method} {url}")
-
-        data: bytes | None = None
-        request = urllib.request.Request(url, method=method)
-
-        if body is not None:
-            data = json.dumps(body).encode("utf-8")
-            request.add_header("Content-Type", "application/json")
-            request.data = data
+        headers: dict[str, str] = {"Accept": "application/json"}
 
         if require_auth:
             if not self.config.bearer_token:
                 raise AuthenticationError("No bearer_token configured")
-            request.add_header("Authorization", f"Bearer {self.config.bearer_token}")
+            headers["Authorization"] = f"Bearer {self.config.bearer_token}"
 
-        request.add_header("Accept", "application/json")
-        return request
+        kwargs: dict[str, Any] = {
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "timeout": self.config.timeout,
+        }
+        if params:
+            kwargs["params"] = params
+        if body is not None:
+            kwargs["json"] = body
+
+        if self.verbose >= 2:
+            print(f"DEBUG: {method} {url}")
+        return kwargs
 
     def _request(
         self,
@@ -129,30 +116,38 @@ class SemaphoreClient:
         require_auth: bool = True,
     ) -> Any:
         """Make HTTP request to Semaphore API and return parsed JSON (or raw text)."""
-        request = self._build_request(endpoint, method, params, body, require_auth)
+        kwargs = self._build_request(endpoint, method, params, body, require_auth)
 
         try:
-            response = self._get_opener().open(request, timeout=self.config.timeout)
-            content = response.read().decode("utf-8")
+            response = self._get_session().request(**kwargs)
+        except requests.exceptions.RequestException as e:
+            raise SemaphoreAPIError(f"Connection error: {e}") from e
 
-            if self.verbose >= 3:
-                print(f"DEBUG: Response: {content[:500]}")
+        text = response.text
+        status = response.status_code
 
-            if not content:
-                return None
-            try:
-                return json.loads(content)
-            except json.JSONDecodeError:
-                return content
+        if self.verbose >= 3:
+            print(f"DEBUG: Response: {text[:500]}")
 
-        except urllib.error.HTTPError as e:
-            if e.code in (401, 403):
-                raise AuthenticationError(f"HTTP {e.code}: {e.reason}") from e
-            if e.code == 404:
-                raise NotFoundError(f"HTTP 404: {endpoint}") from e
-            raise SemaphoreAPIError(f"HTTP {e.code}: {e.reason}") from e
-        except urllib.error.URLError as e:
-            raise SemaphoreAPIError(f"Connection error: {e.reason}") from e
+        if 400 <= status < 600:
+            reason = response.reason or ""
+            # Include the server body in the message so the user sees the
+            # actual reason Semaphore complained (truncated to keep the
+            # exception printable).
+            detail = text.strip()[:500]
+            suffix = f" — {detail}" if detail else ""
+            if status in (401, 403):
+                raise AuthenticationError(f"HTTP {status}: {reason}{suffix}")
+            if status == 404:
+                raise NotFoundError(f"HTTP 404: {endpoint}{suffix}")
+            raise SemaphoreAPIError(f"HTTP {status}: {reason}{suffix}")
+
+        if not response.content:
+            return None
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
 
     def ping(self) -> str:
         """GET /api/ping — does not require authentication."""
@@ -189,10 +184,19 @@ class SemaphoreClient:
         playbook: str | None = None,
         environment: str | None = None,
         limit: str | None = None,
-        debug: bool = False,
+        tags: str | None = None,
+        skip_tags: str | None = None,
+        debug: int = 0,
         dry_run: bool = False,
+        diff: bool = False,
     ) -> Task:
-        """POST /api/project/{pid}/tasks — launch a task from a template."""
+        """POST /api/project/{pid}/tasks — launch a task from a template.
+
+        ``debug`` is an ansible verbosity level (0=off, 1=-v ... 4=-vvvv).
+        The current Semaphore body field is a plain boolean; the level→API
+        mapping will be revisited once VCR cassettes show what the server
+        accepts (ken #739 Phase 2).
+        """
         body: dict[str, Any] = {"template_id": template_id}
         if playbook is not None:
             body["playbook"] = playbook
@@ -200,10 +204,16 @@ class SemaphoreClient:
             body["environment"] = environment
         if limit is not None:
             body["limit"] = limit
+        if tags is not None:
+            body["tags"] = tags
+        if skip_tags is not None:
+            body["skip_tags"] = skip_tags
         if debug:
             body["debug"] = True
         if dry_run:
             body["dry_run"] = True
+        if diff:
+            body["diff"] = True
 
         data = self._request(f"project/{project_id}/tasks", method="POST", body=body)
         if not isinstance(data, dict):

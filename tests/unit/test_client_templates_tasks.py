@@ -24,9 +24,13 @@ def _cfg(**overrides: Any) -> SemaphoreConfig:
     return SemaphoreConfig(**base)
 
 
-def _resp(body: str) -> MagicMock:
+def _resp(body: str, status: int = 200) -> MagicMock:
+    """Build a Mock that quacks like a ``requests.Response``."""
     m = MagicMock()
-    m.read.return_value = body.encode("utf-8")
+    m.status_code = status
+    m.reason = "OK"
+    m.text = body
+    m.content = body.encode("utf-8")
     return m
 
 
@@ -37,8 +41,8 @@ class TestTemplates:
             {"id": 2, "project_id": 5, "name": "backup"},
         ]
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_get_opener") as opener:
-            opener.return_value.open.return_value = _resp(json.dumps(payload))
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp(json.dumps(payload))
             templates = c.get_templates(5)
         assert templates == [
             Template(id=1, project_id=5, name="deploy", playbook="site.yml"),
@@ -47,15 +51,15 @@ class TestTemplates:
 
     def test_list_non_list_raises(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_get_opener") as opener:
-            opener.return_value.open.return_value = _resp('{"oops": 1}')
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp('{"oops": 1}')
             with pytest.raises(SemaphoreAPIError):
                 c.get_templates(5)
 
     def test_show_parses(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_get_opener") as opener:
-            opener.return_value.open.return_value = _resp(
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp(
                 json.dumps(
                     {
                         "id": 7,
@@ -76,8 +80,8 @@ class TestTemplates:
 
     def test_show_non_dict_raises(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_get_opener") as opener:
-            opener.return_value.open.return_value = _resp("[]")
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp("[]")
             with pytest.raises(SemaphoreAPIError):
                 c.get_template(5, 7)
 

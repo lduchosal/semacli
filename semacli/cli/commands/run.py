@@ -14,6 +14,7 @@ from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 from semacli.core.resolve import resolve_template
 
+from .._envvars import normalize_environment
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, handle_error
 
@@ -35,10 +36,14 @@ code (0 / 1). Pass --no-watch to return immediately after submission.
 RUN_EPILOG = """\
 Examples:
   sem run mtree                              # default: run + watch
-  sem run mtree --limit ans2.0.2113.ch
-  sem run mtree --dry-run --debug
+  sem run mtree --limit ans2
+  sem run mtree --check --diff               # ansible --check --diff
+  sem run mtree --tags ntp,users             # ansible --tags
+  sem run mtree --debug 2                    # ansible -vv
+  sem run echo --environment 'msg=coucou'    # key=val (ansible -e style)
+  sem run echo --environment '{"msg":"x"}'   # JSON (canonical form)
   sem run mtree --no-watch                   # fire and return id
-  sem run 5 --limit web1.0.2113.ch           # by id
+  sem run 5 --limit web1           # by id
   sem run --exact mtree                      # disallow substring fuzz
 """
 
@@ -67,10 +72,24 @@ def register_run_commands(main_group: Any) -> None:
     @main_group.command("run", help=RUN_HELP, epilog=RUN_EPILOG)
     @click.argument("template")
     @click.option("--limit", default=None, help="ansible --limit pattern")
+    @click.option("--tags", default=None, help="ansible --tags (comma-separated list)")
+    @click.option("--skip-tags", default=None, help="ansible --skip-tags (comma-separated list)")
     @click.option("--playbook", default=None, help="Override template playbook path")
     @click.option("--environment", default=None, help="JSON env vars override")
-    @click.option("--debug", is_flag=True, help="Enable debug mode (ansible -vv)")
-    @click.option("--dry-run", is_flag=True, help="Run in check mode (ansible --check)")
+    @click.option(
+        "--debug",
+        type=click.IntRange(0, 4),
+        default=0,
+        show_default=True,
+        help="Ansible verbosity level (0=off, 1=-v, 2=-vv, 3=-vvv, 4=-vvvv).",
+    )
+    @click.option(
+        "--check",
+        "dry_run",
+        is_flag=True,
+        help="Run in check mode (ansible --check) — no changes applied.",
+    )
+    @click.option("--diff", is_flag=True, help="Show diff of file changes (ansible --diff)")
     @click.option(
         "--exact",
         is_flag=True,
@@ -89,10 +108,13 @@ def register_run_commands(main_group: Any) -> None:
     def run_cmd(
         template: str,
         limit: str | None,
+        tags: str | None,
+        skip_tags: str | None,
         playbook: str | None,
         environment: str | None,
-        debug: bool,
+        debug: int,
         dry_run: bool,
+        diff: bool,
         exact: bool,
         watch: bool,
         interval: float,
@@ -102,6 +124,10 @@ def register_run_commands(main_group: Any) -> None:
         quiet: bool,
         project_override: int | None,
     ) -> None:
+        # Normalize --environment outside the try-block so UsageError
+        # surfaces as a clean exit 2 rather than being swallowed by
+        # handle_error and reported as an opaque "API error".
+        environment = normalize_environment(environment)
         try:
             cfg = load_config(config)
             client = SemaphoreClient(cfg, verbose=verbose)
@@ -118,8 +144,11 @@ def register_run_commands(main_group: Any) -> None:
                 playbook=playbook,
                 environment=environment,
                 limit=limit,
+                tags=tags,
+                skip_tags=skip_tags,
                 debug=debug,
                 dry_run=dry_run,
+                diff=diff,
             )
 
             if not quiet and not output_json:

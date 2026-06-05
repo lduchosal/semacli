@@ -114,8 +114,11 @@ class TestTasksRun:
             playbook=None,
             environment=None,
             limit=None,
-            debug=False,
+            tags=None,
+            skip_tags=None,
+            debug=0,
             dry_run=False,
+            diff=False,
         )
 
     def test_with_limit_and_flags(self, tmp_path: Path) -> None:
@@ -133,7 +136,9 @@ class TestTasksRun:
                     "--limit",
                     "ans1",
                     "--debug",
-                    "--dry-run",
+                    "2",
+                    "--check",
+                    "--diff",
                 ],
             )
         Mock.return_value.run_task.assert_called_with(
@@ -142,9 +147,34 @@ class TestTasksRun:
             playbook=None,
             environment=None,
             limit="ans1",
-            debug=True,
+            tags=None,
+            skip_tags=None,
+            debug=2,
             dry_run=True,
+            diff=True,
         )
+
+    def test_with_tags(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.run_task.return_value = Task(id=2, template_id=10)
+            CliRunner().invoke(
+                main,
+                [
+                    "tasks",
+                    "-c",
+                    str(cfg),
+                    "run",
+                    "10",
+                    "--tags",
+                    "ntp,users",
+                    "--skip-tags",
+                    "slow",
+                ],
+            )
+        kwargs = Mock.return_value.run_task.call_args.kwargs
+        assert kwargs["tags"] == "ntp,users"
+        assert kwargs["skip_tags"] == "slow"
 
 
 class TestTasksShow:

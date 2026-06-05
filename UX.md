@@ -83,9 +83,10 @@ Every command's help page follows the same sections, in order:
 
 ### 2.2 Examples — realistic values
 
-Always use realistic values rooted in the 2113.ch infrastructure:
+Always use realistic, concrete values (anonymised — no organisation-specific
+hostnames or domains):
 
-- Hostnames: `web1.0.2113.ch`, `ans2.0.2113.ch`, `monitor1.0.2113.ch`
+- Hostnames: `web1`, `ans2`, `monitor1`
 - Template names: `mtree`, `nightly-backup`, `deploy-prod`
 - Environment names: `prod`, `staging`
 - Inventory names: `prod-hosts`
@@ -114,7 +115,7 @@ The CLI must accept **names everywhere it accepts IDs**.
 name without going through `tasks run`:
 
 ```
-sem run mtree --limit ans2.0.2113.ch
+sem run mtree --limit ans2
 sem run mtree --dry-run --debug
 sem run mtree --watch
 ```
@@ -263,7 +264,7 @@ COMMANDS
 EXAMPLES
   sem init
   sem project
-  sem run mtree --limit ans2.0.2113.ch
+  sem run mtree --limit ans2
   sem env create --name prod --vars @vars.json
   sem sched create --template mtree --cron '0 3 * * *'
 

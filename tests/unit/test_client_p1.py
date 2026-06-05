@@ -23,9 +23,13 @@ def _cfg(**overrides: Any) -> SemaphoreConfig:
     return SemaphoreConfig(**base)
 
 
-def _resp(body: str) -> MagicMock:
+def _resp(body: str, status: int = 200) -> MagicMock:
+    """Build a Mock that quacks like a ``requests.Response``."""
     m = MagicMock()
-    m.read.return_value = body.encode("utf-8")
+    m.status_code = status
+    m.reason = "OK"
+    m.text = body
+    m.content = body.encode("utf-8")
     return m
 
 
@@ -59,8 +63,8 @@ class TestTasksExtras:
 class TestInventoriesClient:
     def test_list_parses(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_get_opener") as op:
-            op.return_value.open.return_value = _resp(
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp(
                 json.dumps([{"id": 1, "name": "hosts", "type": "static", "inventory": "[all]"}])
             )
             inv = c.list_inventories(5)
@@ -68,8 +72,8 @@ class TestInventoriesClient:
 
     def test_get_parses(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_get_opener") as op:
-            op.return_value.open.return_value = _resp(
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp(
                 json.dumps({"id": 1, "name": "hosts", "type": "static"})
             )
             assert c.get_inventory(5, 1).name == "hosts"
