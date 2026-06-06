@@ -13,6 +13,7 @@ from .projects import register_projects_commands
 from .repositories import register_repositories_commands
 from .run import register_run_commands
 from .schedules import register_schedules_commands
+from .self_update import register_self_update_commands
 from .tasks import register_tasks_commands
 from .templates import register_templates_commands
 from .user import register_user_commands
@@ -36,3 +37,4 @@ def register_all_commands(main_group: Any) -> None:
     register_views_commands(main_group)
     register_integrations_commands(main_group)
     register_run_commands(main_group)
+    register_self_update_commands(main_group)

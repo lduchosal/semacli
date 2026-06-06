@@ -217,6 +217,35 @@ class TestPingExamples:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# sem self-update — Examples (ken #746)
+# ─────────────────────────────────────────────────────────────────────────
+class TestSelfUpdateExamples:
+    """``self-update`` does not touch a Semaphore server — only PyPI +
+    pip. We patch the PyPI fetch + pip subprocess so the test runs
+    offline and never alters the venv."""
+
+    def test_already_up_to_date(self, tmp_path: Path) -> None:
+        from semacli import __version__
+
+        with patch(
+            "semacli.cli.commands.self_update._fetch_latest_version",
+            return_value=__version__,
+        ):
+            r = _invoke(["self-update"])
+        assert r.exit_code == 0
+        assert "Already up to date" in r.output
+
+    def test_check_only(self, tmp_path: Path) -> None:
+        with patch(
+            "semacli.cli.commands.self_update._fetch_latest_version",
+            return_value="99.99.99",
+        ):
+            r = _invoke(["self-update", "--check"])
+        # --check exit 1 when an upgrade is available — scriptable.
+        assert r.exit_code == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # semacli init — interactive, only flag parsing is validated here
 # ─────────────────────────────────────────────────────────────────────────
 class TestInitExamples:

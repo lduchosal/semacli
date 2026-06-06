@@ -118,7 +118,7 @@ run_command_soft "ken wiki build" "Wiki build"
 # Non-fatal: PyPI is already updated, so a git hiccup must not abort the
 # script — the operator pushes manually.
 print_step "13/13 Git commit + push (release artifacts)"
-VERSION=$(grep -oE '"[^"]+"' semacli/__init__.py | head -1 | tr -d '"')
+VERSION=$(grep '^__version__' semacli/__init__.py | cut -d'"' -f2)
 COMMIT_MSG="release: v${VERSION} — auto by publish.sh"
 echo "${YELLOW}→ Running: git add -A && git commit -m \"${COMMIT_MSG}\" && git push${NC}"
 if git add -A && git diff --cached --quiet; then
