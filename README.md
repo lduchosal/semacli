@@ -115,6 +115,32 @@ method = env_var
 env_var = SEMAPHORE_TOKEN
 ```
 
+#### Shell hooks around `sem run`
+
+Declare `[hook]` keys in `semacli.ini` to fire shell commands before/after
+a template run. Useful for syncing a remote repo, sending notifications,
+or paging on failure. Relative paths resolve against the `.ini` directory.
+
+```ini
+[hook]
+# Aborts the run with exit 6 on non-zero. Receives env vars:
+#   SEMACLI_TEMPLATE, SEMACLI_LIMIT, SEMACLI_TAGS, SEMACLI_PROJECT,
+#   SEMACLI_TEMPLATE_ID, SEMACLI_CONFIG, SEMACLI_EVENT
+task_run_prehook = scripts/sync-svn.sh
+
+# Fires after watch completes (any status). Failures = warnings only.
+# Also receives SEMACLI_TASK_ID and SEMACLI_STATUS.
+task_run_posthook = scripts/notify.sh
+
+# Same envelope as posthook, fires only when status != success.
+task_run_failhook = scripts/page-oncall.sh
+
+# Default 60s, applies per-hook.
+timeout = 30
+```
+
+Pass `--no-hooks` on `sem run` to bypass them (debug / replay).
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -125,6 +151,7 @@ env_var = SEMAPHORE_TOKEN
 | 3 | Authentication error |
 | 4 | API error |
 | 5 | Not found |
+| 6 | Hook aborted the command (pre-hook returned non-zero or timed out) |
 
 ## Development
 

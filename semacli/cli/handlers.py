@@ -9,6 +9,7 @@ from semacli.core.exceptions import (
     AmbiguousNameError,
     AuthenticationError,
     ConfigurationError,
+    HookError,
     NotFoundError,
     SemaphoreAPIError,
 )
@@ -23,6 +24,7 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
         3 - Authentication error
         4 - API error
         5 - Not found
+        6 - Hook abort (pre-hook returned non-zero or timed out)
     """
     if verbose >= 1:
         click.echo(f"DEBUG: {type(error).__name__}: {error}", err=True)
@@ -42,6 +44,9 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
     elif isinstance(error, SemaphoreAPIError):
         click.echo(f"API error: {error}", err=True)
         sys.exit(4)
+    elif isinstance(error, HookError):
+        click.echo(f"error: {error}", err=True)
+        sys.exit(6)
     else:
         click.echo(f"Error: {error}", err=True)
         sys.exit(1)

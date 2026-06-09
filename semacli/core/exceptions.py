@@ -31,6 +31,12 @@ class NotFoundError(SemaCliError):
     pass
 
 
+class HookError(SemaCliError):
+    """Raised when a configured hook fails (non-zero exit or timeout)."""
+
+    pass
+
+
 class AmbiguousNameError(SemaCliError):
     """Raised when a name resolves to more than one object and no exact
     match wins. Carries the candidate list so the caller can show it.

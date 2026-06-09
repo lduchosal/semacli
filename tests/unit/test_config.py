@@ -108,6 +108,53 @@ class TestLoadConfig:
         with pytest.raises(ConfigurationError, match="Plain HTTP"):
             load_config(str(ini))
 
+    def test_hook_section_parsed(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [hook]
+            task_run_prehook = /bin/true
+            task_run_posthook = /bin/false
+            timeout = 15
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert "task_run_prehook" in cfg.hooks.hooks
+        assert "task_run_posthook" in cfg.hooks.hooks
+        assert cfg.hooks.timeout == 15
+
+    def test_hook_section_absent_yields_empty_config(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.hooks.hooks == {}
+        assert cfg.hooks.timeout == 60
+
+    def test_hook_invalid_timeout_raises_configuration_error(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [hook]
+            timeout = soon
+            """,
+        )
+        with pytest.raises(ConfigurationError, match="timeout"):
+            load_config(str(ini))
+
     def test_http_url_allowed_with_flag(self, tmp_path: Path) -> None:
         ini = _write_ini(
             tmp_path,

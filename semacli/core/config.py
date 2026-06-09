@@ -2,10 +2,11 @@
 
 import configparser
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .exceptions import ConfigurationError
+from .hooks import HookConfig, parse_hook_config
 
 
 @dataclass
@@ -18,6 +19,7 @@ class SemaphoreConfig:
     timeout: int = 30
     verify_ssl: bool = True
     allow_http: bool = False
+    hooks: HookConfig = field(default_factory=HookConfig)
 
 
 def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
@@ -35,7 +37,7 @@ def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
 
     config.read(config_file)
 
-    return _parse_config(config)
+    return _parse_config(config, Path(config_file))
 
 
 def _find_config_file(config_path: str) -> str | None:
@@ -65,7 +67,7 @@ def _find_config_file(config_path: str) -> str | None:
     return config_path
 
 
-def _parse_config(config: configparser.ConfigParser) -> SemaphoreConfig:
+def _parse_config(config: configparser.ConfigParser, config_file: Path) -> SemaphoreConfig:
     """Parse configuration into SemaphoreConfig object."""
     if "semaphore" not in config:
         raise ConfigurationError("Missing [semaphore] section in configuration")
@@ -105,6 +107,13 @@ def _parse_config(config: configparser.ConfigParser) -> SemaphoreConfig:
         verify_ssl = settings_section.getboolean("verify_ssl", True)
         allow_http = settings_section.getboolean("allow_http", False)
 
+    hooks = HookConfig()
+    if "hook" in config:
+        try:
+            hooks = parse_hook_config(dict(config["hook"]), config_file)
+        except ValueError as exc:
+            raise ConfigurationError(str(exc)) from exc
+
     clean_url = url.rstrip("/")
     if clean_url.startswith("http://") and not allow_http:
         raise ConfigurationError(
@@ -119,4 +128,5 @@ def _parse_config(config: configparser.ConfigParser) -> SemaphoreConfig:
         timeout=timeout,
         verify_ssl=verify_ssl,
         allow_http=allow_http,
+        hooks=hooks,
     )

@@ -22,3 +22,29 @@ verify_ssl = true
 # to talk to a Semaphore instance over plain HTTP — credentials and data
 # travel in clear text.
 # allow_http = false
+
+# [hook]
+# Shell hooks fired around CLI commands. Keys follow the pattern
+# <group>_<verb>_<event>. Relative paths resolve against this file's
+# directory, so `../scripts/sync.sh` works from any cwd. Values are
+# parsed with shlex (arguments are supported).
+#
+# Phase 1 supports task_run_* — fired around `sem run` (and `sem task run`):
+#   task_run_prehook   : runs before the task is created. Non-zero exit
+#                        aborts the run with exit code 6.
+#   task_run_posthook  : runs after the task reaches a final state
+#                        (success/error/stopped). Failures are warnings.
+#   task_run_failhook  : runs after the task reaches a final state if
+#                        that state is not success.
+#
+# Hooks receive context as env vars: SEMACLI_COMMAND, SEMACLI_GROUP,
+# SEMACLI_VERB, SEMACLI_EVENT, SEMACLI_CONFIG, SEMACLI_PROJECT,
+# SEMACLI_TEMPLATE, SEMACLI_TEMPLATE_ID, SEMACLI_LIMIT, SEMACLI_TAGS;
+# post/fail hooks also receive SEMACLI_TASK_ID and SEMACLI_STATUS.
+#
+# Pass `--no-hooks` on the command line to bypass them.
+#
+# task_run_prehook  = scripts/semaphore_sync_svnrepo.sh
+# task_run_posthook = scripts/notify.sh
+# task_run_failhook = scripts/alert.sh oncall
+# timeout = 60

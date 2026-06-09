@@ -12,6 +12,8 @@ import click
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
+from semacli.core.exceptions import HookError
+from semacli.core.hooks import run_hook, warn_hook_failure
 from semacli.core.resolve import resolve_template
 
 from .._envvars import normalize_environment
@@ -102,6 +104,12 @@ def register_run_commands(main_group: Any) -> None:
         help="Tail the task output until it finishes (default: on).",
     )
     @click.option("--interval", default=2.0, type=float, help="Watch polling interval in seconds")
+    @click.option(
+        "--no-hooks",
+        "no_hooks",
+        is_flag=True,
+        help="Skip any task_run_* hooks configured in [hook] (debug / replay).",
+    )
     @common_options
     @output_options
     @project_option
@@ -118,6 +126,7 @@ def register_run_commands(main_group: Any) -> None:
         exact: bool,
         watch: bool,
         interval: float,
+        no_hooks: bool,
         config: str,
         verbose: int,
         output_json: bool,
@@ -136,6 +145,27 @@ def register_run_commands(main_group: Any) -> None:
             template_id = resolve_template(client, pid, template, exact=exact)
             OutputFormatter.format_verbose(
                 f"resolved template '{template}' -> id {template_id}", verbose
+            )
+
+            hook_env_base = {
+                "SEMACLI_COMMAND": "run",
+                "SEMACLI_GROUP": "task",
+                "SEMACLI_VERB": "run",
+                "SEMACLI_CONFIG": config,
+                "SEMACLI_PROJECT": str(pid),
+                "SEMACLI_TEMPLATE": template,
+                "SEMACLI_TEMPLATE_ID": str(template_id),
+                "SEMACLI_LIMIT": limit or "",
+                "SEMACLI_TAGS": tags or "",
+            }
+            hooks_enabled = not no_hooks
+
+            run_hook(
+                cfg.hooks,
+                "task_run_prehook",
+                hook_env_base,
+                verbose=verbose,
+                enabled=hooks_enabled,
             )
 
             task = client.run_task(
@@ -160,6 +190,24 @@ def register_run_commands(main_group: Any) -> None:
                 final = _watch_task(client, pid, task.id, interval)
                 if not quiet:
                     click.echo(f"\n-> status: {final}", err=True)
+                hook_env_after = {
+                    **hook_env_base,
+                    "SEMACLI_TASK_ID": str(task.id),
+                    "SEMACLI_STATUS": final,
+                }
+                for hook_key in ("task_run_posthook",) + (
+                    ("task_run_failhook",) if final != "success" else ()
+                ):
+                    try:
+                        run_hook(
+                            cfg.hooks,
+                            hook_key,
+                            hook_env_after,
+                            verbose=verbose,
+                            enabled=hooks_enabled,
+                        )
+                    except HookError as hook_err:
+                        warn_hook_failure(hook_err, hook_key)
                 if final != "success":
                     raise SystemExit(1)
         except SystemExit:
