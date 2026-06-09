@@ -115,6 +115,35 @@ method = env_var
 env_var = SEMAPHORE_TOKEN
 ```
 
+#### Auto-load `.env` (opt-in)
+
+When `method = env_var`, the token must be in your shell before you run
+`sem`. Two ways to make that happen:
+
+1. **`direnv`** (recommended for active dev) — `brew install direnv` +
+   `eval "$(direnv hook zsh)"`, then drop a `.envrc` (or `.env` with
+   `dotenv` directive) in the project. Auto-loads on `cd`.
+2. **`[settings] load_dotenv = true`** (no extra tool) — semacli reads
+   `.env` next to your `semacli.ini` at startup. Existing shell vars
+   always win, so the file only fills gaps.
+
+```ini
+[settings]
+load_dotenv = true
+# load_dotenv_file = .env   # optional; relative paths resolve against
+                            # the semacli.ini directory.
+```
+
+```sh
+# .env (gitignored, chmod 600)
+SEMAPHORE_TOKEN=ninjwlgclse7_...
+```
+
+The file is parsed by [`python-dotenv`](https://pypi.org/project/python-dotenv/),
+so quoting, comments, and `${VAR}` interpolation all work as expected.
+A warning is printed if `.env` is group/world-readable — `chmod 600 .env`
+to silence it.
+
 #### Shell hooks around `sem run`
 
 Declare `[hook]` keys in `semacli.ini` to fire shell commands before/after

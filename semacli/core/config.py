@@ -2,8 +2,12 @@
 
 import configparser
 import os
+import stat
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import click
+from dotenv import load_dotenv
 
 from .exceptions import ConfigurationError
 from .hooks import HookConfig, parse_hook_config
@@ -20,6 +24,8 @@ class SemaphoreConfig:
     verify_ssl: bool = True
     allow_http: bool = False
     hooks: HookConfig = field(default_factory=HookConfig)
+    load_dotenv: bool = False
+    load_dotenv_file: str | None = None
 
 
 def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
@@ -81,6 +87,25 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
     project_raw = sema_section.get("project")
     project = int(project_raw) if project_raw else None
 
+    timeout = 30
+    verify_ssl = True
+    allow_http = False
+    load_dotenv_flag = False
+    load_dotenv_file: str | None = None
+
+    if "settings" in config:
+        settings_section = config["settings"]
+        timeout = settings_section.getint("timeout", 30)
+        verify_ssl = settings_section.getboolean("verify_ssl", True)
+        allow_http = settings_section.getboolean("allow_http", False)
+        load_dotenv_flag = settings_section.getboolean("load_dotenv", False)
+        load_dotenv_file = settings_section.get("load_dotenv_file") or None
+
+    # Apply dotenv BEFORE resolving env-based auth so SEMAPHORE_TOKEN-style
+    # vars sourced from .env are visible when we read os.environ below.
+    if load_dotenv_flag:
+        _apply_dotenv(config_file, load_dotenv_file)
+
     bearer_token: str | None = None
 
     if "auth" in config:
@@ -96,16 +121,6 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
             raise ConfigurationError(f"Unknown auth method: {method}")
     else:
         bearer_token = sema_section.get("bearer_token")
-
-    timeout = 30
-    verify_ssl = True
-    allow_http = False
-
-    if "settings" in config:
-        settings_section = config["settings"]
-        timeout = settings_section.getint("timeout", 30)
-        verify_ssl = settings_section.getboolean("verify_ssl", True)
-        allow_http = settings_section.getboolean("allow_http", False)
 
     hooks = HookConfig()
     if "hook" in config:
@@ -129,4 +144,44 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
         verify_ssl=verify_ssl,
         allow_http=allow_http,
         hooks=hooks,
+        load_dotenv=load_dotenv_flag,
+        load_dotenv_file=load_dotenv_file,
     )
+
+
+def _apply_dotenv(config_file: Path, override_path: str | None) -> None:
+    """Load `.env` values into os.environ if [settings] load_dotenv = true.
+
+    Path resolution:
+      - Default: <config_dir>/.env
+      - load_dotenv_file absolute: used as-is
+      - load_dotenv_file relative: resolved against config_dir
+
+    Missing file is a silent no-op (a user who toggled the flag then
+    removed the file shouldn't get a crash). Existing shell vars win
+    over .env values (override=False).
+
+    Warns on world-readable permissions to nudge users toward chmod 600.
+    """
+    config_dir = config_file.parent.resolve()
+    if override_path is None:
+        dotenv_path = config_dir / ".env"
+    else:
+        p = Path(override_path)
+        dotenv_path = p if p.is_absolute() else (config_dir / p)
+
+    if not dotenv_path.exists():
+        return
+
+    try:
+        mode = dotenv_path.stat().st_mode
+        if mode & (stat.S_IRWXG | stat.S_IRWXO):
+            click.echo(
+                f"WARNING: {dotenv_path} is group/world-accessible "
+                f"(mode {oct(mode & 0o777)}) — chmod 600 recommended",
+                err=True,
+            )
+    except OSError:
+        pass
+
+    load_dotenv(dotenv_path, override=False)

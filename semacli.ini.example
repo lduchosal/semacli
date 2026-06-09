@@ -23,6 +23,16 @@ verify_ssl = true
 # travel in clear text.
 # allow_http = false
 
+# load_dotenv = false means semacli will NOT touch your environment.
+# Set to true to auto-load a `.env` file next to this semacli.ini before
+# resolving [auth] method = env_var — useful for keeping the bearer token
+# out of a committed semacli.ini. Existing shell variables always win,
+# so `.env` only fills the gaps. `chmod 600 .env` is recommended; a
+# warning is emitted on stderr otherwise.
+# load_dotenv = false
+# load_dotenv_file = .env    # optional override; relative paths resolve
+                             # against the semacli.ini directory.
+
 # [hook]
 # Shell hooks fired around CLI commands. Keys follow the pattern
 # <group>_<verb>_<event>. Relative paths resolve against this file's

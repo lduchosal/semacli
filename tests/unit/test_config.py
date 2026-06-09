@@ -1,5 +1,6 @@
 """Tests for semacli.core.config."""
 
+import os
 import textwrap
 from pathlib import Path
 
@@ -154,6 +155,160 @@ class TestLoadConfig:
         )
         with pytest.raises(ConfigurationError, match="timeout"):
             load_config(str(ini))
+
+    def test_load_dotenv_disabled_by_default(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("SEMA_FROM_DOTENV", raising=False)
+        (tmp_path / ".env").write_text("SEMA_FROM_DOTENV=should-not-load\n")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+            """,
+        )
+        load_config(str(ini))
+        assert "SEMA_FROM_DOTENV" not in os.environ
+
+    def test_load_dotenv_true_injects_from_adjacent_env(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("SEMA_FROM_DOTENV", raising=False)
+        (tmp_path / ".env").write_text("SEMA_FROM_DOTENV=loaded-value\n")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+
+            [auth]
+            method = env_var
+            env_var = SEMA_FROM_DOTENV
+
+            [settings]
+            load_dotenv = true
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.bearer_token == "loaded-value"
+
+    def test_load_dotenv_missing_file_is_silent_noop(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("SEMA_FROM_DOTENV", raising=False)
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [settings]
+            load_dotenv = true
+            """,
+        )
+        load_config(str(ini))  # no .env present, no error
+
+    def test_load_dotenv_does_not_override_existing_shell_var(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("SEMA_FROM_DOTENV", "from-shell")
+        (tmp_path / ".env").write_text("SEMA_FROM_DOTENV=from-dotenv\n")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+
+            [auth]
+            method = env_var
+            env_var = SEMA_FROM_DOTENV
+
+            [settings]
+            load_dotenv = true
+            """,
+        )
+        cfg = load_config(str(ini))
+        # shell wins (override=False)
+        assert cfg.bearer_token == "from-shell"
+
+    def test_load_dotenv_file_relative_to_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("SEMA_FROM_DOTENV", raising=False)
+        sub = tmp_path / "secrets"
+        sub.mkdir()
+        (sub / "team.env").write_text("SEMA_FROM_DOTENV=team-value\n")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+
+            [auth]
+            method = env_var
+            env_var = SEMA_FROM_DOTENV
+
+            [settings]
+            load_dotenv = true
+            load_dotenv_file = secrets/team.env
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.bearer_token == "team-value"
+
+    def test_load_dotenv_file_absolute_path(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("SEMA_FROM_DOTENV", raising=False)
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        env_file = elsewhere / "abs.env"
+        env_file.write_text("SEMA_FROM_DOTENV=absolute-value\n")
+        ini = _write_ini(
+            tmp_path,
+            f"""
+            [semaphore]
+            url = https://semaphore.example
+
+            [auth]
+            method = env_var
+            env_var = SEMA_FROM_DOTENV
+
+            [settings]
+            load_dotenv = true
+            load_dotenv_file = {env_file}
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.bearer_token == "absolute-value"
+
+    def test_load_dotenv_warns_on_world_readable(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.delenv("SEMA_FROM_DOTENV", raising=False)
+        env_file = tmp_path / ".env"
+        env_file.write_text("SEMA_FROM_DOTENV=v\n")
+        os.chmod(env_file, 0o644)  # group/world-readable
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [settings]
+            load_dotenv = true
+            """,
+        )
+        load_config(str(ini))
+        err = capsys.readouterr().err
+        assert "chmod 600" in err
 
     def test_http_url_allowed_with_flag(self, tmp_path: Path) -> None:
         ini = _write_ini(
