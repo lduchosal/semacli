@@ -103,18 +103,50 @@ class TestRunTask:
                 playbook="custom.yml",
                 environment='{"k": "v"}',
                 limit="ans1",
-                debug=True,
+                debug=2,
                 dry_run=True,
             )
         body = req.call_args.kwargs["body"]
+        # Ansible flags live under `params`; only template_id, playbook
+        # and environment stay at the top level of the body (cf ken #782
+        # — top-level dry_run/diff/debug were silently dropped server-side).
         assert body == {
             "template_id": 10,
             "playbook": "custom.yml",
             "environment": '{"k": "v"}',
-            "limit": "ans1",
-            "debug": True,
-            "dry_run": True,
+            "params": {
+                "limit": ["ans1"],
+                "dry_run": True,
+                "debug": True,
+                "debug_level": 2,
+            },
         }
+
+    def test_csv_limit_tags_split_into_arrays(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_request", return_value={"id": 99}) as req:
+            c.run_task(5, 10, limit="ans1,ans2", tags="ntp, users", skip_tags="slow")
+        body = req.call_args.kwargs["body"]
+        assert body["params"]["limit"] == ["ans1", "ans2"]
+        assert body["params"]["tags"] == ["ntp", "users"]
+        assert body["params"]["skip_tags"] == ["slow"]
+
+    def test_diff_flag_propagates(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_request", return_value={"id": 99}) as req:
+            c.run_task(5, 10, diff=True)
+        body = req.call_args.kwargs["body"]
+        assert body["params"] == {"diff": True}
+
+    def test_no_params_dict_when_all_defaults(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_request", return_value={"id": 99}) as req:
+            c.run_task(5, 10)
+        body = req.call_args.kwargs["body"]
+        # When no ansible flags are given, params is absent — the server
+        # treats absent params and {} the same, but absence is the
+        # cleanest contract.
+        assert "params" not in body
 
     def test_non_dict_raises(self) -> None:
         c = SemaphoreClient(_cfg())

@@ -41,10 +41,12 @@ def test_run_environment_override(
         if r.method == "POST" and r.uri.endswith("/tasks")
     )
     body = json.loads(post.body)
-    # The environment field is a JSON-encoded string at the body level.
+    # The environment field is a JSON-encoded string at the body level
+    # (it overrides Semaphore's stored env vars, see template config).
     assert body["environment"] == f'{{"msg":"{MSG}"}}'
     assert json.loads(body["environment"]) == {"msg": MSG}
-    assert body["dry_run"] is True
+    # Per ken #782, dry_run now lives under `params`.
+    assert body["params"]["dry_run"] is True
 
 
 def _resolve_echo_id(client: SemaphoreClient) -> int:

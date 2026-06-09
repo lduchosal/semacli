@@ -49,9 +49,13 @@ def test_run_with_limit_check(
         if r.method == "POST" and r.uri.endswith("/tasks")
     )
     body = json.loads(post.body)
-    assert body["limit"] == "ans1"
-    assert body["dry_run"] is True
-    assert "diff" not in body  # we did not pass --diff
+    # Per ken #782, ansible flags moved under `params` (with limit as
+    # an array). Previously the top-level `limit` string only worked by
+    # accident, via the deprecated `PreInsert` migration in db.Task.
+    assert body["params"]["limit"] == ["ans1"]
+    assert body["params"]["dry_run"] is True
+    assert "diff" not in body["params"]  # we did not pass --diff
+    assert "limit" not in body  # no longer at the top level
 
 
 def _resolve_echo_id(client: SemaphoreClient) -> int:

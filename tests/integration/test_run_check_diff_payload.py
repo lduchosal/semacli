@@ -36,9 +36,11 @@ def test_run_check_and_diff(
         if r.method == "POST" and r.uri.endswith("/tasks")
     )
     body = json.loads(post.body)
-    assert body["dry_run"] is True
-    assert body["diff"] is True
-    assert "limit" not in body
+    # Per ken #782 — ansible flags live under `params`. Top-level
+    # `dry_run`/`diff` were silently dropped by Semaphore before.
+    assert body["params"]["dry_run"] is True
+    assert body["params"]["diff"] is True
+    assert "limit" not in body["params"]
 
 
 def _resolve_echo_id(client: SemaphoreClient) -> int:

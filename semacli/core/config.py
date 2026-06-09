@@ -176,9 +176,7 @@ def _resolve_use_system_ca(raw: str | None) -> bool:
         return True
     if normalized in {"false", "no", "off", "0"}:
         return False
-    raise ConfigurationError(
-        f"[settings] use_system_ca: expected true/false/auto, got {raw!r}"
-    )
+    raise ConfigurationError(f"[settings] use_system_ca: expected true/false/auto, got {raw!r}")
 
 
 def _apply_dotenv(config_file: Path, override_path: str | None) -> None:

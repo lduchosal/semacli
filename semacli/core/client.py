@@ -29,6 +29,12 @@ from .models import (
     View,
 )
 
+
+def _split_csv(raw: str) -> list[str]:
+    """Split an ansible-style comma list into trimmed non-empty items."""
+    return [s.strip() for s in raw.split(",") if s.strip()]
+
+
 _truststore_injected = False
 
 
@@ -211,28 +217,42 @@ class SemaphoreClient:
     ) -> Task:
         """POST /api/project/{pid}/tasks — launch a task from a template.
 
-        ``debug`` is an ansible verbosity level (0=off, 1=-v ... 4=-vvvv).
-        The current Semaphore body field is a plain boolean; the level→API
-        mapping will be revisited once VCR cassettes show what the server
-        accepts (ken #739 Phase 2).
+        Body shape matches Semaphore's `db.Task` + `AnsibleTaskParams`:
+        ansible-flavoured flags (limit/tags/skip_tags/dry_run/diff/debug/
+        debug_level) belong under a nested `params` object. Sending them
+        at the top level — as semacli did before ken #782 — was silently
+        dropped by the server's `db.Task` json.Unmarshal because the
+        struct only carries a deprecated top-level `Limit` string.
+
+        `debug` is an ansible verbosity level (0=off, 1=-v ... 4=-vvvv);
+        we emit both `debug: true` (toggle) and `debug_level: <n>` (int)
+        because that is what `AnsibleTaskParams` expects.
+
+        comma-separated cli inputs (`--limit a,b`, `--tags x,y`) are
+        normalised to `[]string` per the server schema.
         """
         body: dict[str, Any] = {"template_id": template_id}
         if playbook is not None:
             body["playbook"] = playbook
         if environment is not None:
             body["environment"] = environment
-        if limit is not None:
-            body["limit"] = limit
-        if tags is not None:
-            body["tags"] = tags
-        if skip_tags is not None:
-            body["skip_tags"] = skip_tags
-        if debug:
-            body["debug"] = True
+
+        params: dict[str, Any] = {}
+        if limit:
+            params["limit"] = _split_csv(limit)
+        if tags:
+            params["tags"] = _split_csv(tags)
+        if skip_tags:
+            params["skip_tags"] = _split_csv(skip_tags)
         if dry_run:
-            body["dry_run"] = True
+            params["dry_run"] = True
         if diff:
-            body["diff"] = True
+            params["diff"] = True
+        if debug:
+            params["debug"] = True
+            params["debug_level"] = int(debug)
+        if params:
+            body["params"] = params
 
         data = self._request(f"project/{project_id}/tasks", method="POST", body=body)
         if not isinstance(data, dict):
