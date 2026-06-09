@@ -310,6 +310,106 @@ class TestLoadConfig:
         err = capsys.readouterr().err
         assert "chmod 600" in err
 
+    def test_use_system_ca_auto_off_on_linux(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("sys.platform", "linux")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.use_system_ca is False
+
+    def test_use_system_ca_auto_on_on_windows(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("sys.platform", "win32")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.use_system_ca is True
+
+    def test_use_system_ca_auto_explicit_on_linux(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("sys.platform", "linux")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [settings]
+            use_system_ca = auto
+            """,
+        )
+        cfg = load_config(str(ini))
+        # `auto` matches absent-key behaviour.
+        assert cfg.use_system_ca is False
+
+    def test_use_system_ca_true_forces_on_anywhere(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("sys.platform", "linux")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [settings]
+            use_system_ca = true
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.use_system_ca is True
+
+    def test_use_system_ca_false_forces_off_on_windows(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("sys.platform", "win32")
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [settings]
+            use_system_ca = false
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.use_system_ca is False
+
+    def test_use_system_ca_invalid_value_raises(self, tmp_path: Path) -> None:
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [settings]
+            use_system_ca = maybe
+            """,
+        )
+        with pytest.raises(ConfigurationError, match="use_system_ca"):
+            load_config(str(ini))
+
     def test_http_url_allowed_with_flag(self, tmp_path: Path) -> None:
         ini = _write_ini(
             tmp_path,

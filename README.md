@@ -115,6 +115,30 @@ method = env_var
 env_var = SEMAPHORE_TOKEN
 ```
 
+#### TLS / system certificate store
+
+`requests` ships with the [certifi](https://pypi.org/project/certifi/) CA
+bundle and ignores the OS trust store by default. On corporate Windows
+machines, root CAs installed via Group Policy are therefore **not
+trusted** and you'll see `SSLError: unable to get local issuer
+certificate` against an internal Semaphore. Same trap on macOS if your
+corp CA only lives in Keychain.
+
+semacli defaults to `use_system_ca = auto` — on (Windows) / off (macOS,
+Linux). Force it either way if needed:
+
+```ini
+[settings]
+# use_system_ca = auto   # default: true on Windows, false elsewhere
+# use_system_ca = true   # force-use OS trust store (e.g. macOS Keychain)
+# use_system_ca = false  # force-use certifi bundle (e.g. cross-platform CI)
+```
+
+Implementation: when on, semacli calls `truststore.inject_into_ssl()`
+(via the [`truststore`](https://pypi.org/project/truststore/) library,
+maintained by the urllib3 author). TLS verification stays on — only the
+source of trust anchors changes.
+
 #### Auto-load `.env` (opt-in)
 
 When `method = env_var`, the token must be in your shell before you run

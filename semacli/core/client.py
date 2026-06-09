@@ -5,6 +5,7 @@ import sys
 from typing import Any
 
 import requests
+import truststore
 import urllib3
 
 from .config import SemaphoreConfig
@@ -27,6 +28,22 @@ from .models import (
     UserToken,
     View,
 )
+
+_truststore_injected = False
+
+
+def _inject_truststore_once() -> None:
+    """Patch ssl.SSLContext to use the OS trust store, once per process.
+
+    `truststore.inject_into_ssl` is idempotent in spirit but cheap to
+    short-circuit, and the module-level guard makes intent obvious in
+    tests (we can assert it was called exactly once across N clients).
+    """
+    global _truststore_injected
+    if _truststore_injected:
+        return
+    truststore.inject_into_ssl()
+    _truststore_injected = True
 
 
 class SemaphoreClient:
@@ -62,6 +79,8 @@ class SemaphoreClient:
     def _get_session(self) -> requests.Session:
         """Get or create the underlying ``requests.Session``."""
         if self._session is None:
+            if self.config.verify_ssl and self.config.use_system_ca:
+                _inject_truststore_once()
             s = requests.Session()
             s.verify = bool(self.config.verify_ssl)
             if not self.config.verify_ssl:

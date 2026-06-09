@@ -3,6 +3,7 @@
 import configparser
 import os
 import stat
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -26,6 +27,7 @@ class SemaphoreConfig:
     hooks: HookConfig = field(default_factory=HookConfig)
     load_dotenv: bool = False
     load_dotenv_file: str | None = None
+    use_system_ca: bool = False
 
 
 def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
@@ -93,6 +95,8 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
     load_dotenv_flag = False
     load_dotenv_file: str | None = None
 
+    use_system_ca = _default_use_system_ca()
+
     if "settings" in config:
         settings_section = config["settings"]
         timeout = settings_section.getint("timeout", 30)
@@ -100,6 +104,7 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
         allow_http = settings_section.getboolean("allow_http", False)
         load_dotenv_flag = settings_section.getboolean("load_dotenv", False)
         load_dotenv_file = settings_section.get("load_dotenv_file") or None
+        use_system_ca = _resolve_use_system_ca(settings_section.get("use_system_ca"))
 
     # Apply dotenv BEFORE resolving env-based auth so SEMAPHORE_TOKEN-style
     # vars sourced from .env are visible when we read os.environ below.
@@ -146,6 +151,33 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
         hooks=hooks,
         load_dotenv=load_dotenv_flag,
         load_dotenv_file=load_dotenv_file,
+        use_system_ca=use_system_ca,
+    )
+
+
+def _default_use_system_ca() -> bool:
+    """Default for `use_system_ca` when [settings] is absent or silent.
+
+    `auto` semantics: on by default on Windows (where the certifi bundle
+    doesn't include corporate root CAs installed via Group Policy), off
+    elsewhere (where certifi is the conventional source of trust).
+    """
+    return sys.platform == "win32"
+
+
+def _resolve_use_system_ca(raw: str | None) -> bool:
+    """Parse the `use_system_ca` value (`true`/`false`/`auto`)."""
+    if raw is None:
+        return _default_use_system_ca()
+    normalized = raw.strip().lower()
+    if normalized in {"auto", ""}:
+        return _default_use_system_ca()
+    if normalized in {"true", "yes", "on", "1"}:
+        return True
+    if normalized in {"false", "no", "off", "0"}:
+        return False
+    raise ConfigurationError(
+        f"[settings] use_system_ca: expected true/false/auto, got {raw!r}"
     )
 
 

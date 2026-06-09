@@ -23,6 +23,13 @@ verify_ssl = true
 # travel in clear text.
 # allow_http = false
 
+# use_system_ca controls where TLS root CAs come from. `auto` (default)
+# is true on Windows (Group Policy-installed corp CAs are honoured) and
+# false elsewhere (certifi bundle, the conventional choice). Force `true`
+# on macOS if your corp CA lives in Keychain, or `false` on Windows to
+# pin behaviour to certifi (useful for cross-platform CI parity).
+# use_system_ca = auto
+
 # load_dotenv = false means semacli will NOT touch your environment.
 # Set to true to auto-load a `.env` file next to this semacli.ini before
 # resolving [auth] method = env_var — useful for keeping the bearer token
