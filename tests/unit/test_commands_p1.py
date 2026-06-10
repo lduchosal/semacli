@@ -1,5 +1,6 @@
 """Tests for the P1 CLI command groups (inventories, environments, repositories, keys, schedules)."""
 
+import json
 import textwrap
 from pathlib import Path
 from unittest.mock import patch
@@ -316,6 +317,48 @@ class TestTasksExtras:
             r = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "list"])
         assert r.exit_code == 0
         assert "99" in r.output
+
+    def test_list_shows_template_alias_and_id(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.list_tasks.return_value = [
+                Task(id=99, template_id=10, tpl_alias="doas", status="success", created="t"),
+                Task(id=98, template_id=12, tpl_alias="mtree", status="error", created="t"),
+            ]
+            r = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "list"])
+        assert r.exit_code == 0
+        assert "tpl=10" in r.output
+        assert "doas " in r.output
+        assert "mtree" in r.output
+
+    def test_list_json_includes_alias_fields(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.list_tasks.return_value = [
+                Task(
+                    id=99,
+                    template_id=10,
+                    tpl_alias="doas",
+                    tpl_playbook="doas.yml",
+                    status="success",
+                    created="t",
+                ),
+            ]
+            r = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "--json", "list"])
+        payload = json.loads(r.output)
+        assert payload[0]["template_id"] == 10
+        assert payload[0]["tpl_alias"] == "doas"
+        assert payload[0]["tpl_playbook"] == "doas.yml"
+
+    def test_show_displays_template_alias(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+            Mock.return_value.get_task.return_value = Task(
+                id=99, template_id=10, tpl_alias="doas", status="success", created="t"
+            )
+            r = CliRunner().invoke(main, ["tasks", "-c", str(cfg), "show", "99"])
+        assert r.exit_code == 0
+        assert "template:    doas" in r.output
 
     def test_stop(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)

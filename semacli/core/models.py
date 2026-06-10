@@ -54,6 +54,8 @@ class Task(_ApiModel):
 
     id: int = 0
     template_id: int = 0
+    tpl_alias: str = ""
+    tpl_playbook: str = ""
     status: str = ""
     debug: bool = False
     dry_run: bool = False

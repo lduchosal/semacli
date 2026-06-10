@@ -52,6 +52,8 @@ def _emit_task_json(t: Task) -> None:
 def _emit_task_text(t: Task) -> None:
     click.echo(f"id:          {t.id}")
     click.echo(f"template_id: {t.template_id}")
+    if t.tpl_alias:
+        click.echo(f"template:    {t.tpl_alias}")
     click.echo(f"status:      {t.status}")
     if t.playbook:
         click.echo(f"playbook:    {t.playbook}")
@@ -246,6 +248,8 @@ def register_tasks_commands(main_group: Any) -> None:
                             {
                                 "id": t.id,
                                 "template_id": t.template_id,
+                                "tpl_alias": t.tpl_alias,
+                                "tpl_playbook": t.tpl_playbook,
                                 "status": t.status,
                                 "created": t.created,
                             }
@@ -258,9 +262,11 @@ def register_tasks_commands(main_group: Any) -> None:
                 if not tasks:
                     click.echo("No tasks found")
                 else:
+                    alias_width = max((len(t.tpl_alias) for t in tasks), default=0)
                     for t in tasks:
                         click.echo(
-                            f"{t.id:>5}  tpl={t.template_id:<4}  {t.status:<10}  {t.created}"
+                            f"{t.id:>5}  tpl={t.template_id:<4}  "
+                            f"{t.tpl_alias:<{alias_width}}  {t.status:<10}  {t.created}"
                         )
                     click.echo(f"\nTotal: {len(tasks)} task(s)")
         except Exception as e:
