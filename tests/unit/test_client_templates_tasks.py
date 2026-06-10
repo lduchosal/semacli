@@ -56,6 +56,26 @@ class TestTemplates:
             with pytest.raises(SemaphoreAPIError):
                 c.get_templates(5)
 
+    def test_create_sends_app_ansible_by_default(self) -> None:
+        # Modern Semaphore rejects a template without `app` with
+        # HTTP 400 "Invalid app id" (ken #812).
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp('{"id": 183, "name": "x"}')
+            c.create_template(1, name="x", playbook="x.yml", inventory_id=4, repository_id=3)
+        body = session.return_value.request.call_args.kwargs["json"]
+        assert body["app"] == "ansible"
+
+    def test_create_app_override(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp('{"id": 184, "name": "x"}')
+            c.create_template(
+                1, name="x", playbook="x.tf", inventory_id=4, repository_id=3, app="terraform"
+            )
+        body = session.return_value.request.call_args.kwargs["json"]
+        assert body["app"] == "terraform"
+
     def test_show_parses(self) -> None:
         c = SemaphoreClient(_cfg())
         with patch.object(c, "_get_session") as session:

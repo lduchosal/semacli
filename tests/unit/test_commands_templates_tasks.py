@@ -70,6 +70,22 @@ class TestTemplatesList:
         assert result.exit_code == 0
         Mock.return_value.get_templates.assert_called_with(9)
 
+    def test_hidden_list_and_ls_aliases(self, tmp_path: Path) -> None:
+        # UX.md § 4.1: bare group lists; `list`/`ls` exist as hidden aliases.
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+            Mock.return_value.get_templates.return_value = [
+                Template(id=1, project_id=1, name="deploy"),
+            ]
+            for sub in ("list", "ls"):
+                result = CliRunner().invoke(main, ["template", "-c", str(cfg), sub])
+                assert result.exit_code == 0, sub
+                assert "deploy" in result.output
+        help_out = CliRunner().invoke(main, ["template", "--help"]).output
+        listed = [line.split()[0] for line in help_out.splitlines() if line.startswith("  ")]
+        assert "list" not in listed
+        assert "ls" not in listed
+
 
 class TestTemplatesShow:
     def test_show_text(self, tmp_path: Path) -> None:

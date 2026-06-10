@@ -47,6 +47,7 @@ class Template(_ApiModel):
     repository_id: int = 0
     environment_id: int = 0
     description: str = ""
+    app: str = ""
 
 
 class Task(_ApiModel):

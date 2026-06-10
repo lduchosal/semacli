@@ -34,14 +34,21 @@ class TemplatesMixin(BaseClient):
         environment_id: int | None = None,
         description: str = "",
         arguments: str = "",
+        app: str = "ansible",
     ) -> Template:
-        """POST /api/project/{pid}/templates."""
+        """POST /api/project/{pid}/templates.
+
+        Modern Semaphore requires the ``app`` field (the runner kind:
+        ansible, terraform, bash, …) and rejects an absent/empty value
+        with ``HTTP 400 Invalid app id`` (ken #812).
+        """
         body: dict[str, Any] = {
             "project_id": project_id,
             "name": name,
             "playbook": playbook,
             "inventory_id": inventory_id,
             "repository_id": repository_id,
+            "app": app,
         }
         if environment_id is not None:
             body["environment_id"] = environment_id

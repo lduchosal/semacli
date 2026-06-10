@@ -64,8 +64,27 @@ def _emit_show_text(t: Template) -> None:
     click.echo(f"inventory_id:   {t.inventory_id}")
     click.echo(f"repository_id:  {t.repository_id}")
     click.echo(f"environment_id: {t.environment_id}")
+    if t.app:
+        click.echo(f"app:            {t.app}")
     if t.description:
         click.echo(f"description:    {t.description}")
+
+
+def _run_list(opts: dict[str, Any]) -> None:
+    """Fetch and emit the template list (bare group form and hidden `list`)."""
+    verbose = opts["verbose"]
+    try:
+        cfg = load_config(opts["config"])
+        client = SemaphoreClient(cfg, verbose=verbose)
+        pid = resolve_project(cfg, opts["project_override"])
+        OutputFormatter.format_verbose(f"GET /project/{pid}/templates", verbose)
+        templates = client.get_templates(pid)
+        if opts["output_json"]:
+            _emit_list_json(templates)
+        elif not opts["quiet"]:
+            _emit_list_text(templates)
+    except Exception as e:
+        handle_error(e, verbose)
 
 
 def register_templates_commands(main_group: Any) -> None:
@@ -98,18 +117,17 @@ def register_templates_commands(main_group: Any) -> None:
         )
         if ctx.invoked_subcommand is not None:
             return
-        try:
-            cfg = load_config(config)
-            client = SemaphoreClient(cfg, verbose=verbose)
-            pid = resolve_project(cfg, project_override)
-            OutputFormatter.format_verbose(f"GET /project/{pid}/templates", verbose)
-            templates = client.get_templates(pid)
-            if output_json:
-                _emit_list_json(templates)
-            elif not quiet:
-                _emit_list_text(templates)
-        except Exception as e:
-            handle_error(e, verbose)
+        _run_list(ctx.obj)
+
+    # Hidden alias for the bare form (UX.md § 4.1): `sem template list`
+    # and `sem template ls` work but stay out of --help.
+    @templates_group.command("list", hidden=True)
+    @click.pass_context
+    def list_cmd(ctx: click.Context) -> None:
+        """List templates (alias of the bare `sem template`)."""
+        _run_list(ctx.obj)
+
+    templates_group.add_alias("ls", "list")
 
     @templates_group.command("show")
     @click.argument("template_id", type=int)
@@ -161,6 +179,12 @@ def register_templates_commands(main_group: Any) -> None:
         default="",
         help='Default ansible-playbook arguments as a JSON array, e.g. \'["--limit", "web1"]\'.',
     )
+    @click.option(
+        "--app",
+        default="ansible",
+        show_default=True,
+        help="Runner app of the template (ansible, terraform, bash, ...).",
+    )
     @click.pass_context
     def create_cmd(
         ctx: click.Context,
@@ -171,6 +195,7 @@ def register_templates_commands(main_group: Any) -> None:
         environment_id: int | None,
         description: str,
         arguments: str,
+        app: str,
     ) -> None:
         """Create a template."""
         opts = ctx.obj
@@ -188,6 +213,7 @@ def register_templates_commands(main_group: Any) -> None:
                 environment_id=environment_id,
                 description=description,
                 arguments=arguments,
+                app=app,
             )
             if opts["output_json"]:
                 _emit_show_json(tpl)
