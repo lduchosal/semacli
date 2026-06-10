@@ -103,15 +103,15 @@ class TestSystemCA:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Reset the module-level guard so we observe a fresh inject.
-        monkeypatch.setattr("semacli.core.client._truststore_injected", False)
-        with patch("semacli.core.client.truststore.inject_into_ssl") as inj:
+        monkeypatch.setattr("semacli.core.client._base._truststore_injected", False)
+        with patch("semacli.core.client._base.truststore.inject_into_ssl") as inj:
             c = SemaphoreClient(_cfg(verify_ssl=True, use_system_ca=True))
             c._get_session()
             inj.assert_called_once()
 
     def test_use_system_ca_off_no_inject(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("semacli.core.client._truststore_injected", False)
-        with patch("semacli.core.client.truststore.inject_into_ssl") as inj:
+        monkeypatch.setattr("semacli.core.client._base._truststore_injected", False)
+        with patch("semacli.core.client._base.truststore.inject_into_ssl") as inj:
             c = SemaphoreClient(_cfg(verify_ssl=True, use_system_ca=False))
             c._get_session()
             inj.assert_not_called()
@@ -120,15 +120,15 @@ class TestSystemCA:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # No point patching ssl when verification is disabled altogether.
-        monkeypatch.setattr("semacli.core.client._truststore_injected", False)
-        with patch("semacli.core.client.truststore.inject_into_ssl") as inj:
+        monkeypatch.setattr("semacli.core.client._base._truststore_injected", False)
+        with patch("semacli.core.client._base.truststore.inject_into_ssl") as inj:
             c = SemaphoreClient(_cfg(verify_ssl=False, use_system_ca=True))
             c._get_session()
             inj.assert_not_called()
 
     def test_inject_guard_idempotent_across_clients(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("semacli.core.client._truststore_injected", False)
-        with patch("semacli.core.client.truststore.inject_into_ssl") as inj:
+        monkeypatch.setattr("semacli.core.client._base._truststore_injected", False)
+        with patch("semacli.core.client._base.truststore.inject_into_ssl") as inj:
             for _ in range(3):
                 SemaphoreClient(_cfg(verify_ssl=True, use_system_ca=True))._get_session()
             inj.assert_called_once()

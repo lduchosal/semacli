@@ -93,8 +93,9 @@ max-complexity = 10
 # per --option); C901/PLR0915 are real debt from the register-closure pattern.
 "semacli/cli/commands/*.py" = ["C901", "PLR0913", "PLR0915"]
 "semacli/cli/_crud.py" = ["PLR0913"]
-# core: god-class debt, to be resorbed by the client.py split (ken #801).
-"semacli/core/client.py" = ["C901", "PLR0913"]
+# core/client: PLR0913 is inherent to API-wrapper signatures (one parameter
+# per payload field); C901 covers run_task's params assembly only.
+"semacli/core/client/*.py" = ["C901", "PLR0913"]
 "semacli/core/config.py" = ["C901"]
 
 [tool.interrogate]
