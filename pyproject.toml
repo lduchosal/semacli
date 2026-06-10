@@ -98,6 +98,36 @@ max-complexity = 10
 "semacli/core/client/*.py" = ["C901", "PLR0913"]
 "semacli/core/config.py" = ["C901"]
 
+[tool.importlinter]
+root_package = "semacli"
+
+[[tool.importlinter.contracts]]
+name = "cli imports core, never the reverse"
+type = "layers"
+layers = ["semacli.cli", "semacli.core"]
+
+[[tool.importlinter.contracts]]
+name = "command modules stay independent of each other"
+type = "independence"
+modules = [
+    "semacli.cli.commands.environments",
+    "semacli.cli.commands.info",
+    "semacli.cli.commands.init",
+    "semacli.cli.commands.integrations",
+    "semacli.cli.commands.inventories",
+    "semacli.cli.commands.keys",
+    "semacli.cli.commands.ping",
+    "semacli.cli.commands.projects",
+    "semacli.cli.commands.repositories",
+    "semacli.cli.commands.run",
+    "semacli.cli.commands.schedules",
+    "semacli.cli.commands.self_update",
+    "semacli.cli.commands.tasks",
+    "semacli.cli.commands.templates",
+    "semacli.cli.commands.user",
+    "semacli.cli.commands.views",
+]
+
 [tool.interrogate]
 fail-under = 0
 ignore-init-method = true
@@ -133,11 +163,12 @@ test-integration = "env PYTHONPATH=src python -m pytest tests/integration/ --vcr
 test-integration-record = "env PYTHONPATH=src python -m pytest tests/integration/ -v"
 test-cov = "env PYTHONPATH=src python -m pytest tests/ -v --cov=semacli --cov-report=html --cov-report=term-missing"
 lint = "ruff check semacli/ tests/"
+arch = "lint-imports"
 lint-fix = "ruff check --fix semacli/ tests/"
 format-check = "black --check semacli/ tests/"
 interrogate = "interrogate semacli/"
 test-cov-xml = "env PYTHONPATH=src python -m pytest tests/ --cov=semacli --cov-report=xml --cov-report=term --cov-fail-under=80"
-check = {composite = ["lint", "format-check", "typecheck", "test"]}
+check = {composite = ["lint", "format-check", "typecheck", "arch", "test"]}
 clean = "rm -rf .coverage htmlcov/ .pytest_cache/ __pycache__/ semacli/__pycache__/"
 version-patch = "pdm bump patch"
 version-minor = "pdm bump minor"
@@ -156,4 +187,5 @@ dev = [
     "interrogate>=1.7.0",
     "vcrpy>=8.1.1",
     "pytest-vcr>=1.0.2",
+    "import-linter>=2.11",
 ]
