@@ -81,8 +81,21 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "C4"]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "C90", "PLR0913", "PLR0915"]
 ignore = ["E501"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# Ratchet (ken #800): existing debt only — new files get the full gate.
+# cli/commands + _crud: PLR0913 is inherent to click callbacks (one parameter
+# per --option); C901/PLR0915 are real debt from the register-closure pattern.
+"semacli/cli/commands/*.py" = ["C901", "PLR0913", "PLR0915"]
+"semacli/cli/_crud.py" = ["PLR0913"]
+# core: god-class debt, to be resorbed by the client.py split (ken #801).
+"semacli/core/client.py" = ["C901", "PLR0913"]
+"semacli/core/config.py" = ["C901"]
 
 [tool.interrogate]
 fail-under = 0
