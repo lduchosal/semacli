@@ -66,7 +66,17 @@ to semacli.
    pdm run test-quick        # pytest --tb=no -q (everything)
    pdm run test-unit         # unit only, with coverage
    pdm run test-integration  # cassette replay strict (--vcr-record=none)
+   pdm run vulture           # dead code (whitelist: vulture_whitelist.py)
+   pdm run refurb            # modernisation refurb
+   pdm run metrics           # snapshot des critères qualité
+   pdm run metrics-gate      # gate qualité bloquant (paliers + ratchet)
    ```
+
+   Le gate qualité (ken #828, porté de kenboard) : plafonds absolus par
+   palier + ratchet best-ever contre `doc/quality-history.csv` — voir
+   [`doc/code-quality.md`](doc/code-quality.md). Règle d'or : on ne détend
+   jamais un seuil sans décision humaine tracée. Quand une famille ruff de
+   `DEBT_SELECT` tombe à zéro, elle passe dans `[tool.ruff.lint] select`.
 
    If a failure shows up in an area you didn't touch, confirm it's
    pre-existing before continuing.

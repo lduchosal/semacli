@@ -203,8 +203,7 @@ def register_run_commands(main_group: Any) -> None:
                 final = _watch_task(client, pid, task.id, interval)
                 if not quiet:
                     click.echo(f"\n-> status: {final}", err=True)
-                hook_env_after = {
-                    **hook_env_base,
+                hook_env_after = hook_env_base | {
                     "SEMACLI_TASK_ID": str(task.id),
                     "SEMACLI_STATUS": final,
                 }

@@ -58,7 +58,7 @@ class TasksMixin(BaseClient):
             params["diff"] = True
         if debug:
             params["debug"] = True
-            params["debug_level"] = int(debug)
+            params["debug_level"] = debug
         if params:
             body["params"] = params
 

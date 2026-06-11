@@ -81,13 +81,24 @@ line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "C4", "C90", "PLR0913", "PLR0915"]
+# Quality-gate locks (ken #828, ratchet principle of doc/code-quality.md):
+# each debt family that reaches zero in semacli/ is added here so the
+# acquis becomes a lint error, and removed from DEBT_SELECT in
+# scripts/quality_metrics.py. Locked at palier 1: DTZ, G, SLF, PLC0415.
+select = [
+    "E", "F", "W", "I", "UP", "B", "C4", "C90", "PLR0913", "PLR0915",
+    "DTZ", "G", "SLF", "PLC0415",
+]
 ignore = ["E501"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
+# Tests are exempt from the src-hygiene families (same as kenboard): private
+# access and lazy imports are legitimate test idioms. The metrics gate
+# (ken #828) only measures semacli/.
+"tests/**" = ["DTZ", "G", "SLF", "PLC0415"]
 # Ratchet (ken #800): existing debt only — new files get the full gate.
 # cli/commands + _crud: PLR0913 is inherent to click callbacks (one parameter
 # per --option); C901/PLR0915 are real debt from the register-closure pattern.
@@ -128,8 +139,15 @@ modules = [
     "semacli.cli.commands.views",
 ]
 
+[tool.vulture]
+# Quality gate (ken #828): dead-code findings are blocking at every palier.
+min_confidence = 80
+paths = ["semacli", "tests", "vulture_whitelist.py"]
+
 [tool.interrogate]
-fail-under = 0
+# Current palier of the quality gate (ken #828) — tightened at each palier,
+# never relaxed without a traced human decision (doc/code-quality.md).
+fail-under = 80
 ignore-init-method = true
 ignore-init-module = true
 exclude = ["tests", "docs", "build", "dist"]
@@ -167,8 +185,14 @@ arch = "lint-imports"
 lint-fix = "ruff check --fix semacli/ tests/"
 format-check = "black --check semacli/ tests/"
 interrogate = "interrogate semacli/"
+vulture = "vulture"
+refurb = "refurb semacli/"
+# Quality metrics snapshot & blocking gate (ken #828) — see doc/code-quality.md
+metrics = "python scripts/quality_metrics.py"
+metrics-record = "python scripts/quality_metrics.py --record"
+metrics-gate = "python scripts/quality_metrics.py --gate"
 test-cov-xml = "env PYTHONPATH=src python -m pytest tests/ --cov=semacli --cov-report=xml --cov-report=term --cov-fail-under=80"
-check = {composite = ["lint", "format-check", "typecheck", "arch", "test"]}
+check = {composite = ["lint", "format-check", "typecheck", "arch", "vulture", "refurb", "test", "metrics-gate"]}
 clean = "rm -rf .coverage htmlcov/ .pytest_cache/ __pycache__/ semacli/__pycache__/"
 version-patch = "pdm bump patch"
 version-minor = "pdm bump minor"
@@ -188,4 +212,6 @@ dev = [
     "vcrpy>=8.1.1",
     "pytest-vcr>=1.0.2",
     "import-linter>=2.11",
+    "vulture>=2.14",
+    "refurb>=2.2.0",
 ]

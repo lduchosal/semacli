@@ -1,0 +1,469 @@
+#!/usr/bin/env python3
+"""Measure local code-quality metrics for semacli/.
+
+Port of the kenboard quality harness (kenboard ken #783/#788) to semacli
+(ken #828). Computes a snapshot of the trackable quality criteria defined
+in doc/code-quality.md: size/structure stats (via AST), cyclomatic
+complexity (ruff C901), lint debt (curated ruff rule set), debt hidden
+behind the pyproject per-file-ignores (ken #800 ratchet), mypy / vulture /
+refurb findings, docstring coverage (interrogate) and test coverage (read
+from the last `coverage` run, if any).
+
+Usage:
+    .venv/bin/python scripts/quality_metrics.py [--json] [--record] [--gate]
+
+--record appends a CSV row to doc/quality-history.csv so the evolution
+of each criterion stays visible over time.
+
+--gate evaluates the blocking quality gate: absolute ceilings/floors for
+the current palier plus a best-ever ratchet against quality-history.csv
+(no tracked criterion may regress past its best recorded value). Exits
+non-zero on any violation; wired into `pdm run check` and publish.sh.
+"""
+
+import argparse
+import ast
+import csv
+import datetime
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+SRC = REPO / "semacli"
+HISTORY = REPO / "doc" / "quality-history.csv"
+VENV_BIN = Path(sys.executable).parent
+
+# Lint debt: curated rules NOT yet enforced by the ruff gate. Same family
+# set as kenboard's harness; families already enforced in pyproject
+# [tool.ruff.lint] select don't need to appear here (--extend-select keeps
+# them active anyway). Ratchet principle: when a family reaches zero it is
+# moved into the pyproject select and removed from this string.
+DEBT_SELECT = "ANN401,ARG,BLE,EM,FBT,PERF,PLR,PTH,RUF,TRY"
+
+# Debt hidden behind the pyproject per-file-ignores (ken #800): complexity
+# and signature-size findings tolerated as "existing debt only". Measured
+# with --isolated so the per-file-ignores do not mask them.
+IGNORED_SELECT = "C901,PLR0913,PLR0915"
+
+LONG_FUNC_LINES = 50
+BIG_FILE_LINES = 500
+TARGET_FILE_LINES = 300
+
+# --- Blocking gate (ken #828), policy in doc/code-quality.md ------------
+# Palier progression: the thresholds below materialise the CURRENT palier
+# of the doc/code-quality.md table (§ Gate bloquant). Procedure: as soon
+# as the gate is green, record a snapshot then tighten to the next palier
+# — a green gate is never a stable state. A threshold is NEVER relaxed
+# without an explicit, traced human decision.
+GATE_PALIER = 1
+GATE_MAX = {
+    "max_file_lines": 450,
+    "max_func_lines": 320,
+    "files_over_500": 0,
+    "c901_over_10": 0,
+    "ruff_debt": 350,
+    "ignored_debt": 60,
+    "mypy_errors": 0,
+    "vulture": 0,
+    "refurb": 0,
+}
+GATE_MIN = {
+    "docstring_cov": 80.0,
+    "test_cov": 73.0,
+    "min_file_cov": 25.0,
+}
+# Best-ever ratchet: counts may never exceed their lowest recorded value,
+# coverage may not drop more than RATCHET_COV_SLACK below its highest.
+RATCHET_DOWN = (
+    "files_over_300",
+    "funcs_over_50",
+    "c901_over_10",
+    "ruff_debt",
+    "ignored_debt",
+)
+RATCHET_UP = ("test_cov",)
+RATCHET_COV_SLACK = 0.5
+
+
+def _run(tool: str, *args: str) -> subprocess.CompletedProcess[str]:
+    """Run a venv tool from the repo root and capture its output."""
+    return subprocess.run(
+        [str(VENV_BIN / tool), *args],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _ast_stats() -> dict[str, int]:
+    """Walk semacli/ and compute size/structure metrics via AST."""
+    files = sorted(SRC.rglob("*.py"))
+    loc = 0
+    max_file = 0
+    big_files = 0
+    files_over_target = 0
+    func_lengths: list[int] = []
+    for path in files:
+        text = path.read_text(encoding="utf-8")
+        lines = text.count("\n") + (0 if text.endswith("\n") else 1)
+        loc += lines
+        max_file = max(max_file, lines)
+        if lines > BIG_FILE_LINES:
+            big_files += 1
+        if lines > TARGET_FILE_LINES:
+            files_over_target += 1
+        for node in ast.walk(ast.parse(text)):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                func_lengths.append((node.end_lineno or node.lineno) - node.lineno + 1)
+    return {
+        "py_files": len(files),
+        "loc_src": loc,
+        "max_file_lines": max_file,
+        "files_over_500": big_files,
+        "files_over_300": files_over_target,
+        "functions": len(func_lengths),
+        "max_func_lines": max(func_lengths),
+        "funcs_over_50": sum(1 for length in func_lengths if length > LONG_FUNC_LINES),
+    }
+
+
+def _ruff_count(select: str, *extra: str) -> int:
+    """Count ruff findings in semacli/ for the given rule selection.
+
+    Uses --extend-select so the configured gate rules (pyproject
+    [tool.ruff.lint]) stay active: a `# noqa` justifying a gate rule
+    is then correctly seen as used instead of inflating RUF100.
+    """
+    proc = _run(
+        "ruff",
+        "check",
+        "semacli",
+        "--extend-select",
+        select,
+        "--output-format",
+        "json",
+        *extra,
+    )
+    return len(json.loads(proc.stdout or "[]"))
+
+
+def _ignored_debt() -> int:
+    """Count the complexity debt hidden behind the per-file-ignores.
+
+    Runs ruff --isolated (pyproject ignored entirely) on the ken #800
+    families so the tolerated existing debt stays visible and ratcheted.
+    """
+    proc = _run(
+        "ruff",
+        "check",
+        "semacli",
+        "--isolated",
+        "--select",
+        IGNORED_SELECT,
+        "--output-format",
+        "json",
+    )
+    return len(json.loads(proc.stdout or "[]"))
+
+
+def _mypy_errors() -> int:
+    """Count mypy errors in semacli/."""
+    proc = _run("mypy", "semacli")
+    match = re.search(r"Found (\d+) error", proc.stdout)
+    return int(match.group(1)) if match else 0
+
+
+def _vulture_findings() -> int:
+    """Count vulture dead-code findings at the gate's confidence level."""
+    proc = _run("vulture", "semacli", "tests", "vulture_whitelist.py")
+    return len([line for line in proc.stdout.splitlines() if ": " in line])
+
+
+def _refurb_findings() -> int:
+    """Count refurb findings in semacli/."""
+    proc = _run("refurb", "semacli")
+    return len([line for line in proc.stdout.splitlines() if "[FURB" in line])
+
+
+def _docstring_coverage() -> float:
+    """Read the interrogate docstring-coverage percentage for semacli/."""
+    proc = _run("interrogate", "semacli", "--no-color")
+    match = re.search(r"actual: ([\d.]+)%", proc.stdout + proc.stderr)
+    return float(match.group(1)) if match else 0.0
+
+
+def _test_coverage() -> float | None:
+    """Read total test coverage from the last coverage run, if available."""
+    if not (REPO / ".coverage").exists():
+        return None
+    proc = _run("coverage", "report", "--format=total", "--precision=2")
+    try:
+        return float(proc.stdout.strip())
+    except ValueError:
+        return None
+
+
+def _min_file_coverage() -> float | None:
+    """Read the lowest per-file coverage from the last run.
+
+    Catches the classic drift of a new module landing without tests:
+    the total barely moves but the per-file minimum collapses.
+    """
+    if not (REPO / ".coverage").exists():
+        return None
+    proc = _run("coverage", "json", "-o", "-")
+    try:
+        data = json.loads(proc.stdout)
+    except ValueError:
+        return None
+    percents = [f["summary"]["percent_covered"] for f in data["files"].values()]
+    return round(min(percents), 2) if percents else None
+
+
+def _offending_files(limit: int) -> list[str]:
+    """List semacli files longer than limit lines, biggest first."""
+    rows = []
+    for path in sorted(SRC.rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        lines = text.count("\n") + (0 if text.endswith("\n") else 1)
+        if lines > limit:
+            rows.append((lines, str(path.relative_to(REPO))))
+    return [f"{lines} lines  {path}" for lines, path in sorted(rows, reverse=True)]
+
+
+def _offending_functions(limit: int) -> list[str]:
+    """List semacli functions longer than limit lines, longest first."""
+    rows = []
+    for path in sorted(SRC.rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                length = (node.end_lineno or node.lineno) - node.lineno + 1
+                if length > limit:
+                    location = f"{path.relative_to(REPO)}:{node.lineno}"
+                    rows.append((length, node.name, location))
+    return [
+        f"{length} lines  {name}  {location}"
+        for length, name, location in sorted(rows, reverse=True)
+    ]
+
+
+def _ruff_statistics(select: str, *extra: str) -> list[str]:
+    """Findings count per rule for the given selection, descending."""
+    proc = _run("ruff", "check", "semacli", *extra, "--select", select, "--statistics")
+    return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+
+
+def _undercovered_files(floor: float) -> list[str]:
+    """List files whose coverage sits below the given floor."""
+    proc = _run("coverage", "json", "-o", "-")
+    try:
+        data = json.loads(proc.stdout)
+    except ValueError:
+        return []
+    return [
+        f"{summary['summary']['percent_covered']:.1f} %  {name}"
+        for name, summary in sorted(data["files"].items())
+        if summary["summary"]["percent_covered"] < floor
+    ]
+
+
+def gate_details(key: str) -> list[str]:
+    """Actionable offender list for a violated gate rule.
+
+    This is what tells an agent *what* to fix, not just that the gate
+    is red; computed lazily, only for the rules that actually failed.
+    """
+    if key == "max_file_lines":
+        return _offending_files(GATE_MAX["max_file_lines"])
+    if key == "files_over_500":
+        return _offending_files(BIG_FILE_LINES)
+    if key == "files_over_300":
+        return _offending_files(TARGET_FILE_LINES)
+    if key == "max_func_lines":
+        return _offending_functions(GATE_MAX["max_func_lines"])
+    if key == "funcs_over_50":
+        return _offending_functions(LONG_FUNC_LINES)
+    if key == "c901_over_10":
+        return _ruff_statistics("C901")
+    if key == "ruff_debt":
+        return _ruff_statistics(DEBT_SELECT, "--extend-select", DEBT_SELECT) + [
+            f"per-file detail: ruff check semacli --extend-select {DEBT_SELECT}"
+        ]
+    if key == "ignored_debt":
+        return _ruff_statistics(IGNORED_SELECT, "--isolated") + [
+            f"per-file detail: ruff check semacli --isolated --select {IGNORED_SELECT}"
+        ]
+    if key == "min_file_cov":
+        return _undercovered_files(GATE_MIN["min_file_cov"])
+    if key == "test_cov":
+        return ["detail: .venv/bin/coverage report --sort=cover"]
+    if key == "mypy_errors":
+        return ["detail: pdm run typecheck"]
+    if key == "vulture":
+        return ["detail: pdm run vulture"]
+    if key == "refurb":
+        return ["detail: pdm run refurb"]
+    if key == "docstring_cov":
+        return ["detail: pdm run interrogate -- -vv"]
+    return []
+
+
+def _history_best(path: Path = HISTORY) -> dict[str, float]:
+    """Best-ever value per ratcheted metric across the recorded history."""
+    best: dict[str, float] = {}
+    if not path.exists():
+        return best
+    with path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            for key in RATCHET_DOWN + RATCHET_UP:
+                raw = (row.get(key) or "").strip()
+                if not raw:
+                    continue
+                value = float(raw)
+                if key in RATCHET_DOWN:
+                    best[key] = min(best.get(key, value), value)
+                else:
+                    best[key] = max(best.get(key, value), value)
+    return best
+
+
+def evaluate_gate(
+    metrics: dict[str, object], best: dict[str, float]
+) -> tuple[list[str], list[str]]:
+    """Evaluate the blocking gate; return (failures, skipped-rule names).
+
+    Rules whose metric is unavailable (no coverage data) are skipped,
+    not failed — publish.sh runs the gate right after the full test
+    suite so coverage is fresh there.
+    """
+    failures: list[str] = []
+    skipped: list[str] = []
+    for key, ceiling in GATE_MAX.items():
+        value = metrics.get(key)
+        if value is None:
+            skipped.append(key)
+        elif float(str(value)) > ceiling:
+            failures.append(f"{key} = {value} > absolute ceiling {ceiling}")
+    for key, floor in GATE_MIN.items():
+        value = metrics.get(key)
+        if value is None:
+            skipped.append(key)
+        elif float(str(value)) < floor:
+            failures.append(f"{key} = {value} < absolute floor {floor}")
+    for key in RATCHET_DOWN:
+        value, limit = metrics.get(key), best.get(key)
+        if value is None or limit is None:
+            continue
+        if float(str(value)) > limit:
+            failures.append(f"{key} = {value} > best ever {limit:g} (ratchet)")
+    for key in RATCHET_UP:
+        value, limit = metrics.get(key), best.get(key)
+        if value is None or limit is None:
+            continue
+        if float(str(value)) < limit - RATCHET_COV_SLACK:
+            failures.append(
+                f"{key} = {value} < best ever {limit:g} "
+                f"- slack {RATCHET_COV_SLACK} (ratchet)"
+            )
+    return failures, skipped
+
+
+def _version() -> str:
+    """Read the package version from semacli/__init__.py."""
+    text = (SRC / "__init__.py").read_text(encoding="utf-8")
+    match = re.search(r'__version__ = "([^"]+)"', text)
+    return match.group(1) if match else "?"
+
+
+def collect() -> dict[str, object]:
+    """Collect the full metrics snapshot."""
+    metrics: dict[str, object] = {
+        "date": datetime.date.today().isoformat(),
+        "version": _version(),
+    }
+    metrics.update(_ast_stats())
+    metrics["c901_over_10"] = _ruff_count("C901")
+    metrics["ruff_debt"] = _ruff_count(DEBT_SELECT)
+    metrics["ignored_debt"] = _ignored_debt()
+    metrics["mypy_errors"] = _mypy_errors()
+    metrics["vulture"] = _vulture_findings()
+    metrics["refurb"] = _refurb_findings()
+    metrics["docstring_cov"] = _docstring_coverage()
+    metrics["test_cov"] = _test_coverage()
+    metrics["min_file_cov"] = _min_file_coverage()
+    return metrics
+
+
+def record(metrics: dict[str, object]) -> None:
+    """Append the snapshot to doc/quality-history.csv.
+
+    Rewrites the file when the snapshot carries new columns so the
+    header stays the union of all known criteria; historical rows keep
+    blanks for the new ones.
+    """
+    fieldnames = list(metrics)
+    rows: list[dict[str, str]] = []
+    if HISTORY.exists():
+        with HISTORY.open(newline="", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            existing = list(reader.fieldnames or [])
+            rows = list(reader)
+        fieldnames = existing + [key for key in fieldnames if key not in existing]
+    HISTORY.parent.mkdir(parents=True, exist_ok=True)
+    with HISTORY.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, restval="")
+        writer.writeheader()
+        writer.writerows(rows)
+        writer.writerow(metrics)
+
+
+def main() -> int:
+    """CLI entry point."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--json", action="store_true", help="output as JSON")
+    parser.add_argument(
+        "--record", action="store_true", help="append to doc/quality-history.csv"
+    )
+    parser.add_argument(
+        "--gate",
+        action="store_true",
+        help="enforce the blocking quality gate (ken #828), exit 1 on violation",
+    )
+    args = parser.parse_args()
+
+    metrics = collect()
+    if args.json:
+        print(json.dumps(metrics, indent=2))
+    else:
+        width = max(len(key) for key in metrics)
+        for key, value in metrics.items():
+            shown = "n/a (run pdm run test first)" if value is None else value
+            print(f"{key:<{width}}  {shown}")
+    if args.record:
+        record(metrics)
+        print(f"\nrecorded -> {HISTORY.relative_to(REPO)}")
+    if args.gate:
+        failures, skipped = evaluate_gate(metrics, _history_best())
+        print()
+        if skipped:
+            print(f"gate: rules skipped for lack of data: {', '.join(skipped)}")
+        if failures:
+            print(f"gate (palier {GATE_PALIER}): FAIL")
+            for failure in failures:
+                print(f"  x {failure}")
+                for line in gate_details(failure.split(" = ")[0]):
+                    print(f"        {line}")
+            return 1
+        print(
+            f"gate (palier {GATE_PALIER}): PASS — record a snapshot and tighten "
+            "to the next palier (doc/code-quality.md § Gate bloquant)"
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

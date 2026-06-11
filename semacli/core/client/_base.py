@@ -70,7 +70,7 @@ class BaseClient:
             if self.config.verify_ssl and self.config.use_system_ca:
                 _inject_truststore_once()
             s = requests.Session()
-            s.verify = bool(self.config.verify_ssl)
+            s.verify = self.config.verify_ssl
             if not self.config.verify_ssl:
                 # The user already saw our own stderr warning at init —
                 # suppress the per-request urllib3 follow-on noise.
@@ -137,7 +137,7 @@ class BaseClient:
             print(f"DEBUG: Response: {text[:500]}")
 
         if 400 <= status < 600:
-            reason = response.reason or ""
+            reason = response.reason
             # Include the server body in the message so the user sees the
             # actual reason Semaphore complained (truncated to keep the
             # exception printable).

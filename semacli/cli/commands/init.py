@@ -120,8 +120,7 @@ def _prompt_token(url: str, verify_ssl: bool, allow_http: bool) -> str:
 
 
 def _prompt_project(cfg: SemaphoreConfig) -> int | None:
-    client = SemaphoreClient(cfg, verbose=0)
-    projects = client.get_projects()
+    projects = SemaphoreClient(cfg, verbose=0).get_projects()
     if not projects:
         click.echo("  no projects visible — skipping default project selection.")
         return None

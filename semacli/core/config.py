@@ -4,6 +4,7 @@ import configparser
 import os
 import stat
 import sys
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -40,7 +41,7 @@ def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
 
     config_file = _find_config_file(config_path)
 
-    if not config_file or not os.path.exists(config_file):
+    if not config_file or not Path(config_file).exists():
         raise ConfigurationError(f"Configuration file not found: {config_path}")
 
     config.read(config_file)
@@ -57,7 +58,7 @@ def _find_config_file(config_path: str) -> str | None:
     3. User home directory (~/.semacli.ini)
     4. /usr/local/etc/semacli.ini
     """
-    if os.path.isabs(config_path):
+    if Path(config_path).is_absolute():
         return config_path
 
     current_dir = Path.cwd() / config_path
@@ -203,15 +204,13 @@ def _apply_dotenv(config_file: Path, override_path: str | None) -> None:
     if not dotenv_path.exists():
         return
 
-    try:
+    with suppress(OSError):
         mode = dotenv_path.stat().st_mode
         if mode & (stat.S_IRWXG | stat.S_IRWXO):
             click.echo(
                 f"WARNING: {dotenv_path} is group/world-accessible "
-                f"(mode {oct(mode & 0o777)}) — chmod 600 recommended",
+                f"(mode {mode & 0o777:#o}) — chmod 600 recommended",
                 err=True,
             )
-    except OSError:
-        pass
 
     load_dotenv(dotenv_path, override=False)

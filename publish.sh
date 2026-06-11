@@ -83,22 +83,29 @@ run_command "pdm run lint" "Linting"
 print_step "5/13 Type Checking"
 run_command "pdm run typecheck" "Type checking"
 
-print_step "6/13 Running Unit Tests"
-run_command "pdm run test-unit-quick" "Unit tests"
+print_step "6/14 Running Tests (unit + integration, with coverage)"
+# Full suite with coverage: the quality-metrics gate (step 8) reads the
+# .coverage file this run leaves behind.
+run_command "pdm run test" "Tests (full suite, coverage)"
 
-print_step "7/13 Running Integration Tests (VCR strict replay)"
+print_step "7/14 Running Integration Tests (VCR strict replay)"
 # --vcr-record=none is hard-coded in the test-integration script: a stale
 # cassette aborts the release rather than silently re-recording against
 # whatever Semaphore happens to be reachable from the build machine.
 run_command "pdm run test-integration" "Integration tests (replay)"
 
-print_step "8/13 Bumping Version"
+# Blocking quality-metrics gate (ken #828): absolute ceilings + best-ever
+# ratchet against doc/quality-history.csv — see doc/code-quality.md.
+print_step "8/14 Quality Metrics Gate"
+run_command "pdm run metrics-gate" "Quality metrics gate"
+
+print_step "9/14 Bumping Version"
 run_command "pdm run version-patch" "Version bump"
 
-print_step "9/13 Building Package"
+print_step "10/14 Building Package"
 run_command "pdm build" "Package build"
 
-print_step "10/13 Publishing Package"
+print_step "11/14 Publishing Package"
 run_command "pdm publish" "Package publishing"
 
 # ── Kenboard wiki sync / build / publish ─────────────────────────────────
@@ -106,10 +113,10 @@ run_command "pdm publish" "Package publishing"
 # Non-fatal (run_command_soft): a missing `ken` or kenboard checkout warns
 # but does not abort the script.
 
-print_step "11/13 Wiki sync (kenboard tasks → wiki/)"
+print_step "12/14 Wiki sync (kenboard tasks → wiki/)"
 run_command_soft "ken wiki sync" "Wiki sync"
 
-print_step "12/13 Wiki build (wiki/ → wiki-html/)"
+print_step "13/14 Wiki build (wiki/ → wiki-html/)"
 run_command_soft "ken wiki build" "Wiki build"
 
 # ── Git commit + push ────────────────────────────────────────────────────
@@ -117,7 +124,7 @@ run_command_soft "ken wiki build" "Wiki build"
 # (steps 11-12), and any other tracked changes still in the working tree.
 # Non-fatal: PyPI is already updated, so a git hiccup must not abort the
 # script — the operator pushes manually.
-print_step "13/13 Git commit + push (release artifacts)"
+print_step "14/14 Git commit + push (release artifacts)"
 VERSION=$(grep '^__version__' semacli/__init__.py | cut -d'"' -f2)
 COMMIT_MSG="release: v${VERSION} — auto by publish.sh"
 echo "${YELLOW}→ Running: git add -A && git commit -m \"${COMMIT_MSG}\" && git push${NC}"

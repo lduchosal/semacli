@@ -100,7 +100,7 @@ def _resolve_path(path: str, config_dir: Path) -> str:
     Absolute paths are returned as-is. A bare command (no `/`) is left
     alone so the OS PATH lookup applies (e.g. `task_run_prehook = curl`).
     """
-    if os.path.isabs(path):
+    if Path(path).is_absolute():
         return path
     if "/" not in path and "\\" not in path:
         return path
@@ -136,7 +136,7 @@ def run_hook(
     env["SEMACLI_EVENT"] = key
 
     if verbose >= 1:
-        click.echo(f"DEBUG: hook {key} -> {' '.join(shlex.quote(a) for a in spec.argv)}", err=True)
+        click.echo(f"DEBUG: hook {key} -> {shlex.join(spec.argv)}", err=True)
 
     try:
         result = subprocess.run(
