@@ -143,7 +143,7 @@ def _after_watch_hooks(
                 verbose=spec.verbose,
                 enabled=spec.hooks_enabled,
             )
-        except HookError as hook_err:  # noqa: PERF203 — ≤2 hooks; per-hook isolation is the point
+        except HookError as hook_err:  # noqa: PERF203  # ≤2 hooks; per-hook isolation is the point
             warn_hook_failure(hook_err, hook_key)
 
 
@@ -239,7 +239,7 @@ def _do_run(spec: _RunSpec) -> None:
 @output_options
 @project_option
 @click.pass_context
-def run_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def run_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     template: str,

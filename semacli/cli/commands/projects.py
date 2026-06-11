@@ -166,7 +166,7 @@ def create_cmd(
 @click.option("--max-parallel-tasks", default=None, type=int)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     project_id: int,
@@ -233,9 +233,7 @@ def events_cmd(ctx: click.Context, project_override: int | None) -> None:
             click.echo("No events found")
             return
         for e in events:
-            click.echo(
-                f"{e.created}  user={e.user_id:<4}  " f"{e.object_type:<10}  {e.description}"
-            )
+            click.echo(f"{e.created}  user={e.user_id:<4}  {e.object_type:<10}  {e.description}")
         click.echo(f"\nTotal: {len(events)} event(s)")
 
 

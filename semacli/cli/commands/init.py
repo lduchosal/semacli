@@ -15,6 +15,9 @@ from semacli.core.exceptions import AuthenticationError, SemaCliError
 
 from .._groups import RawEpilogCommand, SectionedRootGroup
 
+_HTTP = "http://"
+_HTTPS = "https://"
+
 INIT_HELP = """\
 Create semacli.ini in guided mode.
 
@@ -41,8 +44,8 @@ _LOCATIONS = {
 def _normalize_url(raw: str) -> str:
     """Trim trailing slashes and default to https:// when no scheme is given."""
     raw = raw.strip().rstrip("/")
-    if not raw.startswith(("http://", "https://")):
-        raw = "https://" + raw
+    if not raw.startswith((_HTTP, _HTTPS)):
+        raw = _HTTPS + raw
     return raw
 
 
@@ -52,7 +55,7 @@ def _ping_with(cfg: SemaphoreConfig) -> str | None:
     try:
         client = SemaphoreClient(cfg, verbose=0)
         client.ping()
-    except Exception as e:  # noqa: BLE001 — wizard probe: failures become hints
+    except Exception as e:  # noqa: BLE001  # wizard probe: failures become hints
         return str(e)
     return None
 
@@ -65,7 +68,7 @@ def _check_token(cfg: SemaphoreConfig) -> tuple[int | None, str | None]:
         return len(projects), None
     except AuthenticationError as e:
         return None, f"token refused by server: {e}"
-    except Exception as e:  # noqa: BLE001 — wizard probe: failures become hints
+    except Exception as e:  # noqa: BLE001  # wizard probe: failures become hints
         return None, str(e)
 
 
@@ -76,7 +79,7 @@ def _prompt_url() -> tuple[str, bool, bool]:
         url = _normalize_url(raw)
 
         allow_http = False
-        if url.startswith("http://"):
+        if url.startswith(_HTTP):
             click.echo(
                 "warning: plain HTTP transmits credentials in clear text.",
                 err=True,
@@ -86,7 +89,7 @@ def _prompt_url() -> tuple[str, bool, bool]:
             allow_http = True
 
         verify_ssl = True
-        if url.startswith("https://"):
+        if url.startswith(_HTTPS):
             verify_ssl = click.confirm("Verify TLS certificate?", default=True)
 
         cfg = SemaphoreConfig(
@@ -159,7 +162,7 @@ def _prompt_location() -> Path:
     return Path(_LOCATIONS[choice][0]).expanduser()
 
 
-def _write_ini(  # noqa: PLR0913 — one keyword per wizard answer
+def _write_ini(  # noqa: PLR0913  # one keyword per wizard answer
     target: Path,
     *,
     url: str,
@@ -213,7 +216,7 @@ def init_cmd(url: str | None, output_path: str | None) -> None:
         if url:
             url = _normalize_url(url)
         chosen_url, verify_ssl, allow_http = (
-            _prompt_url() if not url else (url, True, url.startswith("http://"))
+            _prompt_url() if not url else (url, True, url.startswith(_HTTP))
         )
         token = _prompt_token(chosen_url, verify_ssl=verify_ssl, allow_http=allow_http)
         cfg = SemaphoreConfig(

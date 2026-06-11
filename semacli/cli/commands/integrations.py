@@ -75,7 +75,7 @@ def _emit_int_show_text(i: Integration) -> None:
 @output_options
 @project_option
 @fail_on_error
-def integration_group(  # noqa: PLR0913 — one parameter per --option (click callback)
+def integration_group(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -139,7 +139,7 @@ def show_cmd(ctx: click.Context, integration_id: int) -> None:
 )
 @click.pass_context
 @fail_on_error
-def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     template_id: int,
@@ -177,7 +177,7 @@ def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
 @click.option("--auth-secret-id", default=None, type=int)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     integration_id: int,
     name: str | None,

@@ -80,7 +80,7 @@ def _emit_show_text(k: Key) -> None:
     click.echo("(secret values are never returned by the API)")
 
 
-def _create_kwargs(  # noqa: PLR0913 — one parameter per key-type --option
+def _create_kwargs(  # noqa: PLR0913  # one parameter per key-type --option
     name: str,
     key_type: str,
     ssh_key: str,
@@ -121,7 +121,7 @@ def _create_kwargs(  # noqa: PLR0913 — one parameter per key-type --option
 @output_options
 @project_option
 @fail_on_error
-def keys(  # noqa: PLR0913 — one parameter per --option (click callback)
+def keys(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -197,7 +197,7 @@ def show_cmd(ctx: click.Context, key_id: int) -> None:
 @click.option("--passphrase", default="", help="SSH key passphrase")
 @click.pass_context
 @fail_on_error
-def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     key_type: str,
@@ -227,7 +227,7 @@ def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
 @click.option("--passphrase", default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     key_id: int,
     name: str | None,

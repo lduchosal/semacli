@@ -38,13 +38,7 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
     elif isinstance(error, AuthenticationError):
         click.echo(f"Authentication error: {error}", err=True)
         sys.exit(3)
-    elif isinstance(error, AmbiguousNameError):
-        click.echo(f"error: {error}", err=True)
-        sys.exit(2)
-    elif isinstance(error, NotFoundError):
-        click.echo(f"error: {error}", err=True)
-        sys.exit(2)
-    elif isinstance(error, OverrideNotAllowedError):
+    elif isinstance(error, (AmbiguousNameError, NotFoundError, OverrideNotAllowedError)):
         click.echo(f"error: {error}", err=True)
         sys.exit(2)
     elif isinstance(error, SemaphoreAPIError):
@@ -69,11 +63,11 @@ def fail_on_error(func: Callable[..., None]) -> Callable[..., None]:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> None:  # noqa: ANN401 — click passthrough
+    def wrapper(*args: Any, **kwargs: Any) -> None:  # noqa: ANN401  # click passthrough
         """Run the wrapped callback, funneling any exception to ``handle_error``."""
         try:
             func(*args, **kwargs)
-        except Exception as error:  # noqa: BLE001 — the CLI-wide funnel to handle_error
+        except Exception as error:  # noqa: BLE001  # the CLI-wide funnel to handle_error
             ctx = click.get_current_context(silent=True)
             opts = (ctx.obj if ctx else None) or {}
             verbose = kwargs.get("verbose") or opts.get("verbose", 0)

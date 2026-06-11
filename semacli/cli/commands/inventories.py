@@ -80,7 +80,7 @@ def _emit_show_text(i: Inventory) -> None:
 @output_options
 @project_option
 @fail_on_error
-def inventories(  # noqa: PLR0913 — one parameter per --option (click callback)
+def inventories(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -146,7 +146,7 @@ def show_cmd(ctx: click.Context, inventory_id: int) -> None:
 @click.option("--become-key-id", type=int, default=0)
 @click.pass_context
 @fail_on_error
-def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     inv_type: str,
@@ -185,7 +185,7 @@ def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
 @click.option("--become-key-id", type=int, default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     inventory_id: int,
     name: str | None,

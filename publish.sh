@@ -99,13 +99,22 @@ run_command "pdm run test-integration" "Integration tests (replay)"
 print_step "8/14 Quality Metrics Gate"
 run_command "pdm run metrics-gate" "Quality metrics gate"
 
-print_step "9/14 Bumping Version"
+# Push the (already committed) work so the GitHub CI runs the SonarCloud
+# analysis of HEAD, then block on the quality gate (ken #835, same pattern
+# as kenboard). 900s: the CI takes ~4-5 min to produce the analysis.
+print_step "9/16 Pushing Code for SonarCloud Analysis"
+run_command "git push" "Push for analysis"
+
+print_step "10/16 SonarCloud Quality Gate"
+run_command "pdm run sonar-gate" "SonarCloud quality gate"
+
+print_step "11/16 Bumping Version"
 run_command "pdm run version-patch" "Version bump"
 
-print_step "10/14 Building Package"
+print_step "12/16 Building Package"
 run_command "pdm build" "Package build"
 
-print_step "11/14 Publishing Package"
+print_step "13/16 Publishing Package"
 run_command "pdm publish" "Package publishing"
 
 # ── Kenboard wiki sync / build / publish ─────────────────────────────────
@@ -113,10 +122,10 @@ run_command "pdm publish" "Package publishing"
 # Non-fatal (run_command_soft): a missing `ken` or kenboard checkout warns
 # but does not abort the script.
 
-print_step "12/14 Wiki sync (kenboard tasks → wiki/)"
+print_step "14/16 Wiki sync (kenboard tasks → wiki/)"
 run_command_soft "ken wiki sync" "Wiki sync"
 
-print_step "13/14 Wiki build (wiki/ → wiki-html/)"
+print_step "15/16 Wiki build (wiki/ → wiki-html/)"
 run_command_soft "ken wiki build" "Wiki build"
 
 # ── Git commit + push ────────────────────────────────────────────────────
@@ -124,7 +133,7 @@ run_command_soft "ken wiki build" "Wiki build"
 # (steps 11-12), and any other tracked changes still in the working tree.
 # Non-fatal: PyPI is already updated, so a git hiccup must not abort the
 # script — the operator pushes manually.
-print_step "14/14 Git commit + push (release artifacts)"
+print_step "16/16 Git commit + push (release artifacts)"
 VERSION=$(grep '^__version__' semacli/__init__.py | cut -d'"' -f2)
 COMMIT_MSG="release: v${VERSION} — auto by publish.sh"
 echo "${YELLOW}→ Running: git add -A && git commit -m \"${COMMIT_MSG}\" && git push${NC}"

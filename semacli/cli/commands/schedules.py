@@ -67,7 +67,7 @@ def _emit_show_text(s: Schedule) -> None:
 @output_options
 @project_option
 @fail_on_error
-def schedules(  # noqa: PLR0913 — one parameter per --option (click callback)
+def schedules(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,

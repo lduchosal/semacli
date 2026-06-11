@@ -197,6 +197,9 @@ refurb = "refurb semacli/"
 metrics = "python scripts/quality_metrics.py"
 metrics-record = "python scripts/quality_metrics.py --record"
 metrics-gate = "python scripts/quality_metrics.py --gate"
+# SonarCloud gate (ken #835) — polls the analysis of HEAD then blocks on the
+# live quality gate. Publish-only (needs network + a pushed HEAD + SONAR_TOKEN).
+sonar-gate = "python scripts/sonar_gate.py --timeout 900 --interval 20"
 test-cov-xml = "env PYTHONPATH=src python -m pytest tests/ --cov=semacli --cov-report=xml --cov-report=term --cov-fail-under=80"
 check = {composite = ["lint", "format-check", "typecheck", "arch", "vulture", "refurb", "test", "metrics-gate"]}
 clean = "rm -rf .coverage htmlcov/ .pytest_cache/ __pycache__/ semacli/__pycache__/"

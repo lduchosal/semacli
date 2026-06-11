@@ -71,7 +71,7 @@ def _setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
 @output_options
 @project_option
 @fail_on_error
-def view_group(  # noqa: PLR0913 — one parameter per --option (click callback)
+def view_group(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,

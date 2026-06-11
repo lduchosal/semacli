@@ -36,7 +36,7 @@ class AliasedGroup(click.Group):
     command_class = RawEpilogCommand
     # group_class is set after the class body below so it can reference itself.
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401 — click passthrough
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401  # click passthrough
         self._aliases: dict[str, str] = {}
         super().__init__(*args, **kwargs)
 
@@ -132,6 +132,6 @@ class ResourceGroup(AliasedGroup):
       query, implementing the positional-filter rule from UX.md § 3.1 B.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401 — click passthrough
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401  # click passthrough
         kwargs.setdefault("invoke_without_command", True)
         super().__init__(*args, **kwargs)

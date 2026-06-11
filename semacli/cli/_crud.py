@@ -62,7 +62,7 @@ def opts_from_ctx(ctx: click.Context) -> dict[str, Any]:
     return ctx.obj  # type: ignore[no-any-return]
 
 
-def store_opts(  # noqa: PLR0913 — one keyword per shared group option
+def store_opts(  # noqa: PLR0913  # one keyword per shared group option
     ctx: click.Context,
     *,
     config: str,

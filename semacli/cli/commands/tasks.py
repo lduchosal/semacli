@@ -71,7 +71,7 @@ def _emit_task_text(t: Task) -> None:
 @common_options
 @output_options
 @project_option
-def tasks_group(  # noqa: PLR0913 — one parameter per --option (click callback)
+def tasks_group(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -92,7 +92,7 @@ def tasks_group(  # noqa: PLR0913 — one parameter per --option (click callback
 
 
 @fail_on_error
-def _post_run(  # noqa: PLR0913 — one keyword per forwarded --option
+def _post_run(  # noqa: PLR0913  # one keyword per forwarded --option
     ctx: click.Context,
     *,
     template_id: int,
@@ -161,7 +161,7 @@ def _post_run(  # noqa: PLR0913 — one keyword per forwarded --option
 )
 @click.option("--diff", is_flag=True, help="Show diff of file changes (ansible --diff)")
 @click.pass_context
-def run_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def run_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     template_id: int,

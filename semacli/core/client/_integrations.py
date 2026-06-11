@@ -26,7 +26,7 @@ class IntegrationsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Integration.model_validate(data)
 
-    def create_integration(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
+    def create_integration(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,
@@ -79,7 +79,7 @@ class IntegrationsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return [IntegrationMatcher.model_validate(m) for m in data]
 
-    def add_integration_matcher(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
+    def add_integration_matcher(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
         integration_id: int,

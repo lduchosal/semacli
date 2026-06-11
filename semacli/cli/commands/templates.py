@@ -120,7 +120,7 @@ def _run_list(opts: dict[str, Any]) -> None:
 @output_options
 @project_option
 @fail_on_error
-def templates_group(  # noqa: PLR0913 — one parameter per --option (click callback)
+def templates_group(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -204,7 +204,7 @@ def show_cmd(ctx: click.Context, template_id: int) -> None:
 )
 @click.pass_context
 @fail_on_error
-def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     playbook: str,
@@ -246,7 +246,7 @@ def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
 @click.option("--arguments", default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     template_id: int,
     name: str | None,

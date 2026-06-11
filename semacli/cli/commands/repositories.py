@@ -66,7 +66,7 @@ def _emit_show_text(r: Repository) -> None:
 @output_options
 @project_option
 @fail_on_error
-def repositories(  # noqa: PLR0913 — one parameter per --option (click callback)
+def repositories(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -141,7 +141,7 @@ def create_cmd(ctx: click.Context, name: str, git_url: str, branch: str, ssh_key
 @click.option("--ssh-key-id", type=int, default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     repo_id: int,
     name: str | None,

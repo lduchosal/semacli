@@ -79,7 +79,7 @@ def _emit_show_text(e: Environment) -> None:
 @output_options
 @project_option
 @fail_on_error
-def environments(  # noqa: PLR0913 — one parameter per --option (click callback)
+def environments(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,

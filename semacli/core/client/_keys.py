@@ -26,7 +26,7 @@ class KeysMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Key.model_validate(data)
 
-    def create_key(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
+    def create_key(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,
