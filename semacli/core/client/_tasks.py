@@ -7,6 +7,18 @@ from ..models import Task
 from ._base import BaseClient, _split_csv
 
 
+def _csv_params(limit: str | None, tags: str | None, skip_tags: str | None) -> dict[str, Any]:
+    """Normalise comma-separated cli inputs to the []string the server expects."""
+    params: dict[str, Any] = {}
+    if limit:
+        params["limit"] = _split_csv(limit)
+    if tags:
+        params["tags"] = _split_csv(tags)
+    if skip_tags:
+        params["skip_tags"] = _split_csv(skip_tags)
+    return params
+
+
 class TasksMixin(BaseClient):
     """Run, inspect and stop tasks."""
 
@@ -20,6 +32,7 @@ class TasksMixin(BaseClient):
         tags: str | None = None,
         skip_tags: str | None = None,
         debug: int = 0,
+        *,
         dry_run: bool = False,
         diff: bool = False,
     ) -> Task:
@@ -45,13 +58,7 @@ class TasksMixin(BaseClient):
         if environment is not None:
             body["environment"] = environment
 
-        params: dict[str, Any] = {}
-        if limit:
-            params["limit"] = _split_csv(limit)
-        if tags:
-            params["tags"] = _split_csv(tags)
-        if skip_tags:
-            params["skip_tags"] = _split_csv(skip_tags)
+        params = _csv_params(limit, tags, skip_tags)
         if dry_run:
             params["dry_run"] = True
         if diff:

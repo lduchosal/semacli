@@ -76,6 +76,22 @@ def _find_config_file(config_path: str) -> str | None:
     return config_path
 
 
+def _resolve_token(
+    config: configparser.ConfigParser, sema_section: configparser.SectionProxy
+) -> str | None:
+    """Resolve the bearer token from [auth] (bearer_token / env_var) or [semaphore]."""
+    if "auth" not in config:
+        return sema_section.get("bearer_token")
+    auth_section = config["auth"]
+    method = auth_section.get("method", "bearer_token")
+    if method == "bearer_token":
+        return auth_section.get("bearer_token")
+    if method == "env_var":
+        env_var = auth_section.get("env_var", "SEMAPHORE_TOKEN")
+        return os.environ.get(env_var)
+    raise ConfigurationError(f"Unknown auth method: {method}")
+
+
 def _parse_config(config: configparser.ConfigParser, config_file: Path) -> SemaphoreConfig:
     """Parse configuration into SemaphoreConfig object."""
     if "semaphore" not in config:
@@ -112,21 +128,7 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
     if load_dotenv_flag:
         _apply_dotenv(config_file, load_dotenv_file)
 
-    bearer_token: str | None = None
-
-    if "auth" in config:
-        auth_section = config["auth"]
-        method = auth_section.get("method", "bearer_token")
-
-        if method == "bearer_token":
-            bearer_token = auth_section.get("bearer_token")
-        elif method == "env_var":
-            env_var = auth_section.get("env_var", "SEMAPHORE_TOKEN")
-            bearer_token = os.environ.get(env_var)
-        else:
-            raise ConfigurationError(f"Unknown auth method: {method}")
-    else:
-        bearer_token = sema_section.get("bearer_token")
+    bearer_token = _resolve_token(config, sema_section)
 
     hooks = HookConfig()
     if "hook" in config:

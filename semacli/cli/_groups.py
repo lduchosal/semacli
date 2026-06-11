@@ -4,7 +4,7 @@ See UX.md for the rules these classes implement: hidden plural aliases,
 sectioned listing on the root, 80-column help, no colors.
 """
 
-from typing import Any
+from typing import Any, ClassVar
 
 import click
 
@@ -17,7 +17,7 @@ class RawEpilogCommand(click.Command):
     hierarchy diagrams.
     """
 
-    def format_epilog(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+    def format_epilog(self, _ctx: click.Context, formatter: click.HelpFormatter) -> None:
         _write_raw_epilog(self.epilog, formatter)
 
 
@@ -49,7 +49,7 @@ class AliasedGroup(click.Group):
     def list_commands(self, ctx: click.Context) -> list[str]:
         return [name for name in super().list_commands(ctx) if name not in self._aliases]
 
-    def format_epilog(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+    def format_epilog(self, _ctx: click.Context, formatter: click.HelpFormatter) -> None:
         _write_raw_epilog(self.epilog, formatter)
 
 
@@ -76,7 +76,7 @@ class SectionedRootGroup(AliasedGroup):
     listed under ``Other``.
     """
 
-    SECTIONS: list[tuple[str, str]] = [
+    SECTIONS: ClassVar[list[tuple[str, str]]] = [
         ("connection", "Connection"),
         ("read", "Read / write"),
         ("execution", "Execution"),

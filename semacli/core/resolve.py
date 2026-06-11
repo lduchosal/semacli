@@ -43,7 +43,9 @@ def _match_id_or_name(query: str, items: Sequence[_Named], kind: str, exact: boo
     raise AmbiguousNameError(query, [(it.id, it.name) for it in fuzzy])
 
 
-def resolve_template(client: "SemaphoreClient", pid: int, query: str, exact: bool = False) -> int:
+def resolve_template(
+    client: "SemaphoreClient", pid: int, query: str, *, exact: bool = False
+) -> int:
     """Resolve a template name (or id) to a numeric template id."""
     items = client.get_templates(pid)
     return _match_id_or_name(query, items, "template", exact)

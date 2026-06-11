@@ -27,6 +27,7 @@ class ProjectsMixin(BaseClient):
     def create_project(
         self,
         name: str,
+        *,
         alert: bool = False,
         alert_chat: str = "",
         max_parallel_tasks: int = 0,

@@ -5,7 +5,6 @@ selection, then writes a chmod-600 ini file at the chosen location.
 See UX.md and ken #716 for the full flow.
 """
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +13,8 @@ import click
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import SemaphoreConfig
 from semacli.core.exceptions import AuthenticationError, SemaCliError
+
+from .._groups import RawEpilogCommand
 
 INIT_HELP = """\
 Create semacli.ini in guided mode.
@@ -51,9 +52,11 @@ def _ping_with(cfg: SemaphoreConfig) -> str | None:
     try:
         client = SemaphoreClient(cfg, verbose=0)
         client.ping()
-        return None
-    except Exception as e:
+    except (
+        Exception
+    ) as e:  # noqa: BLE001 — wizard probe: every failure becomes a hint, never a crash
         return str(e)
+    return None
 
 
 def _check_token(cfg: SemaphoreConfig) -> tuple[int | None, str | None]:
@@ -64,7 +67,9 @@ def _check_token(cfg: SemaphoreConfig) -> tuple[int | None, str | None]:
         return len(projects), None
     except AuthenticationError as e:
         return None, f"token refused by server: {e}"
-    except Exception as e:
+    except (
+        Exception
+    ) as e:  # noqa: BLE001 — wizard probe: every failure becomes a hint, never a crash
         return None, str(e)
 
 
@@ -180,53 +185,56 @@ def _write_ini(
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text("\n".join(lines), encoding="utf-8")
     try:
-        os.chmod(target, 0o600)
+        target.chmod(0o600)
     except OSError:
         click.echo(f"warning: could not chmod 600 {target}", err=True)
 
 
+def _confirm_overwrite(target: Path) -> None:
+    """Abort unless the user confirms clobbering an existing ini file."""
+    if target.exists() and not click.confirm(f"{target} exists — overwrite?", default=False):
+        click.echo("aborted; nothing written.", err=True)
+        raise click.Abort()
+
+
+@click.command("init", cls=RawEpilogCommand, help=INIT_HELP, epilog=INIT_EPILOG)
+@click.option("--url", default=None, help="Pre-fill the URL prompt.")
+@click.option(
+    "--output",
+    "output_path",
+    default=None,
+    help="Write the ini file to this path (skips the location prompt).",
+)
+def init_cmd(url: str | None, output_path: str | None) -> None:
+    """Interactive wizard that writes a working semacli.ini."""
+    click.echo("sem init — create a working semacli.ini.\n")
+    try:
+        if url:
+            url = _normalize_url(url)
+        chosen_url, verify_ssl, allow_http = (
+            _prompt_url() if not url else (url, True, url.startswith("http://"))
+        )
+        token = _prompt_token(chosen_url, verify_ssl, allow_http)
+        cfg = SemaphoreConfig(
+            url=chosen_url,
+            bearer_token=token,
+            verify_ssl=verify_ssl,
+            allow_http=allow_http,
+        )
+        project = _prompt_project(cfg)
+        target = Path(output_path).expanduser() if output_path else _prompt_location()
+        _confirm_overwrite(target)
+        _write_ini(target, chosen_url, token, verify_ssl, allow_http, project)
+        click.echo(f"\nwrote {target} (mode 0600).")
+        click.echo("\nTry:\n  sem ping\n  sem project\n  sem template")
+    except click.Abort:
+        raise
+    except SemaCliError as e:
+        click.echo(f"error: {e}", err=True)
+        raise SystemExit(2) from e
+
+
 def register_init_commands(main_group: Any) -> None:
     """Register the `init` command."""
-
-    @main_group.command("init", help=INIT_HELP, epilog=INIT_EPILOG)
-    @click.option("--url", default=None, help="Pre-fill the URL prompt.")
-    @click.option(
-        "--output",
-        "output_path",
-        default=None,
-        help="Write the ini file to this path (skips the location prompt).",
-    )
-    def init_cmd(url: str | None, output_path: str | None) -> None:
-        click.echo("sem init — create a working semacli.ini.\n")
-        try:
-            if url:
-                url = _normalize_url(url)
-            chosen_url, verify_ssl, allow_http = (
-                _prompt_url() if not url else (url, True, url.startswith("http://"))
-            )
-            token = _prompt_token(chosen_url, verify_ssl, allow_http)
-            cfg = SemaphoreConfig(
-                url=chosen_url,
-                bearer_token=token,
-                verify_ssl=verify_ssl,
-                allow_http=allow_http,
-            )
-            project = _prompt_project(cfg)
-            target = Path(output_path).expanduser() if output_path else _prompt_location()
-
-            if target.exists() and not click.confirm(
-                f"{target} exists — overwrite?", default=False
-            ):
-                click.echo("aborted; nothing written.", err=True)
-                raise click.Abort()
-
-            _write_ini(target, chosen_url, token, verify_ssl, allow_http, project)
-            click.echo(f"\nwrote {target} (mode 0600).")
-            click.echo("\nTry:\n  sem ping\n  sem project\n  sem template")
-        except click.Abort:
-            raise
-        except SemaCliError as e:
-            click.echo(f"error: {e}", err=True)
-            raise SystemExit(2) from e
-
+    main_group.add_command(init_cmd)
     main_group.commands["init"].category = "connection"

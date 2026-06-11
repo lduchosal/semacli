@@ -30,6 +30,7 @@ class SchedulesMixin(BaseClient):
         template_id: int,
         cron_format: str,
         name: str = "",
+        *,
         active: bool = True,
     ) -> Schedule:
         """POST /api/project/{pid}/schedules."""

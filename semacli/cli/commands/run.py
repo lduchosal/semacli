@@ -6,20 +6,22 @@ and propagates the task's exit status. See UX.md § 3.1.A.
 """
 
 import time
+from dataclasses import dataclass
 from typing import Any
 
 import click
 
 from semacli.core.client import SemaphoreClient
-from semacli.core.config import load_config
+from semacli.core.config import SemaphoreConfig, load_config
 from semacli.core.exceptions import HookError
 from semacli.core.guards import ensure_overrides_allowed
 from semacli.core.hooks import run_hook, warn_hook_failure
 from semacli.core.resolve import resolve_template
 
 from .._envvars import normalize_environment
+from .._groups import RawEpilogCommand
 from ..decorators import common_options, output_options, project_option, resolve_project
-from ..handlers import OutputFormatter, handle_error
+from ..handlers import OutputFormatter, fail_on_error
 
 _FINAL_STATES = {"success", "error", "stopped"}
 
@@ -51,6 +53,30 @@ Examples:
 """
 
 
+@dataclass
+class _RunSpec:
+    """One `sem run` invocation, bundled to keep helper signatures small."""
+
+    template: str
+    limit: str | None
+    tags: str | None
+    skip_tags: str | None
+    playbook: str | None
+    environment: str | None
+    debug: int
+    dry_run: bool
+    diff: bool
+    exact: bool
+    watch: bool
+    interval: float
+    hooks_enabled: bool
+    config: str
+    verbose: int
+    output_json: bool
+    quiet: bool
+    project_override: int | None
+
+
 def _emit_output_lines(entries: list[Any], start: int) -> int:
     for entry in entries[start:]:
         line = entry.get("output", "") if isinstance(entry, dict) else getattr(entry, "output", "")
@@ -69,162 +95,202 @@ def _watch_task(client: SemaphoreClient, pid: int, task_id: int, interval: float
         time.sleep(interval)
 
 
-def register_run_commands(main_group: Any) -> None:
-    """Register the top-level `run` shortcut."""
+def _hook_env(spec: _RunSpec, pid: int, template_id: int) -> dict[str, str]:
+    """Base environment exposed to the task_run_* hooks."""
+    return {
+        "SEMACLI_COMMAND": "run",
+        "SEMACLI_GROUP": "task",
+        "SEMACLI_VERB": "run",
+        "SEMACLI_CONFIG": spec.config,
+        "SEMACLI_PROJECT": str(pid),
+        "SEMACLI_TEMPLATE": spec.template,
+        "SEMACLI_TEMPLATE_ID": str(template_id),
+        "SEMACLI_LIMIT": spec.limit or "",
+        "SEMACLI_TAGS": spec.tags or "",
+    }
 
-    @main_group.command("run", help=RUN_HELP, epilog=RUN_EPILOG)
-    @click.argument("template")
-    @click.option("--limit", default=None, help="ansible --limit pattern")
-    @click.option("--tags", default=None, help="ansible --tags (comma-separated list)")
-    @click.option("--skip-tags", default=None, help="ansible --skip-tags (comma-separated list)")
-    @click.option("--playbook", default=None, help="Override template playbook path")
-    @click.option("--environment", default=None, help="JSON env vars override")
-    @click.option(
-        "--debug",
-        type=click.IntRange(0, 4),
-        default=0,
-        show_default=True,
-        help="Ansible verbosity level (0=off, 1=-v, 2=-vv, 3=-vvv, 4=-vvvv).",
-    )
-    @click.option(
-        "--check",
-        "dry_run",
-        is_flag=True,
-        help="Run in check mode (ansible --check) — no changes applied.",
-    )
-    @click.option("--diff", is_flag=True, help="Show diff of file changes (ansible --diff)")
-    @click.option(
-        "--exact",
-        is_flag=True,
-        help="Require an exact template name match (no substring fuzz).",
-    )
-    @click.option(
-        "--watch/--no-watch",
-        "watch",
-        default=True,
-        help="Tail the task output until it finishes (default: on).",
-    )
-    @click.option("--interval", default=2.0, type=float, help="Watch polling interval in seconds")
-    @click.option(
-        "--no-hooks",
-        "no_hooks",
-        is_flag=True,
-        help="Skip any task_run_* hooks configured in [hook] (debug / replay).",
-    )
-    @common_options
-    @output_options
-    @project_option
-    def run_cmd(
-        template: str,
-        limit: str | None,
-        tags: str | None,
-        skip_tags: str | None,
-        playbook: str | None,
-        environment: str | None,
-        debug: int,
-        dry_run: bool,
-        diff: bool,
-        exact: bool,
-        watch: bool,
-        interval: float,
-        no_hooks: bool,
-        config: str,
-        verbose: int,
-        output_json: bool,
-        quiet: bool,
-        project_override: int | None,
-    ) -> None:
-        # Normalize --environment outside the try-block so UsageError
-        # surfaces as a clean exit 2 rather than being swallowed by
-        # handle_error and reported as an opaque "API error".
-        environment = normalize_environment(environment)
+
+def _guard_overrides(client: SemaphoreClient, pid: int, template_id: int, spec: _RunSpec) -> None:
+    """Fail closed BEFORE posting: Semaphore silently drops forbidden
+    overrides (a refused --limit runs on the full inventory, ken #827)."""
+    if spec.limit or spec.tags or spec.skip_tags or spec.debug:
+        ensure_overrides_allowed(
+            client.get_template(pid, template_id),
+            limit=spec.limit,
+            tags=spec.tags,
+            skip_tags=spec.skip_tags,
+            debug=spec.debug,
+        )
+
+
+def _after_watch_hooks(
+    cfg: SemaphoreConfig, spec: _RunSpec, base_env: dict[str, str], task_id: int, final: str
+) -> None:
+    """Fire post/fail hooks; hook failures warn but never change the exit code."""
+    env_after = base_env | {
+        "SEMACLI_TASK_ID": str(task_id),
+        "SEMACLI_STATUS": final,
+    }
+    hook_keys = ("task_run_posthook",) + (("task_run_failhook",) if final != "success" else ())
+    for hook_key in hook_keys:
         try:
-            cfg = load_config(config)
-            client = SemaphoreClient(cfg, verbose=verbose)
-            pid = resolve_project(cfg, project_override)
-
-            template_id = resolve_template(client, pid, template, exact=exact)
-            OutputFormatter.format_verbose(
-                f"resolved template '{template}' -> id {template_id}", verbose
-            )
-
-            # Fail closed BEFORE posting: Semaphore silently drops
-            # forbidden overrides (a refused --limit runs on the full
-            # inventory, ken #827).
-            if limit or tags or skip_tags or debug:
-                ensure_overrides_allowed(
-                    client.get_template(pid, template_id),
-                    limit=limit,
-                    tags=tags,
-                    skip_tags=skip_tags,
-                    debug=debug,
-                )
-
-            hook_env_base = {
-                "SEMACLI_COMMAND": "run",
-                "SEMACLI_GROUP": "task",
-                "SEMACLI_VERB": "run",
-                "SEMACLI_CONFIG": config,
-                "SEMACLI_PROJECT": str(pid),
-                "SEMACLI_TEMPLATE": template,
-                "SEMACLI_TEMPLATE_ID": str(template_id),
-                "SEMACLI_LIMIT": limit or "",
-                "SEMACLI_TAGS": tags or "",
-            }
-            hooks_enabled = not no_hooks
-
             run_hook(
                 cfg.hooks,
-                "task_run_prehook",
-                hook_env_base,
-                verbose=verbose,
-                enabled=hooks_enabled,
+                hook_key,
+                env_after,
+                verbose=spec.verbose,
+                enabled=spec.hooks_enabled,
             )
+        except HookError as hook_err:  # noqa: PERF203 — ≤2 hooks; per-hook isolation is the point
+            warn_hook_failure(hook_err, hook_key)
 
-            task = client.run_task(
-                pid,
-                template_id,
-                playbook=playbook,
-                environment=environment,
-                limit=limit,
-                tags=tags,
-                skip_tags=skip_tags,
-                debug=debug,
-                dry_run=dry_run,
-                diff=diff,
-            )
 
-            if not quiet and not output_json:
-                click.echo(f"task id: {task.id}")
-            if output_json and not watch:
-                click.echo(f'{{"task_id": {task.id}}}')
+@fail_on_error
+def _do_run(spec: _RunSpec) -> None:
+    """Resolve, guard, launch and (by default) watch one template run."""
+    cfg = load_config(spec.config)
+    client = SemaphoreClient(cfg, verbose=spec.verbose)
+    pid = resolve_project(cfg, spec.project_override)
 
-            if watch:
-                final = _watch_task(client, pid, task.id, interval)
-                if not quiet:
-                    click.echo(f"\n-> status: {final}", err=True)
-                hook_env_after = hook_env_base | {
-                    "SEMACLI_TASK_ID": str(task.id),
-                    "SEMACLI_STATUS": final,
-                }
-                for hook_key in ("task_run_posthook",) + (
-                    ("task_run_failhook",) if final != "success" else ()
-                ):
-                    try:
-                        run_hook(
-                            cfg.hooks,
-                            hook_key,
-                            hook_env_after,
-                            verbose=verbose,
-                            enabled=hooks_enabled,
-                        )
-                    except HookError as hook_err:
-                        warn_hook_failure(hook_err, hook_key)
-                if final != "success":
-                    raise SystemExit(1)
-        except SystemExit:
-            raise
-        except Exception as e:
-            handle_error(e, verbose)
+    template_id = resolve_template(client, pid, spec.template, exact=spec.exact)
+    OutputFormatter.format_verbose(
+        f"resolved template '{spec.template}' -> id {template_id}", spec.verbose
+    )
+    _guard_overrides(client, pid, template_id, spec)
 
+    hook_env_base = _hook_env(spec, pid, template_id)
+    run_hook(
+        cfg.hooks,
+        "task_run_prehook",
+        hook_env_base,
+        verbose=spec.verbose,
+        enabled=spec.hooks_enabled,
+    )
+
+    task = client.run_task(
+        pid,
+        template_id,
+        playbook=spec.playbook,
+        environment=spec.environment,
+        limit=spec.limit,
+        tags=spec.tags,
+        skip_tags=spec.skip_tags,
+        debug=spec.debug,
+        dry_run=spec.dry_run,
+        diff=spec.diff,
+    )
+
+    if not spec.quiet and not spec.output_json:
+        click.echo(f"task id: {task.id}")
+    if spec.output_json and not spec.watch:
+        click.echo(f'{{"task_id": {task.id}}}')
+
+    if spec.watch:
+        final = _watch_task(client, pid, task.id, spec.interval)
+        if not spec.quiet:
+            click.echo(f"\n-> status: {final}", err=True)
+        _after_watch_hooks(cfg, spec, hook_env_base, task.id, final)
+        if final != "success":
+            raise SystemExit(1)
+
+
+@click.command("run", cls=RawEpilogCommand, help=RUN_HELP, epilog=RUN_EPILOG)
+@click.argument("template")
+@click.option("--limit", default=None, help="ansible --limit pattern")
+@click.option("--tags", default=None, help="ansible --tags (comma-separated list)")
+@click.option("--skip-tags", default=None, help="ansible --skip-tags (comma-separated list)")
+@click.option("--playbook", default=None, help="Override template playbook path")
+@click.option("--environment", default=None, help="JSON env vars override")
+@click.option(
+    "--debug",
+    type=click.IntRange(0, 4),
+    default=0,
+    show_default=True,
+    help="Ansible verbosity level (0=off, 1=-v, 2=-vv, 3=-vvv, 4=-vvvv).",
+)
+@click.option(
+    "--check",
+    "dry_run",
+    is_flag=True,
+    help="Run in check mode (ansible --check) — no changes applied.",
+)
+@click.option("--diff", is_flag=True, help="Show diff of file changes (ansible --diff)")
+@click.option(
+    "--exact",
+    is_flag=True,
+    help="Require an exact template name match (no substring fuzz).",
+)
+@click.option(
+    "--watch/--no-watch",
+    "watch",
+    default=True,
+    help="Tail the task output until it finishes (default: on).",
+)
+@click.option("--interval", default=2.0, type=float, help="Watch polling interval in seconds")
+@click.option(
+    "--no-hooks",
+    "no_hooks",
+    is_flag=True,
+    help="Skip any task_run_* hooks configured in [hook] (debug / replay).",
+)
+@common_options
+@output_options
+@project_option
+@click.pass_context
+def run_cmd(
+    ctx: click.Context,
+    template: str,
+    limit: str | None,
+    tags: str | None,
+    skip_tags: str | None,
+    playbook: str | None,
+    environment: str | None,
+    debug: int,
+    dry_run: bool,
+    diff: bool,
+    exact: bool,
+    watch: bool,
+    interval: float,
+    no_hooks: bool,
+    config: str,
+    verbose: int,
+    output_json: bool,
+    quiet: bool,
+    project_override: int | None,
+) -> None:
+    """Run a template by name (or id), watching it to completion by default."""
+    # Expose verbosity to the fail_on_error funnel (read from ctx.obj).
+    ctx.ensure_object(dict)
+    ctx.obj["verbose"] = verbose
+    # Normalize --environment before entering the fail_on_error funnel so
+    # UsageError surfaces as a clean exit 2 rather than being swallowed
+    # and reported as an opaque exit-1 error.
+    environment = normalize_environment(environment)
+    _do_run(
+        _RunSpec(
+            template=template,
+            limit=limit,
+            tags=tags,
+            skip_tags=skip_tags,
+            playbook=playbook,
+            environment=environment,
+            debug=debug,
+            dry_run=dry_run,
+            diff=diff,
+            exact=exact,
+            watch=watch,
+            interval=interval,
+            hooks_enabled=not no_hooks,
+            config=config,
+            verbose=verbose,
+            output_json=output_json,
+            quiet=quiet,
+            project_override=project_override,
+        )
+    )
+
+
+def register_run_commands(main_group: Any) -> None:
+    """Register the top-level `run` shortcut."""
+    main_group.add_command(run_cmd)
     main_group.commands["run"].category = "execution"

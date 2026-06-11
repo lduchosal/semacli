@@ -41,7 +41,7 @@ VENV_BIN = Path(sys.executable).parent
 # [tool.ruff.lint] select don't need to appear here (--extend-select keeps
 # them active anyway). Ratchet principle: when a family reaches zero it is
 # moved into the pyproject select and removed from this string.
-DEBT_SELECT = "ANN401,ARG,BLE,EM,FBT,PERF,PLR,PTH,RUF,TRY"
+DEBT_SELECT = "ANN401,BLE,EM,FBT,PLR,TRY"
 
 # Debt hidden behind the pyproject per-file-ignores (ken #800): complexity
 # and signature-size findings tolerated as "existing debt only". Measured
@@ -58,22 +58,22 @@ TARGET_FILE_LINES = 300
 # as the gate is green, record a snapshot then tighten to the next palier
 # — a green gate is never a stable state. A threshold is NEVER relaxed
 # without an explicit, traced human decision.
-GATE_PALIER = 1
+GATE_PALIER = 2
 GATE_MAX = {
-    "max_file_lines": 450,
-    "max_func_lines": 320,
+    "max_file_lines": 400,
+    "max_func_lines": 80,
     "files_over_500": 0,
     "c901_over_10": 0,
-    "ruff_debt": 350,
-    "ignored_debt": 60,
+    "ruff_debt": 250,
+    "ignored_debt": 35,
     "mypy_errors": 0,
     "vulture": 0,
     "refurb": 0,
 }
 GATE_MIN = {
-    "docstring_cov": 80.0,
-    "test_cov": 73.0,
-    "min_file_cov": 25.0,
+    "docstring_cov": 85.0,
+    "test_cov": 78.0,
+    "min_file_cov": 40.0,
 }
 # Best-ever ratchet: counts may never exceed their lowest recorded value,
 # coverage may not drop more than RATCHET_COV_SLACK below its highest.

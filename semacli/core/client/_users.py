@@ -66,6 +66,7 @@ class UsersMixin(BaseClient):
         name: str,
         email: str,
         password: str,
+        *,
         admin: bool = False,
     ) -> User:
         """POST /api/users — admin only."""

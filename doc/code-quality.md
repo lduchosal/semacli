@@ -81,8 +81,8 @@ repos. Un ken par palier ; commit + publish à chaque palier vert.
 
 | Palier | `max_file` | `max_func` | `ruff_debt` | `ignored_debt` | `docstr` | `test_cov` | `min_file_cov` | Chantier principal |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
-| 1 — activation (ken #828) | ≤ 450 | ≤ 320 | ≤ 350 | ≤ 60 | ≥ 80 | ≥ 73 | ≥ 25 | outillage ; vulture/refurb → 0 ; DTZ/G/SLF/PLC0415 verrouillés |
-| 2 | ≤ 400 | ≤ 80 | ≤ 250 | ≤ 35 | ≥ 85 | ≥ 78 | ≥ 40 | casser le pattern register-closure de `cli/commands/*` (paie C901 ×15 + PLR0915 ×11) + quick wins (PTH, PERF, ARG, PLR2004, RUF, TRY30x) |
+| 1 — ✓ fait 2026-06-11 (ken #828) | ≤ 450 | ≤ 320 | ≤ 350 | ≤ 60 | ≥ 80 | ≥ 73 | ≥ 25 | outillage ; vulture/refurb → 0 ; DTZ/G/SLF/PLC0415 verrouillés |
+| 2 — ✓ fait 2026-06-11 (ken #829) | ≤ 400 | ≤ 80 | ≤ 250 | ≤ 35 | ≥ 85 | ≥ 78 | ≥ 40 | register-closures cassés (max_func 316 → 64, C901/PLR0915 → 0), funnel `fail_on_error` (BLE001 78 → 2), +87 tests (cov 73.6 → 86.6) — ARG/PERF/PTH/RUF verrouillés |
 | 3 | ≤ 350 | ≤ 60 | ≤ 50 | ≤ 35 | ≥ 88 | ≥ 82 | ≥ 55 | hygiène exceptions : BLE → 0, TRY/EM → 0, FBT → 0 (keyword-only) |
 | 4 | ≤ 300 | ≤ 50 | ≤ 40 | ≤ 35 | ≥ 95 | ≥ 90 | ≥ 75 | couverture (73.6 → 90) + docstrings (80.5 → 95) + découpe des 5 fichiers > 300 |
 | 5 — final (verrou) | ≤ 300 | ≤ 50 | = 0 | = 0 | ≥ 95 | ≥ 90 | ≥ 75 | ANN401 → 0 ; PLR0913 payés (param objects / noqa argumentés) ; per-file-ignores ken #800 levés ; toutes familles verrouillées |

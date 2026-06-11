@@ -85,11 +85,17 @@ target-version = "py310"
 # each debt family that reaches zero in semacli/ is added here so the
 # acquis becomes a lint error, and removed from DEBT_SELECT in
 # scripts/quality_metrics.py. Locked at palier 1: DTZ, G, SLF, PLC0415.
+# Locked at palier 2 (ken #829): ARG, PERF, PTH, RUF.
 select = [
     "E", "F", "W", "I", "UP", "B", "C4", "C90", "PLR0913", "PLR0915",
     "DTZ", "G", "SLF", "PLC0415",
+    "ARG", "PERF", "PTH", "RUF",
 ]
-ignore = ["E501"]
+# E501: black owns line length. RUF100: deferred until the remaining debt
+# families (ANN401/BLE/EM/FBT/TRY) enter select — their argued noqa would
+# read as unused until then (kenboard pattern: RUF100 lifted at the final
+# palier).
+ignore = ["E501", "RUF100"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 10
@@ -98,7 +104,7 @@ max-complexity = 10
 # Tests are exempt from the src-hygiene families (same as kenboard): private
 # access and lazy imports are legitimate test idioms. The metrics gate
 # (ken #828) only measures semacli/.
-"tests/**" = ["DTZ", "G", "SLF", "PLC0415"]
+"tests/**" = ["DTZ", "G", "SLF", "PLC0415", "ARG", "PERF", "PTH", "RUF"]
 # Ratchet (ken #800): existing debt only — new files get the full gate.
 # cli/commands + _crud: PLR0913 is inherent to click callbacks (one parameter
 # per --option); C901/PLR0915 are real debt from the register-closure pattern.
@@ -147,7 +153,7 @@ paths = ["semacli", "tests", "vulture_whitelist.py"]
 [tool.interrogate]
 # Current palier of the quality gate (ken #828) — tightened at each palier,
 # never relaxed without a traced human decision (doc/code-quality.md).
-fail-under = 80
+fail-under = 85
 ignore-init-method = true
 ignore-init-module = true
 exclude = ["tests", "docs", "build", "dist"]

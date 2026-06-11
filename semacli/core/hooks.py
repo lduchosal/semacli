@@ -111,6 +111,7 @@ def run_hook(
     hook_cfg: HookConfig | None,
     key: str,
     env_extra: dict[str, str],
+    *,
     verbose: int = 0,
     enabled: bool = True,
 ) -> None:

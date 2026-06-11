@@ -1,7 +1,9 @@
 """Error handlers and formatters for click CLI."""
 
+import functools
 import sys
-from typing import NoReturn
+from collections.abc import Callable
+from typing import Any, NoReturn
 
 import click
 
@@ -54,6 +56,29 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
     else:
         click.echo(f"Error: {error}", err=True)
         sys.exit(1)
+
+
+def fail_on_error(func: Callable[..., None]) -> Callable[..., None]:
+    """Route any command failure through ``handle_error``.
+
+    Single funnel for the CLI's exit-code contract: command callbacks
+    drop their per-command ``try/except`` and the one blanket catch
+    lives here, so the BLE001 lint lock stays meaningful everywhere
+    else. Verbosity is read from the callback kwargs when present,
+    falling back to the group options stashed on ``ctx.obj``.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> None:
+        try:
+            func(*args, **kwargs)
+        except Exception as error:  # noqa: BLE001 — the CLI-wide funnel to handle_error
+            ctx = click.get_current_context(silent=True)
+            opts = (ctx.obj if ctx else None) or {}
+            verbose = kwargs.get("verbose") or opts.get("verbose", 0)
+            handle_error(error, verbose)
+
+    return wrapper
 
 
 class OutputFormatter:

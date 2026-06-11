@@ -11,6 +11,8 @@ import requests
 
 from semacli import __version__
 
+from .._groups import RawEpilogCommand
+
 PYPI_JSON_URL = "https://pypi.org/pypi/semacli/json"
 
 SELF_UPDATE_HELP = """\
@@ -89,64 +91,67 @@ def _pip_command(allow_pre: bool) -> list[str]:
     return cmd
 
 
+@click.command(
+    "self-update",
+    cls=RawEpilogCommand,
+    help=SELF_UPDATE_HELP,
+    epilog=SELF_UPDATE_EPILOG,
+)
+@click.option(
+    "--check",
+    "check_only",
+    is_flag=True,
+    help="Compare versions only; exit 1 if an upgrade is available.",
+)
+@click.option(
+    "--pre",
+    "allow_pre",
+    is_flag=True,
+    help="Allow pre-releases when picking the latest version.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Print the pip command instead of running it.",
+)
+def self_update_cmd(check_only: bool, allow_pre: bool, dry_run: bool) -> None:
+    """Upgrade semacli from PyPI (or just compare versions with --check)."""
+    current = __version__
+    click.echo(f"Current version: {current}")
+
+    click.echo("Fetching latest from PyPI ...")
+    try:
+        latest = _fetch_latest_version(allow_pre)
+    except RuntimeError as e:
+        click.echo(f"error: {e}", err=True)
+        raise SystemExit(2) from e
+
+    click.echo(f"Latest on PyPI:  {latest}")
+
+    if latest == current:
+        click.echo("Already up to date.")
+        return
+
+    if check_only:
+        click.echo(f"Upgrade available: {current} -> {latest}")
+        raise SystemExit(1)
+
+    cmd = _pip_command(allow_pre)
+    click.echo(f"Upgrading to {latest} ...")
+    click.echo(f"  {' '.join(cmd)}")
+    if dry_run:
+        click.echo("(--dry-run: pip not executed)")
+        return
+
+    result = subprocess.run(cmd, check=False)
+    if result.returncode != 0:
+        click.echo(f"error: pip exited with code {result.returncode}", err=True)
+        raise SystemExit(1)
+
+    click.echo("Done. Run `sem --version` to confirm.")
+
+
 def register_self_update_commands(main_group: Any) -> None:
     """Register the `self-update` command."""
-
-    @main_group.command(
-        "self-update",
-        help=SELF_UPDATE_HELP,
-        epilog=SELF_UPDATE_EPILOG,
-    )
-    @click.option(
-        "--check",
-        "check_only",
-        is_flag=True,
-        help="Compare versions only; exit 1 if an upgrade is available.",
-    )
-    @click.option(
-        "--pre",
-        "allow_pre",
-        is_flag=True,
-        help="Allow pre-releases when picking the latest version.",
-    )
-    @click.option(
-        "--dry-run",
-        is_flag=True,
-        help="Print the pip command instead of running it.",
-    )
-    def self_update_cmd(check_only: bool, allow_pre: bool, dry_run: bool) -> None:
-        current = __version__
-        click.echo(f"Current version: {current}")
-
-        click.echo("Fetching latest from PyPI ...")
-        try:
-            latest = _fetch_latest_version(allow_pre)
-        except RuntimeError as e:
-            click.echo(f"error: {e}", err=True)
-            raise SystemExit(2) from e
-
-        click.echo(f"Latest on PyPI:  {latest}")
-
-        if latest == current:
-            click.echo("Already up to date.")
-            return
-
-        if check_only:
-            click.echo(f"Upgrade available: {current} -> {latest}")
-            raise SystemExit(1)
-
-        cmd = _pip_command(allow_pre)
-        click.echo(f"Upgrading to {latest} ...")
-        click.echo(f"  {' '.join(cmd)}")
-        if dry_run:
-            click.echo("(--dry-run: pip not executed)")
-            return
-
-        result = subprocess.run(cmd, check=False)
-        if result.returncode != 0:
-            click.echo(f"error: pip exited with code {result.returncode}", err=True)
-            raise SystemExit(1)
-
-        click.echo("Done. Run `sem --version` to confirm.")
-
+    main_group.add_command(self_update_cmd)
     main_group.commands["self-update"].category = "connection"

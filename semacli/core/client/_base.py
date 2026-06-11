@@ -2,6 +2,7 @@
 
 import json
 import sys
+from http import HTTPStatus
 from typing import Any
 
 import requests
@@ -10,6 +11,12 @@ import urllib3
 
 from ..config import SemaphoreConfig
 from ..exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
+
+# Verbosity tiers (UX.md: -v config, -vv requests, -vvv response bodies).
+_VERBOSE_REQUESTS = 2
+_VERBOSE_RESPONSES = 3
+# Any HTTP status in this range is surfaced as a semacli exception.
+_HTTP_ERROR_RANGE = range(400, 600)
 
 
 def _split_csv(raw: str) -> list[str]:
@@ -84,6 +91,7 @@ class BaseClient:
         method: str = "GET",
         params: dict[str, str] | None = None,
         body: dict[str, Any] | None = None,
+        *,
         require_auth: bool = True,
     ) -> dict[str, Any]:
         """Return the kwargs ready to be passed to ``session.request(**kwargs)``.
@@ -110,7 +118,7 @@ class BaseClient:
         if body is not None:
             kwargs["json"] = body
 
-        if self.verbose >= 2:
+        if self.verbose >= _VERBOSE_REQUESTS:
             print(f"DEBUG: {method} {url}")
         return kwargs
 
@@ -120,10 +128,11 @@ class BaseClient:
         method: str = "GET",
         params: dict[str, str] | None = None,
         body: dict[str, Any] | None = None,
+        *,
         require_auth: bool = True,
     ) -> Any:
         """Make HTTP request to Semaphore API and return parsed JSON (or raw text)."""
-        kwargs = self._build_request(endpoint, method, params, body, require_auth)
+        kwargs = self._build_request(endpoint, method, params, body, require_auth=require_auth)
 
         try:
             response = self._get_session().request(**kwargs)
@@ -133,10 +142,10 @@ class BaseClient:
         text = response.text
         status = response.status_code
 
-        if self.verbose >= 3:
+        if self.verbose >= _VERBOSE_RESPONSES:
             print(f"DEBUG: Response: {text[:500]}")
 
-        if 400 <= status < 600:
+        if status in _HTTP_ERROR_RANGE:
             reason = response.reason
             # Include the server body in the message so the user sees the
             # actual reason Semaphore complained (truncated to keep the
@@ -145,7 +154,7 @@ class BaseClient:
             suffix = f" — {detail}" if detail else ""
             if status in (401, 403):
                 raise AuthenticationError(f"HTTP {status}: {reason}{suffix}")
-            if status == 404:
+            if status == HTTPStatus.NOT_FOUND:
                 raise NotFoundError(f"HTTP 404: {endpoint}{suffix}")
             raise SemaphoreAPIError(f"HTTP {status}: {reason}{suffix}")
 

@@ -8,8 +8,9 @@ import click
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 
+from .._groups import RawEpilogCommand
 from ..decorators import common_options, output_options
-from ..handlers import OutputFormatter, handle_error
+from ..handlers import OutputFormatter, fail_on_error
 
 PING_HELP = """\
 Check that the Semaphore server is reachable.
@@ -29,32 +30,31 @@ Examples:
 """
 
 
+@click.command("ping", cls=RawEpilogCommand, help=PING_HELP, epilog=PING_EPILOG)
+@common_options
+@output_options
+@fail_on_error
+def ping_cmd(
+    config: str,
+    verbose: int,
+    output_json: bool,
+    quiet: bool,
+) -> None:
+    """Check server reachability via the public ping endpoint."""
+    cfg = load_config(config)
+    client = SemaphoreClient(cfg, verbose=verbose)
+
+    OutputFormatter.format_verbose(f"Pinging {cfg.url}", verbose)
+
+    pong = client.ping()
+
+    if output_json:
+        click.echo(json.dumps({"ping": pong}))
+    elif not quiet:
+        click.echo(pong)
+
+
 def register_ping_commands(main_group: Any) -> None:
     """Register ping commands with the main CLI group."""
-
-    @main_group.command("ping", help=PING_HELP, epilog=PING_EPILOG)
-    @common_options
-    @output_options
-    def ping_cmd(
-        config: str,
-        verbose: int,
-        output_json: bool,
-        quiet: bool,
-    ) -> None:
-        try:
-            cfg = load_config(config)
-            client = SemaphoreClient(cfg, verbose=verbose)
-
-            OutputFormatter.format_verbose(f"Pinging {cfg.url}", verbose)
-
-            pong = client.ping()
-
-            if output_json:
-                click.echo(json.dumps({"ping": pong}))
-            elif not quiet:
-                click.echo(pong)
-
-        except Exception as e:
-            handle_error(e, verbose)
-
+    main_group.add_command(ping_cmd)
     main_group.commands["ping"].category = "connection"
