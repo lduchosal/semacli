@@ -26,7 +26,7 @@ class InventoriesMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Inventory.model_validate(data)
 
-    def create_inventory(
+    def create_inventory(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,
@@ -56,7 +56,7 @@ class InventoriesMixin(BaseClient):
         self,
         project_id: int,
         inventory_id: int,
-        **fields: Any,
+        **fields: str | int | bool | None,
     ) -> None:
         """PUT /api/project/{pid}/inventory/{iid}."""
         body = {k: v for k, v in fields.items() if v is not None}

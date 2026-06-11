@@ -1,14 +1,13 @@
 """`sem info` — read server metadata from /api/info."""
 
 import json
-from typing import Any
 
 import click
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 
-from .._groups import RawEpilogCommand
+from .._groups import RawEpilogCommand, SectionedRootGroup
 from ..decorators import common_options, output_options
 from ..handlers import fail_on_error
 
@@ -42,7 +41,7 @@ def info_cmd(*, config: str, verbose: int, output_json: bool, quiet: bool) -> No
         click.echo(f"version: {info.version}")
 
 
-def register_info_commands(main_group: Any) -> None:
+def register_info_commands(main_group: SectionedRootGroup) -> None:
     """Register the `info` command."""
     main_group.add_command(info_cmd)
-    main_group.commands["info"].category = "connection"
+    main_group.set_category("info", "connection")

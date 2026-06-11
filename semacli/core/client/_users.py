@@ -89,7 +89,7 @@ class UsersMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return User.model_validate(data)
 
-    def update_user(self, user_id: int, **fields: Any) -> None:
+    def update_user(self, user_id: int, **fields: str | int | bool | None) -> None:
         """PUT /api/users/{uid} — admin only."""
         body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         body["id"] = user_id

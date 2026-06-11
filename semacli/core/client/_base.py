@@ -132,7 +132,7 @@ class BaseClient:
         body: dict[str, Any] | None = None,
         *,
         require_auth: bool = True,
-    ) -> Any:
+    ) -> Any:  # noqa: ANN401 — returns parsed JSON, shape varies per endpoint
         """Make HTTP request to Semaphore API and return parsed JSON (or raw text)."""
         kwargs = self._build_request(endpoint, method, params, body, require_auth=require_auth)
 

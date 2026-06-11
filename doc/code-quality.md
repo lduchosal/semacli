@@ -85,7 +85,7 @@ repos. Un ken par palier ; commit + publish à chaque palier vert.
 | 2 — ✓ fait 2026-06-11 (ken #829) | ≤ 400 | ≤ 80 | ≤ 250 | ≤ 35 | ≥ 85 | ≥ 78 | ≥ 40 | register-closures cassés (max_func 316 → 64, C901/PLR0915 → 0), funnel `fail_on_error` (BLE001 78 → 2), +87 tests (cov 73.6 → 86.6) — ARG/PERF/PTH/RUF verrouillés |
 | 3 — ✓ fait 2026-06-11 (ken #831) | ≤ 350 | ≤ 60 | ≤ 50 | ≤ 35 | ≥ 88 | ≥ 82 | ≥ 55 | BLE/TRY/EM/FBT → 0 et verrouillés, RUF100 levée ; sous-groupes extraits (matchers/members/tokens/admin) ; docstrings 100 % ; cov 93.5 % |
 | 4 — ✓ fait 2026-06-11 (ken #832) | ≤ 300 | ≤ 50 | ≤ 40 | ≤ 35 | ≥ 95 | ≥ 90 | ≥ 75 | files>300 = 0 (satellite _task_views), funcs>50 = 0, cov 94.2 %, min_file 78.4 % |
-| 5 — final (verrou) | ≤ 300 | ≤ 50 | = 0 | = 0 | ≥ 95 | ≥ 90 | ≥ 75 | ANN401 → 0 ; PLR0913 payés (param objects / noqa argumentés) ; per-file-ignores ken #800 levés ; toutes familles verrouillées |
+| 5 — ✓ fait 2026-06-11 (ken #833) — **verrou** | ≤ 300 | ≤ 50 | = 0 | = 0 | ≥ 95 | ≥ 90 | ≥ 75 | ANN401 → 0 (main_group typé, noqa argumentés aux frontières JSON) ; PLR0913 → 0 (noqa argumentés) ; per-file-ignores ken #800 **levés** ; familles ANN401 + PLR complètes verrouillées — le gate reste en mode verrou |
 
 (`mypy_errors`, `vulture`, `refurb` = 0, `files_over_500` = 0,
 `c901_over_10` = 0 et `docstring_cov` ≥ palier courant sont bloquants à

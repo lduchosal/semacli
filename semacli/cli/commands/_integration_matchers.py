@@ -87,7 +87,7 @@ def matchers_group(ctx: click.Context, integration_id: int) -> None:
 @click.option("--value", required=True, help="Expected value (or regex).")
 @click.pass_context
 @fail_on_error
-def matchers_add_cmd(
+def matchers_add_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     match_type: str,
@@ -122,7 +122,7 @@ def matchers_add_cmd(
 @click.option("--value", default=None)
 @click.pass_context
 @fail_on_error
-def matchers_update_cmd(
+def matchers_update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     matcher_id: int,
     name: str | None,

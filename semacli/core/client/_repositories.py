@@ -1,7 +1,5 @@
 """Repository endpoints."""
 
-from typing import Any
-
 from ..exceptions import SemaphoreAPIError
 from ..models import Repository
 from ._base import BaseClient
@@ -52,7 +50,7 @@ class RepositoriesMixin(BaseClient):
         self,
         project_id: int,
         repo_id: int,
-        **fields: Any,
+        **fields: str | int | bool | None,
     ) -> None:
         """PUT /api/project/{pid}/repositories/{rid}."""
         body = {k: v for k, v in fields.items() if v is not None}

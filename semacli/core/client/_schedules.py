@@ -1,7 +1,5 @@
 """Schedule endpoints."""
 
-from typing import Any
-
 from ..exceptions import SemaphoreAPIError
 from ..models import Schedule
 from ._base import BaseClient
@@ -49,7 +47,9 @@ class SchedulesMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Schedule.model_validate(data)
 
-    def update_schedule(self, project_id: int, sched_id: int, **fields: Any) -> None:
+    def update_schedule(
+        self, project_id: int, sched_id: int, **fields: str | int | bool | None
+    ) -> None:
         """PUT /api/project/{pid}/schedules/{sid}."""
         body = {k: v for k, v in fields.items() if v is not None}
         body["id"] = sched_id

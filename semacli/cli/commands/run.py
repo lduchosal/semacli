@@ -19,7 +19,7 @@ from semacli.core.hooks import run_hook, warn_hook_failure
 from semacli.core.resolve import resolve_template
 
 from .._envvars import normalize_environment
-from .._groups import RawEpilogCommand
+from .._groups import RawEpilogCommand, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, fail_on_error
 
@@ -239,7 +239,7 @@ def _do_run(spec: _RunSpec) -> None:
 @output_options
 @project_option
 @click.pass_context
-def run_cmd(
+def run_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     template: str,
@@ -290,7 +290,7 @@ def run_cmd(
     )
 
 
-def register_run_commands(main_group: Any) -> None:
+def register_run_commands(main_group: SectionedRootGroup) -> None:
     """Register the top-level `run` shortcut."""
     main_group.add_command(run_cmd)
-    main_group.commands["run"].category = "execution"
+    main_group.set_category("run", "execution")

@@ -1,14 +1,13 @@
 """Ping command for CLI."""
 
 import json
-from typing import Any
 
 import click
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 
-from .._groups import RawEpilogCommand
+from .._groups import RawEpilogCommand, SectionedRootGroup
 from ..decorators import common_options, output_options
 from ..handlers import OutputFormatter, fail_on_error
 
@@ -55,7 +54,7 @@ def ping_cmd(
         click.echo(pong)
 
 
-def register_ping_commands(main_group: Any) -> None:
+def register_ping_commands(main_group: SectionedRootGroup) -> None:
     """Register ping commands with the main CLI group."""
     main_group.add_command(ping_cmd)
-    main_group.commands["ping"].category = "connection"
+    main_group.set_category("ping", "connection")

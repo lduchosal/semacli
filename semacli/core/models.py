@@ -19,7 +19,7 @@ class _ApiModel(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _drop_null_fields(cls, data: Any) -> Any:
+    def _drop_null_fields(cls, data: Any) -> Any:  # noqa: ANN401 — raw pydantic input
         """Strip null values from the incoming dict so field defaults apply."""
         if isinstance(data, dict):
             return {k: v for k, v in data.items() if v is not None}

@@ -51,7 +51,7 @@ class EnvironmentsMixin(BaseClient):
         self,
         project_id: int,
         env_id: int,
-        **fields: Any,
+        **fields: str | int | bool | None,
     ) -> None:
         """PUT /api/project/{pid}/environment/{eid}."""
         body = {k: v for k, v in fields.items() if v is not None}

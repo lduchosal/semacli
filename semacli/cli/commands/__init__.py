@@ -1,7 +1,6 @@
 """Commands package for CLI."""
 
-from typing import Any
-
+from .._groups import SectionedRootGroup
 from .environments import register_environments_commands
 from .info import register_info_commands
 from .init import register_init_commands
@@ -20,7 +19,7 @@ from .user import register_user_commands
 from .views import register_views_commands
 
 
-def register_all_commands(main_group: Any) -> None:
+def register_all_commands(main_group: SectionedRootGroup) -> None:
     """Register all commands with the main CLI group."""
     register_ping_commands(main_group)
     register_info_commands(main_group)

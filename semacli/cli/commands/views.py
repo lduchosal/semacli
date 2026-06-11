@@ -9,7 +9,7 @@ from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 from semacli.core.models import View
 
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import fail_on_error
 
@@ -71,7 +71,7 @@ def _setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
 @output_options
 @project_option
 @fail_on_error
-def view_group(
+def view_group(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -169,8 +169,8 @@ def delete_cmd(ctx: click.Context, view_id: int, *, yes: bool) -> None:
         click.echo(f"deleted view id={view_id}")
 
 
-def register_views_commands(main_group: Any) -> None:
+def register_views_commands(main_group: SectionedRootGroup) -> None:
     """Register `sem view`."""
     main_group.add_command(view_group)
-    main_group.commands["view"].category = "read"
+    main_group.set_category("view", "read")
     main_group.add_alias("views", "view")

@@ -30,7 +30,7 @@ def _csv_params(limit: str | None, tags: str | None, skip_tags: str | None) -> d
 class TasksMixin(BaseClient):
     """Run, inspect and stop tasks."""
 
-    def run_task(
+    def run_task(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
         self,
         project_id: int,
         template_id: int,

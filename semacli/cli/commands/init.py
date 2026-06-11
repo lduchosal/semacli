@@ -6,7 +6,6 @@ See UX.md and ken #716 for the full flow.
 """
 
 from pathlib import Path
-from typing import Any
 
 import click
 
@@ -14,7 +13,7 @@ from semacli.core.client import SemaphoreClient
 from semacli.core.config import SemaphoreConfig
 from semacli.core.exceptions import AuthenticationError, SemaCliError
 
-from .._groups import RawEpilogCommand
+from .._groups import RawEpilogCommand, SectionedRootGroup
 
 INIT_HELP = """\
 Create semacli.ini in guided mode.
@@ -160,7 +159,7 @@ def _prompt_location() -> Path:
     return Path(_LOCATIONS[choice][0]).expanduser()
 
 
-def _write_ini(
+def _write_ini(  # noqa: PLR0913 — one keyword per wizard answer
     target: Path,
     *,
     url: str,
@@ -243,7 +242,7 @@ def init_cmd(url: str | None, output_path: str | None) -> None:
         raise SystemExit(2) from e
 
 
-def register_init_commands(main_group: Any) -> None:
+def register_init_commands(main_group: SectionedRootGroup) -> None:
     """Register the `init` command."""
     main_group.add_command(init_cmd)
-    main_group.commands["init"].category = "connection"
+    main_group.set_category("init", "connection")

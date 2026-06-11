@@ -26,7 +26,7 @@ class TemplatesMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Template.model_validate(data)
 
-    def create_template(
+    def create_template(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,
@@ -77,7 +77,9 @@ class TemplatesMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Template.model_validate(data)
 
-    def update_template(self, project_id: int, template_id: int, **fields: Any) -> None:
+    def update_template(
+        self, project_id: int, template_id: int, **fields: str | int | bool | None
+    ) -> None:
         """PUT /api/project/{pid}/templates/{tid}."""
         body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         body["id"] = template_id

@@ -26,7 +26,7 @@ class KeysMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Key.model_validate(data)
 
-    def create_key(
+    def create_key(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,
@@ -63,7 +63,7 @@ class KeysMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Key.model_validate(data)
 
-    def update_key(self, project_id: int, key_id: int, **fields: Any) -> None:
+    def update_key(self, project_id: int, key_id: int, **fields: str | int | bool | None) -> None:
         """PUT /api/project/{pid}/keys/{kid}."""
         body = {k: v for k, v in fields.items() if v is not None}
         body["id"] = key_id

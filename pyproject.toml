@@ -88,11 +88,15 @@ target-version = "py310"
 # Locked at palier 2 (ken #829): ARG, PERF, PTH, RUF.
 # Locked at palier 3 (ken #831): BLE, EM, FBT, TRY — and RUF100 lifted
 # (every remaining argued noqa now references an enabled rule).
+# Locked at palier 5 (ken #833): ANN401 (bare Any only at JSON boundaries,
+# argued noqas) and the full PLR family (PLR0913 argued per click callback /
+# API wrapper). The ken #800 per-file-ignores are fully lifted.
 select = [
-    "E", "F", "W", "I", "UP", "B", "C4", "C90", "PLR0913", "PLR0915",
+    "E", "F", "W", "I", "UP", "B", "C4", "C90",
     "DTZ", "G", "SLF", "PLC0415",
     "ARG", "PERF", "PTH", "RUF",
     "BLE", "EM", "FBT", "TRY",
+    "ANN401", "PLR",
 ]
 # E501: black owns line length.
 ignore = ["E501"]
@@ -104,16 +108,12 @@ max-complexity = 10
 # Tests are exempt from the src-hygiene families (same as kenboard): private
 # access and lazy imports are legitimate test idioms. The metrics gate
 # (ken #828) only measures semacli/.
-"tests/**" = ["DTZ", "G", "SLF", "PLC0415", "ARG", "PERF", "PTH", "RUF", "BLE", "EM", "FBT", "TRY"]
+"tests/**" = ["DTZ", "G", "SLF", "PLC0415", "ARG", "PERF", "PTH", "RUF", "BLE", "EM", "FBT", "TRY", "ANN401", "PLR"]
 # Ratchet (ken #800): existing debt only — new files get the full gate.
-# cli/commands + _crud: PLR0913 is inherent to click callbacks (one parameter
-# per --option); C901/PLR0915 are real debt from the register-closure pattern.
-"semacli/cli/commands/*.py" = ["C901", "PLR0913", "PLR0915"]
-"semacli/cli/_crud.py" = ["PLR0913"]
-# core/client: PLR0913 is inherent to API-wrapper signatures (one parameter
-# per payload field); C901 covers run_task's params assembly only.
-"semacli/core/client/*.py" = ["C901", "PLR0913"]
-"semacli/core/config.py" = ["C901"]
+# cli: zeroed at palier 5 (ken #833) — PLR0913 on click callbacks is now
+# suppressed line-by-line with argued noqas, no file-level ignore left.
+# core: zeroed at palier 5 (ken #833) — PLR0913 on API-wrapper signatures
+# is suppressed line-by-line with argued noqas; C901 reached zero everywhere.
 
 [tool.importlinter]
 root_package = "semacli"

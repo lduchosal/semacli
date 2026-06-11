@@ -1,7 +1,6 @@
 """Inventories CRUD commands."""
 
 from pathlib import Path
-from typing import Any
 
 import click
 
@@ -16,7 +15,7 @@ from .._crud import (
     setup,
     store_opts,
 )
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import fail_on_error
 
@@ -81,7 +80,7 @@ def _emit_show_text(i: Inventory) -> None:
 @output_options
 @project_option
 @fail_on_error
-def inventories(
+def inventories(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -147,7 +146,7 @@ def show_cmd(ctx: click.Context, inventory_id: int) -> None:
 @click.option("--become-key-id", type=int, default=0)
 @click.pass_context
 @fail_on_error
-def create_cmd(
+def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     inv_type: str,
@@ -186,7 +185,7 @@ def create_cmd(
 @click.option("--become-key-id", type=int, default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(
+def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     inventory_id: int,
     name: str | None,
@@ -226,8 +225,8 @@ def delete_cmd(ctx: click.Context, inventory_id: int, *, yes: bool) -> None:
         click.echo(f"deleted inventory id={inventory_id}")
 
 
-def register_inventories_commands(main_group: Any) -> None:
+def register_inventories_commands(main_group: SectionedRootGroup) -> None:
     """Register the `inv` command group."""
     main_group.add_command(inventories)
-    main_group.commands["inv"].category = "read"
+    main_group.set_category("inv", "read")
     main_group.add_alias("inventories", "inv")

@@ -39,7 +39,7 @@ class ViewsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return View.model_validate(data)
 
-    def update_view(self, project_id: int, view_id: int, **fields: Any) -> None:
+    def update_view(self, project_id: int, view_id: int, **fields: str | int | bool | None) -> None:
         """PUT /api/project/{pid}/views/{vid}."""
         body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         body["id"] = view_id

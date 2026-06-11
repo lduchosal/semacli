@@ -1,7 +1,6 @@
 """Environments CRUD commands."""
 
 from pathlib import Path
-from typing import Any
 
 import click
 
@@ -16,7 +15,7 @@ from .._crud import (
     setup,
     store_opts,
 )
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import fail_on_error
 
@@ -80,7 +79,7 @@ def _emit_show_text(e: Environment) -> None:
 @output_options
 @project_option
 @fail_on_error
-def environments(
+def environments(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -198,8 +197,8 @@ def delete_cmd(ctx: click.Context, env_id: int, *, yes: bool) -> None:
         click.echo(f"deleted environment id={env_id}")
 
 
-def register_environments_commands(main_group: Any) -> None:
+def register_environments_commands(main_group: SectionedRootGroup) -> None:
     """Register the `env` command group."""
     main_group.add_command(environments)
-    main_group.commands["env"].category = "read"
+    main_group.set_category("env", "read")
     main_group.add_alias("environments", "env")

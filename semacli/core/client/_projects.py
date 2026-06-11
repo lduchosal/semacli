@@ -46,7 +46,7 @@ class ProjectsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Project.model_validate(data)
 
-    def update_project(self, project_id: int, **fields: Any) -> None:
+    def update_project(self, project_id: int, **fields: str | int | bool | None) -> None:
         """PUT /api/project/{pid}."""
         body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         body["id"] = project_id

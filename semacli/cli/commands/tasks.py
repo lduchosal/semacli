@@ -1,7 +1,6 @@
 """Tasks commands (run + show + output + watch)."""
 
 import json
-from typing import Any
 
 import click
 
@@ -10,7 +9,7 @@ from semacli.core.models import Task
 
 from .._crud import opts_from_ctx, store_opts
 from .._envvars import normalize_environment
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import OutputFormatter, fail_on_error
 from ._task_views import _setup, list_cmd, output_cmd, raw_output_cmd, watch_cmd
@@ -72,7 +71,7 @@ def _emit_task_text(t: Task) -> None:
 @common_options
 @output_options
 @project_option
-def tasks_group(
+def tasks_group(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -93,7 +92,7 @@ def tasks_group(
 
 
 @fail_on_error
-def _post_run(
+def _post_run(  # noqa: PLR0913 — one keyword per forwarded --option
     ctx: click.Context,
     *,
     template_id: int,
@@ -162,7 +161,7 @@ def _post_run(
 )
 @click.option("--diff", is_flag=True, help="Show diff of file changes (ansible --diff)")
 @click.pass_context
-def run_cmd(
+def run_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     template_id: int,
@@ -226,8 +225,8 @@ for _viewer in (output_cmd, watch_cmd, list_cmd, raw_output_cmd):
     tasks_group.add_command(_viewer)
 
 
-def register_tasks_commands(main_group: Any) -> None:
+def register_tasks_commands(main_group: SectionedRootGroup) -> None:
     """Register the `tasks` command group."""
     main_group.add_command(tasks_group)
-    main_group.commands["task"].category = "execution"
+    main_group.set_category("task", "execution")
     main_group.add_alias("tasks", "task")

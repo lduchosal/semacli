@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from typing import Any
 
 import click
 import requests
 
 from semacli import __version__
 
-from .._groups import RawEpilogCommand
+from .._groups import RawEpilogCommand, SectionedRootGroup
 
 PYPI_JSON_URL = "https://pypi.org/pypi/semacli/json"
 
@@ -155,7 +154,7 @@ def self_update_cmd(*, check_only: bool, allow_pre: bool, dry_run: bool) -> None
     click.echo("Done. Run `sem --version` to confirm.")
 
 
-def register_self_update_commands(main_group: Any) -> None:
+def register_self_update_commands(main_group: SectionedRootGroup) -> None:
     """Register the `self-update` command."""
     main_group.add_command(self_update_cmd)
-    main_group.commands["self-update"].category = "connection"
+    main_group.set_category("self-update", "connection")

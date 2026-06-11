@@ -1,7 +1,6 @@
 """Projects command for CLI."""
 
 import json
-from typing import Any
 
 import click
 
@@ -9,7 +8,7 @@ from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 from semacli.core.models import Project
 
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, fail_on_error
 from ._project_members import members_group
@@ -167,7 +166,7 @@ def create_cmd(
 @click.option("--max-parallel-tasks", default=None, type=int)
 @click.pass_context
 @fail_on_error
-def update_cmd(
+def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     project_id: int,
@@ -260,8 +259,8 @@ def backup_cmd(ctx: click.Context, project_override: int | None) -> None:
     click.echo(json.dumps(data, indent=2))
 
 
-def register_projects_commands(main_group: Any) -> None:
+def register_projects_commands(main_group: SectionedRootGroup) -> None:
     """Register projects commands with the main CLI group."""
     main_group.add_command(project_group)
-    main_group.commands["project"].category = "read"
+    main_group.set_category("project", "read")
     main_group.add_alias("projects", "project")

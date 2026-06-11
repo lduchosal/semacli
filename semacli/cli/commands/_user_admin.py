@@ -116,7 +116,7 @@ def admin_show_cmd(ctx: click.Context, user_id: int) -> None:
 @click.option("--admin", is_flag=True, help="Grant admin privileges.")
 @click.pass_context
 @fail_on_error
-def admin_create_cmd(
+def admin_create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     username: str,
@@ -149,7 +149,7 @@ def admin_create_cmd(
 @click.option("--admin/--no-admin", default=None)
 @click.pass_context
 @fail_on_error
-def admin_update_cmd(
+def admin_update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     user_id: int,

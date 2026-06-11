@@ -1,7 +1,5 @@
 """Cron schedules CRUD commands."""
 
-from typing import Any
-
 import click
 
 from semacli.core.models import Schedule
@@ -16,7 +14,7 @@ from .._crud import (
     setup,
     store_opts,
 )
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import fail_on_error
 
@@ -69,7 +67,7 @@ def _emit_show_text(s: Schedule) -> None:
 @output_options
 @project_option
 @fail_on_error
-def schedules(
+def schedules(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -203,8 +201,8 @@ def delete_cmd(ctx: click.Context, sched_id: int, *, yes: bool) -> None:
         click.echo(f"deleted schedule id={sched_id}")
 
 
-def register_schedules_commands(main_group: Any) -> None:
+def register_schedules_commands(main_group: SectionedRootGroup) -> None:
     """Register the `sched` command group."""
     main_group.add_command(schedules)
-    main_group.commands["sched"].category = "read"
+    main_group.set_category("sched", "read")
     main_group.add_alias("schedules", "sched")

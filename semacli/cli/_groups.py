@@ -36,7 +36,7 @@ class AliasedGroup(click.Group):
     command_class = RawEpilogCommand
     # group_class is set after the class body below so it can reference itself.
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401 — click passthrough
         self._aliases: dict[str, str] = {}
         super().__init__(*args, **kwargs)
 
@@ -87,6 +87,14 @@ class SectionedRootGroup(AliasedGroup):
         ("execution", "Execution"),
     ]
 
+    def set_category(self, name: str, category: str) -> None:
+        """Tag a registered command for the sectioned root help listing.
+
+        The tag is a dynamic attribute read back by ``format_commands``
+        via ``getattr`` — ``click.Command`` does not declare it.
+        """
+        self.commands[name].category = category  # type: ignore[attr-defined]
+
     def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
         """Render the command list bucketed by ``category``, with an ``Other`` catch-all."""
         buckets: dict[str, list[tuple[str, str]]] = {key: [] for key, _ in self.SECTIONS}
@@ -124,6 +132,6 @@ class ResourceGroup(AliasedGroup):
       query, implementing the positional-filter rule from UX.md § 3.1 B.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401 — click passthrough
         kwargs.setdefault("invoke_without_command", True)
         super().__init__(*args, **kwargs)

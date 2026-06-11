@@ -10,7 +10,7 @@ from semacli.core.config import load_config
 from semacli.core.models import Template
 
 from .._crud import opts_from_ctx, store_opts
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, fail_on_error
 
@@ -120,7 +120,7 @@ def _run_list(opts: dict[str, Any]) -> None:
 @output_options
 @project_option
 @fail_on_error
-def templates_group(
+def templates_group(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -204,7 +204,7 @@ def show_cmd(ctx: click.Context, template_id: int) -> None:
 )
 @click.pass_context
 @fail_on_error
-def create_cmd(
+def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     playbook: str,
@@ -246,7 +246,7 @@ def create_cmd(
 @click.option("--arguments", default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(
+def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     template_id: int,
     name: str | None,
@@ -292,8 +292,8 @@ def delete_cmd(ctx: click.Context, template_id: int, *, yes: bool) -> None:
         click.echo(f"deleted template id={template_id}")
 
 
-def register_templates_commands(main_group: Any) -> None:
+def register_templates_commands(main_group: SectionedRootGroup) -> None:
     """Register the `templates` command group."""
     main_group.add_command(templates_group)
-    main_group.commands["template"].category = "read"
+    main_group.set_category("template", "read")
     main_group.add_alias("templates", "template")

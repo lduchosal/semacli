@@ -16,7 +16,7 @@ from .._crud import (
     setup,
     store_opts,
 )
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import fail_on_error
 
@@ -80,7 +80,7 @@ def _emit_show_text(k: Key) -> None:
     click.echo("(secret values are never returned by the API)")
 
 
-def _create_kwargs(
+def _create_kwargs(  # noqa: PLR0913 — one parameter per key-type --option
     name: str,
     key_type: str,
     ssh_key: str,
@@ -121,7 +121,7 @@ def _create_kwargs(
 @output_options
 @project_option
 @fail_on_error
-def keys(
+def keys(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -197,7 +197,7 @@ def show_cmd(ctx: click.Context, key_id: int) -> None:
 @click.option("--passphrase", default="", help="SSH key passphrase")
 @click.pass_context
 @fail_on_error
-def create_cmd(
+def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     key_type: str,
@@ -227,7 +227,7 @@ def create_cmd(
 @click.option("--passphrase", default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(
+def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     key_id: int,
     name: str | None,
@@ -267,8 +267,8 @@ def delete_cmd(ctx: click.Context, key_id: int, *, yes: bool) -> None:
         click.echo(f"deleted key id={key_id}")
 
 
-def register_keys_commands(main_group: Any) -> None:
+def register_keys_commands(main_group: SectionedRootGroup) -> None:
     """Register the `keys` command group."""
     main_group.add_command(keys)
-    main_group.commands["key"].category = "read"
+    main_group.set_category("key", "read")
     main_group.add_alias("keys", "key")

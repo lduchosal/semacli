@@ -26,7 +26,7 @@ class IntegrationsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Integration.model_validate(data)
 
-    def create_integration(
+    def create_integration(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,
@@ -52,7 +52,9 @@ class IntegrationsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Integration.model_validate(data)
 
-    def update_integration(self, project_id: int, integration_id: int, **fields: Any) -> None:
+    def update_integration(
+        self, project_id: int, integration_id: int, **fields: str | int | bool | None
+    ) -> None:
         """PUT /api/project/{pid}/integrations/{iid}."""
         body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
         body["id"] = integration_id
@@ -77,7 +79,7 @@ class IntegrationsMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return [IntegrationMatcher.model_validate(m) for m in data]
 
-    def add_integration_matcher(
+    def add_integration_matcher(  # noqa: PLR0913 — one parameter per payload field (API wrapper)
         self,
         project_id: int,
         integration_id: int,
@@ -111,7 +113,7 @@ class IntegrationsMixin(BaseClient):
         project_id: int,
         integration_id: int,
         matcher_id: int,
-        **fields: Any,
+        **fields: str | int | bool | None,
     ) -> None:
         """PUT /api/project/{pid}/integrations/{iid}/matchers/{mid}."""
         body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}

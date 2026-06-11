@@ -1,14 +1,13 @@
 """`sem integration` — inbound webhooks + their matchers."""
 
 import json
-from typing import Any
 
 import click
 
 from semacli.core.models import Integration
 
 from .._crud import opts_from_ctx, setup, store_opts
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import fail_on_error
 from ._integration_matchers import matchers_group
@@ -76,7 +75,7 @@ def _emit_int_show_text(i: Integration) -> None:
 @output_options
 @project_option
 @fail_on_error
-def integration_group(
+def integration_group(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -140,7 +139,7 @@ def show_cmd(ctx: click.Context, integration_id: int) -> None:
 )
 @click.pass_context
 @fail_on_error
-def create_cmd(
+def create_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     template_id: int,
@@ -178,7 +177,7 @@ def create_cmd(
 @click.option("--auth-secret-id", default=None, type=int)
 @click.pass_context
 @fail_on_error
-def update_cmd(
+def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     integration_id: int,
     name: str | None,
@@ -223,8 +222,8 @@ def delete_cmd(ctx: click.Context, integration_id: int, *, yes: bool) -> None:
 integration_group.add_command(matchers_group)
 
 
-def register_integrations_commands(main_group: Any) -> None:
+def register_integrations_commands(main_group: SectionedRootGroup) -> None:
     """Register `sem integration` and its `matchers` subgroup."""
     main_group.add_command(integration_group)
-    main_group.commands["integration"].category = "read"
+    main_group.set_category("integration", "read")
     main_group.add_alias("integrations", "integration")

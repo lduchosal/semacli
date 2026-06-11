@@ -69,7 +69,7 @@ def fail_on_error(func: Callable[..., None]) -> Callable[..., None]:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> None:
+    def wrapper(*args: Any, **kwargs: Any) -> None:  # noqa: ANN401 — click passthrough
         """Run the wrapped callback, funneling any exception to ``handle_error``."""
         try:
             func(*args, **kwargs)

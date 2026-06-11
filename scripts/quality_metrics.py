@@ -58,14 +58,14 @@ TARGET_FILE_LINES = 300
 # as the gate is green, record a snapshot then tighten to the next palier
 # — a green gate is never a stable state. A threshold is NEVER relaxed
 # without an explicit, traced human decision.
-GATE_PALIER = 4
+GATE_PALIER = 5  # palier final — le gate reste en mode verrou
 GATE_MAX = {
     "max_file_lines": 300,
     "max_func_lines": 50,
     "files_over_500": 0,
     "c901_over_10": 0,
-    "ruff_debt": 40,
-    "ignored_debt": 35,
+    "ruff_debt": 0,
+    "ignored_debt": 0,
     "mypy_errors": 0,
     "vulture": 0,
     "refurb": 0,
@@ -458,10 +458,13 @@ def main() -> int:
                 for line in gate_details(failure.split(" = ")[0]):
                     print(f"        {line}")
             return 1
-        print(
-            f"gate (palier {GATE_PALIER}): PASS — record a snapshot and tighten "
-            "to the next palier (doc/code-quality.md § Gate bloquant)"
+        next_step = (
+            "lock mode — keep it green (doc/code-quality.md § Paliers)"
+            if GATE_PALIER >= 5
+            else "record a snapshot and tighten to the next palier "
+            "(doc/code-quality.md § Gate bloquant)"
         )
+        print(f"gate (palier {GATE_PALIER}): PASS — {next_step}")
     return 0
 
 

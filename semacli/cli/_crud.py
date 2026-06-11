@@ -22,7 +22,7 @@ def setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
     return client, pid
 
 
-def emit_json_single(obj: Any) -> None:
+def emit_json_single(obj: BaseModel | dict[str, Any]) -> None:
     """Emit a single pydantic model (or dict) as JSON."""
     payload = obj.model_dump(by_alias=True) if isinstance(obj, BaseModel) else obj
     click.echo(json.dumps(payload, indent=2))
@@ -62,7 +62,7 @@ def opts_from_ctx(ctx: click.Context) -> dict[str, Any]:
     return ctx.obj  # type: ignore[no-any-return]
 
 
-def store_opts(
+def store_opts(  # noqa: PLR0913 — one keyword per shared group option
     ctx: click.Context,
     *,
     config: str,

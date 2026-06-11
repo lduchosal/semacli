@@ -1,7 +1,5 @@
 """Repositories CRUD commands."""
 
-from typing import Any
-
 import click
 
 from semacli.core.models import Repository
@@ -15,7 +13,7 @@ from .._crud import (
     setup,
     store_opts,
 )
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option
 from ..handlers import fail_on_error
 
@@ -68,7 +66,7 @@ def _emit_show_text(r: Repository) -> None:
 @output_options
 @project_option
 @fail_on_error
-def repositories(
+def repositories(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     *,
     config: str,
@@ -143,7 +141,7 @@ def create_cmd(ctx: click.Context, name: str, git_url: str, branch: str, ssh_key
 @click.option("--ssh-key-id", type=int, default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(
+def update_cmd(  # noqa: PLR0913 — one parameter per --option (click callback)
     ctx: click.Context,
     repo_id: int,
     name: str | None,
@@ -181,8 +179,8 @@ def delete_cmd(ctx: click.Context, repo_id: int, *, yes: bool) -> None:
         click.echo(f"deleted repository id={repo_id}")
 
 
-def register_repositories_commands(main_group: Any) -> None:
+def register_repositories_commands(main_group: SectionedRootGroup) -> None:
     """Register the `repo` command group."""
     main_group.add_command(repositories)
-    main_group.commands["repo"].category = "read"
+    main_group.set_category("repo", "read")
     main_group.add_alias("repositories", "repo")

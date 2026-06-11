@@ -5,14 +5,13 @@ currently-authenticated user, not the admin /users surface.
 """
 
 import json
-from typing import Any
 
 import click
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 
-from .._groups import AliasedGroup
+from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options
 from ..handlers import fail_on_error
 from ._user_admin import _emit_user_text, admin_group
@@ -99,7 +98,7 @@ user_group.add_command(tokens_group)
 user_group.add_command(admin_group)
 
 
-def register_user_commands(main_group: Any) -> None:
+def register_user_commands(main_group: SectionedRootGroup) -> None:
     """Register `sem user` and its subcommands."""
     main_group.add_command(user_group)
-    main_group.commands["user"].category = "connection"
+    main_group.set_category("user", "connection")
