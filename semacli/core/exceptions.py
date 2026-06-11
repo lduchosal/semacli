@@ -37,6 +37,26 @@ class HookError(SemaCliError):
     pass
 
 
+class OverrideNotAllowedError(SemaCliError):
+    """Raised when a per-run override flag (--limit, --tags, ...) is not
+    permitted by the target template.
+
+    Semaphore does not reject forbidden overrides — it silently drops
+    them, so e.g. a refused ``--limit`` runs the playbook on the FULL
+    inventory. semacli fails closed instead (ken #827).
+    """
+
+    def __init__(self, template_name: str, flag: str, toggle: str, consequence: str) -> None:
+        self.template_name = template_name
+        self.flag = flag
+        self.toggle = toggle
+        super().__init__(
+            f"template '{template_name}' does not allow {flag} ({toggle}=false). "
+            f"Semaphore would silently drop the flag and {consequence}. "
+            f"Fix the template (or drop {flag}). Refusing to run."
+        )
+
+
 class AmbiguousNameError(SemaCliError):
     """Raised when a name resolves to more than one object and no exact
     match wins. Carries the candidate list so the caller can show it.

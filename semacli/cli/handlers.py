@@ -11,6 +11,7 @@ from semacli.core.exceptions import (
     ConfigurationError,
     HookError,
     NotFoundError,
+    OverrideNotAllowedError,
     SemaphoreAPIError,
 )
 
@@ -39,6 +40,9 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
         click.echo(f"error: {error}", err=True)
         sys.exit(2)
     elif isinstance(error, NotFoundError):
+        click.echo(f"error: {error}", err=True)
+        sys.exit(2)
+    elif isinstance(error, OverrideNotAllowedError):
         click.echo(f"error: {error}", err=True)
         sys.exit(2)
     elif isinstance(error, SemaphoreAPIError):

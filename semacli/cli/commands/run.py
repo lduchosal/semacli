@@ -13,6 +13,7 @@ import click
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
 from semacli.core.exceptions import HookError
+from semacli.core.guards import ensure_overrides_allowed
 from semacli.core.hooks import run_hook, warn_hook_failure
 from semacli.core.resolve import resolve_template
 
@@ -146,6 +147,18 @@ def register_run_commands(main_group: Any) -> None:
             OutputFormatter.format_verbose(
                 f"resolved template '{template}' -> id {template_id}", verbose
             )
+
+            # Fail closed BEFORE posting: Semaphore silently drops
+            # forbidden overrides (a refused --limit runs on the full
+            # inventory, ken #827).
+            if limit or tags or skip_tags or debug:
+                ensure_overrides_allowed(
+                    client.get_template(pid, template_id),
+                    limit=limit,
+                    tags=tags,
+                    skip_tags=skip_tags,
+                    debug=debug,
+                )
 
             hook_env_base = {
                 "SEMACLI_COMMAND": "run",

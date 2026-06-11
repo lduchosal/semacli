@@ -8,6 +8,7 @@ import click
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
+from semacli.core.guards import ensure_overrides_allowed
 from semacli.core.models import Task
 
 from .._envvars import normalize_environment
@@ -147,6 +148,16 @@ def register_tasks_commands(main_group: Any) -> None:
             OutputFormatter.format_verbose(
                 f"POST /project/{pid}/tasks template_id={template_id}", verbose
             )
+            # Fail closed BEFORE posting: Semaphore silently drops
+            # forbidden overrides (ken #827).
+            if limit or tags or skip_tags or debug:
+                ensure_overrides_allowed(
+                    client.get_template(pid, template_id),
+                    limit=limit,
+                    tags=tags,
+                    skip_tags=skip_tags,
+                    debug=debug,
+                )
             task = client.run_task(
                 pid,
                 template_id,
