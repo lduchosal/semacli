@@ -66,6 +66,19 @@ def _emit_show_text(t: Template) -> None:
     click.echo(f"environment_id: {t.environment_id}")
     if t.app:
         click.echo(f"app:            {t.app}")
+    p = t.task_params
+    allowed = [
+        label
+        for label, ok in (
+            ("limit", p.allow_override_limit),
+            ("tags", p.allow_override_tags),
+            ("skip-tags", p.allow_override_skip_tags),
+            ("debug", p.allow_debug),
+            ("inventory", p.allow_override_inventory),
+        )
+        if ok
+    ]
+    click.echo(f"overrides:      {', '.join(allowed) if allowed else 'none (run flags refused)'}")
     if t.description:
         click.echo(f"description:    {t.description}")
 

@@ -41,6 +41,11 @@ class TemplatesMixin(BaseClient):
         Modern Semaphore requires the ``app`` field (the runner kind:
         ansible, terraform, bash, …) and rejects an absent/empty value
         with ``HTTP 400 Invalid app id`` (ken #812).
+
+        ``task_params`` is sent permissive (all overrides allowed), like
+        the UI does. Without it the server defaults every toggle to
+        false and then SILENTLY DROPS per-run --limit/--tags/--debug —
+        running the playbook on the full inventory (ken #826).
         """
         body: dict[str, Any] = {
             "project_id": project_id,
@@ -49,6 +54,14 @@ class TemplatesMixin(BaseClient):
             "inventory_id": inventory_id,
             "repository_id": repository_id,
             "app": app,
+            "allow_override_args_in_task": True,
+            "task_params": {
+                "allow_debug": True,
+                "allow_override_inventory": True,
+                "allow_override_limit": True,
+                "allow_override_skip_tags": True,
+                "allow_override_tags": True,
+            },
         }
         if environment_id is not None:
             body["environment_id"] = environment_id

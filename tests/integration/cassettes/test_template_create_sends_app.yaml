@@ -1,7 +1,10 @@
 interactions:
 - request:
     body: '{"project_id": 1, "name": "semacli-vcr-tpl", "playbook": "ping.yml", "inventory_id":
-      4, "repository_id": 3, "app": "ansible", "description": "vcr cassette ken #812"}'
+      4, "repository_id": 3, "app": "ansible", "allow_override_args_in_task": true,
+      "task_params": {"allow_debug": true, "allow_override_inventory": true, "allow_override_limit":
+      true, "allow_override_skip_tags": true, "allow_override_tags": true}, "description":
+      "vcr cassette ken #812"}'
     headers:
       Accept:
       - application/json
@@ -10,7 +13,7 @@ interactions:
       Connection:
       - keep-alive
       Content-Length:
-      - '165'
+      - '367'
       Content-Type:
       - application/json
       User-Agent:
@@ -21,15 +24,15 @@ interactions:
     uri: https://semaphore.domain.com/api/project/1/templates
   response:
     body:
-      string: '{"id":185,"project_id":1,"inventory_id":4,"repository_id":3,"environment_ids":null,"environment_id":0,"name":"semacli-vcr-tpl","playbook":"ping.yml","description":"vcr
-        cassette ken #812","app":"ansible","tasks":0}
+      string: '{"id":187,"project_id":1,"inventory_id":4,"repository_id":3,"environment_ids":null,"environment_id":0,"name":"semacli-vcr-tpl","playbook":"ping.yml","allow_override_args_in_task":true,"description":"vcr
+        cassette ken #812","app":"ansible","tasks":0,"task_params":{"allow_debug":true,"allow_override_inventory":true,"allow_override_limit":true,"allow_override_skip_tags":true,"allow_override_tags":true}}
 
         '
     headers:
       Connection:
       - keep-alive
       Content-Length:
-      - '214'
+      - '403'
       Content-Security-Policy:
       - default-src 'self' 'unsafe-inline'
       Content-Security-Policy-Report-Only:
@@ -37,7 +40,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Wed, 10 Jun 2026 22:14:25 GMT
+      - Thu, 11 Jun 2026 11:31:07 GMT
       Permissions-Policy:
       - geolocation=(), microphone=(), fullscreen=()
       Referrer-Policy:
@@ -62,6 +65,55 @@ interactions:
       - gzip, deflate
       Connection:
       - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/templates/187
+  response:
+    body:
+      string: '{"id":187,"project_id":1,"inventory_id":4,"repository_id":3,"environment_ids":[],"environment_id":0,"name":"semacli-vcr-tpl","playbook":"ping.yml","allow_override_args_in_task":true,"description":"vcr
+        cassette ken #812","app":"ansible","tasks":0,"task_params":{"allow_debug":true,"allow_override_inventory":true,"allow_override_limit":true,"allow_override_skip_tags":true,"allow_override_tags":true},"permissions":15}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '418'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 11 Jun 2026 11:31:07 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
       Content-Length:
       - '0'
       User-Agent:
@@ -69,7 +121,7 @@ interactions:
       authorization:
       - Bearer REDACTED
     method: DELETE
-    uri: https://semaphore.domain.com/api/project/1/templates/185
+    uri: https://semaphore.domain.com/api/project/1/templates/187
   response:
     body:
       string: ''
@@ -83,7 +135,7 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Wed, 10 Jun 2026 22:14:25 GMT
+      - Thu, 11 Jun 2026 11:31:07 GMT
       Permissions-Policy:
       - geolocation=(), microphone=(), fullscreen=()
       Referrer-Policy:

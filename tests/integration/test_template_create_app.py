@@ -43,5 +43,14 @@ def test_template_create_sends_app(
         body = json.loads(post.body)
         assert body["app"] == "ansible"
         assert body["playbook"] == "ping.yml"
+        # Permissive by default (ken #826): without these the server
+        # silently drops per-run --limit/--tags/--debug.
+        assert body["allow_override_args_in_task"] is True
+        assert all(body["task_params"].values())
+
+        # The server must persist the toggles, not just accept them.
+        created = client.get_template(RECORD_PROJECT, tpl.id)
+        assert created.task_params.allow_override_limit is True
+        assert created.task_params.allow_debug is True
     finally:
         client.delete_template(RECORD_PROJECT, tpl.id)

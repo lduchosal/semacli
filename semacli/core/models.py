@@ -36,6 +36,21 @@ class Project(_ApiModel):
     max_parallel_tasks: int = 0
 
 
+class TemplateTaskParams(_ApiModel):
+    """Per-template override permissions (Semaphore ``task_params``).
+
+    Defaults mirror the server's behaviour when the field is absent:
+    everything forbidden — which is why semacli must check them before
+    a run (ken #827) and send them explicitly at create (ken #826).
+    """
+
+    allow_debug: bool = False
+    allow_override_inventory: bool = False
+    allow_override_limit: bool = False
+    allow_override_skip_tags: bool = False
+    allow_override_tags: bool = False
+
+
 class Template(_ApiModel):
     """A Semaphore task template."""
 
@@ -48,6 +63,8 @@ class Template(_ApiModel):
     environment_id: int = 0
     description: str = ""
     app: str = ""
+    allow_override_args_in_task: bool = False
+    task_params: TemplateTaskParams = Field(default_factory=TemplateTaskParams)
 
 
 class Task(_ApiModel):

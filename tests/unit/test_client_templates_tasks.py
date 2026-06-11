@@ -66,6 +66,23 @@ class TestTemplates:
         body = session.return_value.request.call_args.kwargs["json"]
         assert body["app"] == "ansible"
 
+    def test_create_sends_permissive_task_params(self) -> None:
+        # Without task_params the server forbids every per-run override
+        # and silently drops --limit/--tags/--debug (ken #826).
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp('{"id": 183, "name": "x"}')
+            c.create_template(1, name="x", playbook="x.yml", inventory_id=4, repository_id=3)
+        body = session.return_value.request.call_args.kwargs["json"]
+        assert body["allow_override_args_in_task"] is True
+        assert body["task_params"] == {
+            "allow_debug": True,
+            "allow_override_inventory": True,
+            "allow_override_limit": True,
+            "allow_override_skip_tags": True,
+            "allow_override_tags": True,
+        }
+
     def test_create_app_override(self) -> None:
         c = SemaphoreClient(_cfg())
         with patch.object(c, "_get_session") as session:
