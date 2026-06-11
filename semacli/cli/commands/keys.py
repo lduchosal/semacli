@@ -51,6 +51,7 @@ Examples:
 
 
 def _read_private_key(path_or_text: str) -> str:
+    """Resolve @file syntax: returns file contents if value starts with '@'."""
     if path_or_text.startswith("@"):
         with Path(path_or_text[1:]).open(encoding="utf-8") as f:
             return f.read()
@@ -66,10 +67,12 @@ def _split_login(login_password: str) -> tuple[str, str]:
 
 
 def _fmt_row(k: Key) -> str:
+    """One aligned text row for the key list view."""
     return f"{k.id:>4}  {k.name}  ({k.type})"
 
 
 def _emit_show_text(k: Key) -> None:
+    """Emit one key as key-value lines; secret values are never shown."""
     click.echo(f"id:         {k.id}")
     click.echo(f"name:       {k.name}")
     click.echo(f"type:       {k.type}")
@@ -120,6 +123,7 @@ def _create_kwargs(
 @fail_on_error
 def keys(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -253,11 +257,11 @@ def update_cmd(
 @click.option("--yes", is_flag=True)
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, key_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, key_id: int, *, yes: bool) -> None:
     """Delete an access key."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
-    confirm_delete(yes, "key", key_id)
+    confirm_delete("key", key_id, yes=yes)
     client.delete_key(pid, key_id)
     if not opts["quiet"]:
         click.echo(f"deleted key id={key_id}")

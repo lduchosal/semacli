@@ -18,11 +18,14 @@ if TYPE_CHECKING:
 
 
 class _Named(Protocol):
+    """Anything with an ``id`` and a ``name`` — the shape resolution works on."""
+
     id: int
     name: str
 
 
-def _match_id_or_name(query: str, items: Sequence[_Named], kind: str, exact: bool) -> int:
+def _match_id_or_name(query: str, items: Sequence[_Named], kind: str, *, exact: bool) -> int:
+    """Resolve a query to an id per UX.md § 3.2: digits pass through, exact beats fuzzy."""
     if query.isdigit():
         return int(query)
 
@@ -32,11 +35,13 @@ def _match_id_or_name(query: str, items: Sequence[_Named], kind: str, exact: boo
     if exact_hits:
         return exact_hits[0].id
     if exact:
-        raise NotFoundError(f"no {kind} matching '{query}' (with --exact)")
+        msg = f"no {kind} matching '{query}' (with --exact)"
+        raise NotFoundError(msg)
 
     fuzzy = [it for it in items if q in it.name.casefold()]
     if not fuzzy:
-        raise NotFoundError(f"no {kind} matching '{query}'")
+        msg = f"no {kind} matching '{query}'"
+        raise NotFoundError(msg)
     if len(fuzzy) == 1:
         return fuzzy[0].id
 
@@ -48,4 +53,4 @@ def resolve_template(
 ) -> int:
     """Resolve a template name (or id) to a numeric template id."""
     items = client.get_templates(pid)
-    return _match_id_or_name(query, items, "template", exact)
+    return _match_id_or_name(query, items, "template", exact=exact)

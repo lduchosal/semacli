@@ -14,14 +14,16 @@ class IntegrationsMixin(BaseClient):
         """GET /api/project/{pid}/integrations."""
         data = self._request(f"project/{project_id}/integrations")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /project/{pid}/integrations")
+            msg = "Unexpected response for /project/{pid}/integrations"
+            raise SemaphoreAPIError(msg)
         return [Integration.model_validate(i) for i in data]
 
     def get_integration(self, project_id: int, integration_id: int) -> Integration:
         """GET /api/project/{pid}/integrations/{iid}."""
         data = self._request(f"project/{project_id}/integrations/{integration_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /integrations/{iid}")
+            msg = "Unexpected response for /integrations/{iid}"
+            raise SemaphoreAPIError(msg)
         return Integration.model_validate(data)
 
     def create_integration(
@@ -46,7 +48,8 @@ class IntegrationsMixin(BaseClient):
             body["auth_secret_id"] = auth_secret_id
         data = self._request(f"project/{project_id}/integrations", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /integrations")
+            msg = "Unexpected response for POST /integrations"
+            raise SemaphoreAPIError(msg)
         return Integration.model_validate(data)
 
     def update_integration(self, project_id: int, integration_id: int, **fields: Any) -> None:
@@ -70,7 +73,8 @@ class IntegrationsMixin(BaseClient):
         """GET /api/project/{pid}/integrations/{iid}/matchers."""
         data = self._request(f"project/{project_id}/integrations/{integration_id}/matchers")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /matchers")
+            msg = "Unexpected response for /matchers"
+            raise SemaphoreAPIError(msg)
         return [IntegrationMatcher.model_validate(m) for m in data]
 
     def add_integration_matcher(
@@ -98,7 +102,8 @@ class IntegrationsMixin(BaseClient):
             body=body,
         )
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /matchers")
+            msg = "Unexpected response for POST /matchers"
+            raise SemaphoreAPIError(msg)
         return IntegrationMatcher.model_validate(data)
 
     def update_integration_matcher(

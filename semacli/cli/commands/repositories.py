@@ -42,10 +42,12 @@ Examples:
 
 
 def _fmt_row(r: Repository) -> str:
+    """One aligned text row for the repository list view."""
     return f"{r.id:>4}  {r.name}  {r.git_url}@{r.git_branch or 'HEAD'}"
 
 
 def _emit_show_text(r: Repository) -> None:
+    """Emit one repository as key-value lines."""
     click.echo(f"id:         {r.id}")
     click.echo(f"name:       {r.name}")
     click.echo(f"git_url:    {r.git_url}")
@@ -68,6 +70,7 @@ def _emit_show_text(r: Repository) -> None:
 @fail_on_error
 def repositories(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -168,11 +171,11 @@ def update_cmd(
 @click.option("--yes", is_flag=True)
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, repo_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, repo_id: int, *, yes: bool) -> None:
     """Delete a repository."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
-    confirm_delete(yes, "repository", repo_id)
+    confirm_delete("repository", repo_id, yes=yes)
     client.delete_repository(pid, repo_id)
     if not opts["quiet"]:
         click.echo(f"deleted repository id={repo_id}")

@@ -70,6 +70,7 @@ def fail_on_error(func: Callable[..., None]) -> Callable[..., None]:
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> None:
+        """Run the wrapped callback, funneling any exception to ``handle_error``."""
         try:
             func(*args, **kwargs)
         except Exception as error:  # noqa: BLE001 — the CLI-wide funnel to handle_error

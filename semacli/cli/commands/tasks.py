@@ -49,10 +49,12 @@ Examples:
 
 
 def _emit_task_json(t: Task) -> None:
+    """Emit one task as a full JSON dump."""
     click.echo(json.dumps(t.model_dump(), indent=2))
 
 
 def _emit_task_text(t: Task) -> None:
+    """Emit one task as key-value lines, skipping fields the API left empty."""
     click.echo(f"id:          {t.id}")
     click.echo(f"template_id: {t.template_id}")
     if t.tpl_alias:
@@ -93,6 +95,7 @@ def _setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
 @project_option
 def tasks_group(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -182,6 +185,7 @@ def _post_run(
 @click.pass_context
 def run_cmd(
     ctx: click.Context,
+    *,
     template_id: int,
     limit: str | None,
     tags: str | None,
@@ -264,6 +268,7 @@ def watch_cmd(ctx: click.Context, task_id: int, interval: float) -> None:
 
 
 def _emit_tasks_list_json(tasks: list[Task]) -> None:
+    """Emit the task history as a JSON array of summary objects."""
     click.echo(
         json.dumps(
             [
@@ -283,6 +288,7 @@ def _emit_tasks_list_json(tasks: list[Task]) -> None:
 
 
 def _emit_tasks_list_text(tasks: list[Task]) -> None:
+    """Emit the task history in compact text form, with an empty fallback + total line."""
     if not tasks:
         click.echo("No tasks found")
         return

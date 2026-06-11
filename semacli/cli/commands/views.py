@@ -34,6 +34,7 @@ Examples:
 
 
 def _emit_list_text(views: list[View]) -> None:
+    """Emit the view list sorted by position, with an empty fallback + total line."""
     if not views:
         click.echo("No views found")
         return
@@ -43,6 +44,7 @@ def _emit_list_text(views: list[View]) -> None:
 
 
 def _emit_show_text(v: View) -> None:
+    """Emit one view as key-value lines."""
     click.echo(f"id:         {v.id}")
     click.echo(f"title:      {v.title}")
     click.echo(f"position:   {v.position}")
@@ -71,6 +73,7 @@ def _setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
 @fail_on_error
 def view_group(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -154,7 +157,7 @@ def update_cmd(
 @click.option("--yes", is_flag=True)
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, view_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, view_id: int, *, yes: bool) -> None:
     """Delete a view."""
     opts = ctx.obj
     if not yes and not click.confirm(f"Delete view id={view_id}?", default=False):

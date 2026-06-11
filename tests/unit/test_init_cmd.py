@@ -171,7 +171,7 @@ class TestPromptToken:
             patch("semacli.cli.commands.init.click.prompt", return_value="tok"),
             patch("semacli.cli.commands.init._check_token", return_value=(3, None)),
         ):
-            assert _prompt_token("https://sema.example", True, False) == "tok"
+            assert _prompt_token("https://sema.example", verify_ssl=True, allow_http=False) == "tok"
 
     def test_refused_then_declined_aborts(self) -> None:
         with (
@@ -183,7 +183,7 @@ class TestPromptToken:
             patch("semacli.cli.commands.init.click.confirm", return_value=False),
             pytest.raises(click.Abort),
         ):
-            _prompt_token("https://sema.example", True, False)
+            _prompt_token("https://sema.example", verify_ssl=True, allow_http=False)
 
 
 class TestPromptProject:

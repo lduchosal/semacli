@@ -42,10 +42,12 @@ Examples:
 
 
 def _emit_list_json(templates: list[Template]) -> None:
+    """Emit the template list as a JSON array of full dumps."""
     click.echo(json.dumps([t.model_dump() for t in templates], indent=2))
 
 
 def _emit_list_text(templates: list[Template]) -> None:
+    """Emit the template list in compact text form, with an empty fallback + total line."""
     if not templates:
         click.echo("No templates found")
         return
@@ -55,10 +57,12 @@ def _emit_list_text(templates: list[Template]) -> None:
 
 
 def _emit_show_json(t: Template) -> None:
+    """Emit one template as a full JSON dump."""
     click.echo(json.dumps(t.model_dump(), indent=2))
 
 
 def _emit_show_text(t: Template) -> None:
+    """Emit one template as key-value lines, including the allowed overrides summary."""
     click.echo(f"id:             {t.id}")
     click.echo(f"name:           {t.name}")
     click.echo(f"project_id:     {t.project_id}")
@@ -118,6 +122,7 @@ def _run_list(opts: dict[str, Any]) -> None:
 @fail_on_error
 def templates_group(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -177,13 +182,7 @@ def show_cmd(ctx: click.Context, template_id: int) -> None:
     type=int,
     help="Linked repository id.",
 )
-@click.option(
-    "--inventory",
-    "inventory_id",
-    required=True,
-    type=int,
-    help="Linked inventory id.",
-)
+@click.option("--inventory", "inventory_id", required=True, type=int, help="Linked inventory id.")
 @click.option(
     "--environment",
     "environment_id",
@@ -281,7 +280,7 @@ def update_cmd(
 @click.option("--yes", is_flag=True, help="Skip confirmation")
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, template_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, template_id: int, *, yes: bool) -> None:
     """Delete a template. Fails if referenced by a schedule."""
     opts = opts_from_ctx(ctx)
     if not yes and not click.confirm(f"Delete template id={template_id}?", default=False):

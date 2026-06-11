@@ -44,6 +44,7 @@ Examples:
 
 
 def _read_json(path_or_text: str) -> str:
+    """Resolve @file syntax: returns file contents if value starts with '@'."""
     if path_or_text.startswith("@"):
         with Path(path_or_text[1:]).open(encoding="utf-8") as f:
             return f.read()
@@ -51,10 +52,12 @@ def _read_json(path_or_text: str) -> str:
 
 
 def _fmt_row(e: Environment) -> str:
+    """One aligned text row for the environment list view."""
     return f"{e.id:>4}  {e.name}"
 
 
 def _emit_show_text(e: Environment) -> None:
+    """Emit one environment as key-value lines, secrets masked, vars JSON last."""
     click.echo(f"id:         {e.id}")
     click.echo(f"name:       {e.name}")
     click.echo(f"project_id: {e.project_id}")
@@ -79,6 +82,7 @@ def _emit_show_text(e: Environment) -> None:
 @fail_on_error
 def environments(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -184,11 +188,11 @@ def update_cmd(
 @click.option("--yes", is_flag=True)
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, env_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, env_id: int, *, yes: bool) -> None:
     """Delete an environment."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
-    confirm_delete(yes, "environment", env_id)
+    confirm_delete("environment", env_id, yes=yes)
     client.delete_environment(pid, env_id)
     if not opts["quiet"]:
         click.echo(f"deleted environment id={env_id}")

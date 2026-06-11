@@ -42,7 +42,8 @@ def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
     config_file = _find_config_file(config_path)
 
     if not config_file or not Path(config_file).exists():
-        raise ConfigurationError(f"Configuration file not found: {config_path}")
+        msg = f"Configuration file not found: {config_path}"
+        raise ConfigurationError(msg)
 
     config.read(config_file)
 
@@ -89,39 +90,29 @@ def _resolve_token(
     if method == "env_var":
         env_var = auth_section.get("env_var", "SEMAPHORE_TOKEN")
         return os.environ.get(env_var)
-    raise ConfigurationError(f"Unknown auth method: {method}")
+    msg = f"Unknown auth method: {method}"
+    raise ConfigurationError(msg)
 
 
 def _parse_config(config: configparser.ConfigParser, config_file: Path) -> SemaphoreConfig:
     """Parse configuration into SemaphoreConfig object."""
     if "semaphore" not in config:
-        raise ConfigurationError("Missing [semaphore] section in configuration")
+        msg = "Missing [semaphore] section in configuration"
+        raise ConfigurationError(msg)
 
     sema_section = config["semaphore"]
 
     url = sema_section.get("url")
     if not url:
-        raise ConfigurationError("Missing 'url' in [semaphore] section")
+        msg = "Missing 'url' in [semaphore] section"
+        raise ConfigurationError(msg)
 
     project_raw = sema_section.get("project")
     project = int(project_raw) if project_raw else None
 
-    timeout = 30
-    verify_ssl = True
-    allow_http = False
-    load_dotenv_flag = False
-    load_dotenv_file: str | None = None
-
-    use_system_ca = _default_use_system_ca()
-
-    if "settings" in config:
-        settings_section = config["settings"]
-        timeout = settings_section.getint("timeout", 30)
-        verify_ssl = settings_section.getboolean("verify_ssl", True)
-        allow_http = settings_section.getboolean("allow_http", False)
-        load_dotenv_flag = settings_section.getboolean("load_dotenv", False)
-        load_dotenv_file = settings_section.get("load_dotenv_file") or None
-        use_system_ca = _resolve_use_system_ca(settings_section.get("use_system_ca"))
+    timeout, verify_ssl, allow_http, load_dotenv_flag, load_dotenv_file, use_system_ca = (
+        _parse_settings(config)
+    )
 
     # Apply dotenv BEFORE resolving env-based auth so SEMAPHORE_TOKEN-style
     # vars sourced from .env are visible when we read os.environ below.
@@ -139,10 +130,11 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
 
     clean_url = url.rstrip("/")
     if clean_url.startswith("http://") and not allow_http:
-        raise ConfigurationError(
+        msg = (
             "Plain HTTP url is refused by default. Set 'allow_http = true' "
             "in the [settings] section to enable it (not recommended)."
         )
+        raise ConfigurationError(msg)
 
     return SemaphoreConfig(
         url=clean_url,
@@ -155,6 +147,29 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
         load_dotenv=load_dotenv_flag,
         load_dotenv_file=load_dotenv_file,
         use_system_ca=use_system_ca,
+    )
+
+
+def _parse_settings(
+    config: configparser.ConfigParser,
+) -> tuple[int, bool, bool, bool, str | None, bool]:
+    """Parse the optional [settings] section.
+
+    Returns (timeout, verify_ssl, allow_http, load_dotenv_flag,
+    load_dotenv_file, use_system_ca), with defaults when the section
+    (or a key) is absent.
+    """
+    if "settings" not in config:
+        return 30, True, False, False, None, _default_use_system_ca()
+
+    settings_section = config["settings"]
+    return (
+        settings_section.getint("timeout", 30),
+        settings_section.getboolean("verify_ssl", True),
+        settings_section.getboolean("allow_http", False),
+        settings_section.getboolean("load_dotenv", False),
+        settings_section.get("load_dotenv_file") or None,
+        _resolve_use_system_ca(settings_section.get("use_system_ca")),
     )
 
 
@@ -179,7 +194,8 @@ def _resolve_use_system_ca(raw: str | None) -> bool:
         return True
     if normalized in {"false", "no", "off", "0"}:
         return False
-    raise ConfigurationError(f"[settings] use_system_ca: expected true/false/auto, got {raw!r}")
+    msg = f"[settings] use_system_ca: expected true/false/auto, got {raw!r}"
+    raise ConfigurationError(msg)
 
 
 def _apply_dotenv(config_file: Path, override_path: str | None) -> None:

@@ -59,6 +59,7 @@ class BaseClient:
         self._warn_insecure()
 
     def _warn_insecure(self) -> None:
+        """Warn once on stderr when SSL verification is off or the URL is plain HTTP."""
         if not self.config.verify_ssl:
             print(
                 "WARNING: TLS certificate verification is DISABLED "
@@ -104,7 +105,8 @@ class BaseClient:
 
         if require_auth:
             if not self.config.bearer_token:
-                raise AuthenticationError("No bearer_token configured")
+                msg = "No bearer_token configured"
+                raise AuthenticationError(msg)
             headers["Authorization"] = f"Bearer {self.config.bearer_token}"
 
         kwargs: dict[str, Any] = {
@@ -137,7 +139,8 @@ class BaseClient:
         try:
             response = self._get_session().request(**kwargs)
         except requests.exceptions.RequestException as e:
-            raise SemaphoreAPIError(f"Connection error: {e}") from e
+            msg = f"Connection error: {e}"
+            raise SemaphoreAPIError(msg) from e
 
         text = response.text
         status = response.status_code
@@ -153,10 +156,13 @@ class BaseClient:
             detail = text.strip()[:500]
             suffix = f" — {detail}" if detail else ""
             if status in (401, 403):
-                raise AuthenticationError(f"HTTP {status}: {reason}{suffix}")
+                msg = f"HTTP {status}: {reason}{suffix}"
+                raise AuthenticationError(msg)
             if status == HTTPStatus.NOT_FOUND:
-                raise NotFoundError(f"HTTP 404: {endpoint}{suffix}")
-            raise SemaphoreAPIError(f"HTTP {status}: {reason}{suffix}")
+                msg = f"HTTP 404: {endpoint}{suffix}"
+                raise NotFoundError(msg)
+            msg = f"HTTP {status}: {reason}{suffix}"
+            raise SemaphoreAPIError(msg)
 
         if not response.content:
             return None

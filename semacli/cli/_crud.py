@@ -48,7 +48,7 @@ def emit_text_list(
     click.echo(f"\nTotal: {len(items)} {label}")
 
 
-def confirm_delete(yes: bool, resource: str, resource_id: int) -> None:
+def confirm_delete(resource: str, resource_id: int, *, yes: bool) -> None:
     """Prompt the user to confirm a destructive delete unless --yes is set."""
     if not yes:
         click.confirm(

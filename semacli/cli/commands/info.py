@@ -32,7 +32,7 @@ Examples:
 @common_options
 @output_options
 @fail_on_error
-def info_cmd(config: str, verbose: int, output_json: bool, quiet: bool) -> None:
+def info_cmd(*, config: str, verbose: int, output_json: bool, quiet: bool) -> None:
     """Print the server version from /api/info."""
     cfg = load_config(config)
     info = SemaphoreClient(cfg, verbose=verbose).get_info()

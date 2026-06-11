@@ -14,14 +14,16 @@ class ViewsMixin(BaseClient):
         """GET /api/project/{pid}/views."""
         data = self._request(f"project/{project_id}/views")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /project/{pid}/views")
+            msg = "Unexpected response for /project/{pid}/views"
+            raise SemaphoreAPIError(msg)
         return [View.model_validate(v) for v in data]
 
     def get_view(self, project_id: int, view_id: int) -> View:
         """GET /api/project/{pid}/views/{vid}."""
         data = self._request(f"project/{project_id}/views/{view_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /project/{pid}/views/{vid}")
+            msg = "Unexpected response for /project/{pid}/views/{vid}"
+            raise SemaphoreAPIError(msg)
         return View.model_validate(data)
 
     def create_view(self, project_id: int, title: str, position: int = 0) -> View:
@@ -33,7 +35,8 @@ class ViewsMixin(BaseClient):
         }
         data = self._request(f"project/{project_id}/views", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /views")
+            msg = "Unexpected response for POST /views"
+            raise SemaphoreAPIError(msg)
         return View.model_validate(data)
 
     def update_view(self, project_id: int, view_id: int, **fields: Any) -> None:

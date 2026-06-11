@@ -14,14 +14,16 @@ class InventoriesMixin(BaseClient):
         """GET /api/project/{pid}/inventory."""
         data = self._request(f"project/{project_id}/inventory")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /inventory")
+            msg = "Unexpected response for /inventory"
+            raise SemaphoreAPIError(msg)
         return [Inventory.model_validate(i) for i in data]
 
     def get_inventory(self, project_id: int, inventory_id: int) -> Inventory:
         """GET /api/project/{pid}/inventory/{iid}."""
         data = self._request(f"project/{project_id}/inventory/{inventory_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /inventory/{iid}")
+            msg = "Unexpected response for /inventory/{iid}"
+            raise SemaphoreAPIError(msg)
         return Inventory.model_validate(data)
 
     def create_inventory(
@@ -46,7 +48,8 @@ class InventoriesMixin(BaseClient):
             body["become_key_id"] = become_key_id
         data = self._request(f"project/{project_id}/inventory", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /inventory")
+            msg = "Unexpected response for POST /inventory"
+            raise SemaphoreAPIError(msg)
         return Inventory.model_validate(data)
 
     def update_inventory(

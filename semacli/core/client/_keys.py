@@ -14,14 +14,16 @@ class KeysMixin(BaseClient):
         """GET /api/project/{pid}/keys."""
         data = self._request(f"project/{project_id}/keys")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /keys")
+            msg = "Unexpected response for /keys"
+            raise SemaphoreAPIError(msg)
         return [Key.model_validate(k) for k in data]
 
     def get_key(self, project_id: int, key_id: int) -> Key:
         """GET /api/project/{pid}/keys/{kid}."""
         data = self._request(f"project/{project_id}/keys/{key_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /keys/{kid}")
+            msg = "Unexpected response for /keys/{kid}"
+            raise SemaphoreAPIError(msg)
         return Key.model_validate(data)
 
     def create_key(
@@ -57,7 +59,8 @@ class KeysMixin(BaseClient):
             body["string"] = password
         data = self._request(f"project/{project_id}/keys", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /keys")
+            msg = "Unexpected response for POST /keys"
+            raise SemaphoreAPIError(msg)
         return Key.model_validate(data)
 
     def update_key(self, project_id: int, key_id: int, **fields: Any) -> None:

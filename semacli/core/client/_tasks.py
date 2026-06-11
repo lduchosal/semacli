@@ -71,14 +71,16 @@ class TasksMixin(BaseClient):
 
         data = self._request(f"project/{project_id}/tasks", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /tasks")
+            msg = "Unexpected response for POST /tasks"
+            raise SemaphoreAPIError(msg)
         return Task.model_validate(data)
 
     def get_task(self, project_id: int, task_id: int) -> Task:
         """GET /api/project/{pid}/tasks/{tid}."""
         data = self._request(f"project/{project_id}/tasks/{task_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /tasks/{tid}")
+            msg = "Unexpected response for /tasks/{tid}"
+            raise SemaphoreAPIError(msg)
         return Task.model_validate(data)
 
     def get_task_output(self, project_id: int, task_id: int) -> list[dict[str, Any]]:
@@ -99,7 +101,8 @@ class TasksMixin(BaseClient):
         """GET /api/project/{pid}/tasks — task history."""
         data = self._request(f"project/{project_id}/tasks")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /tasks")
+            msg = "Unexpected response for /tasks"
+            raise SemaphoreAPIError(msg)
         return [Task.model_validate(t) for t in data]
 
     def stop_task(self, project_id: int, task_id: int) -> None:

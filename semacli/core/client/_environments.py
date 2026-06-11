@@ -14,14 +14,16 @@ class EnvironmentsMixin(BaseClient):
         """GET /api/project/{pid}/environment."""
         data = self._request(f"project/{project_id}/environment")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /environment")
+            msg = "Unexpected response for /environment"
+            raise SemaphoreAPIError(msg)
         return [Environment.model_validate(e) for e in data]
 
     def get_environment(self, project_id: int, env_id: int) -> Environment:
         """GET /api/project/{pid}/environment/{eid}."""
         data = self._request(f"project/{project_id}/environment/{env_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /environment/{eid}")
+            msg = "Unexpected response for /environment/{eid}"
+            raise SemaphoreAPIError(msg)
         return Environment.model_validate(data)
 
     def create_environment(
@@ -41,7 +43,8 @@ class EnvironmentsMixin(BaseClient):
             body["password"] = password
         data = self._request(f"project/{project_id}/environment", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /environment")
+            msg = "Unexpected response for POST /environment"
+            raise SemaphoreAPIError(msg)
         return Environment.model_validate(data)
 
     def update_environment(

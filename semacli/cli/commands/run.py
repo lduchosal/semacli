@@ -78,6 +78,7 @@ class _RunSpec:
 
 
 def _emit_output_lines(entries: list[Any], start: int) -> int:
+    """Print output entries starting from index `start`; return new index."""
     for entry in entries[start:]:
         line = entry.get("output", "") if isinstance(entry, dict) else getattr(entry, "output", "")
         click.echo(line)
@@ -85,6 +86,7 @@ def _emit_output_lines(entries: list[Any], start: int) -> int:
 
 
 def _watch_task(client: SemaphoreClient, pid: int, task_id: int, interval: float) -> str:
+    """Tail the task output until it reaches a final state; return that status."""
     seen = 0
     while True:
         entries = client.get_task_output(pid, task_id)
@@ -239,6 +241,7 @@ def _do_run(spec: _RunSpec) -> None:
 @click.pass_context
 def run_cmd(
     ctx: click.Context,
+    *,
     template: str,
     limit: str | None,
     tags: str | None,

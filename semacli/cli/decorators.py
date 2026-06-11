@@ -67,8 +67,9 @@ def resolve_project(cfg: SemaphoreConfig, override: int | None) -> int:
     """Resolve the effective project id from CLI flag + config."""
     pid = override if override is not None else cfg.project
     if pid is None:
-        raise ConfigurationError(
+        msg = (
             "Project id required: pass --project N or set 'project = N' "
             "in the [semaphore] section of semacli.ini."
         )
+        raise ConfigurationError(msg)
     return pid

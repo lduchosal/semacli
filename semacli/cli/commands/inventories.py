@@ -52,10 +52,12 @@ def _read_content(path_or_text: str) -> str:
 
 
 def _fmt_row(i: Inventory) -> str:
+    """One aligned text row for the inventory list view."""
     return f"{i.id:>4}  {i.name}  ({i.type or '?'})"
 
 
 def _emit_show_text(i: Inventory) -> None:
+    """Emit one inventory as key-value lines, content last."""
     click.echo(f"id:            {i.id}")
     click.echo(f"name:          {i.name}")
     click.echo(f"type:          {i.type}")
@@ -81,6 +83,7 @@ def _emit_show_text(i: Inventory) -> None:
 @fail_on_error
 def inventories(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -213,11 +216,11 @@ def update_cmd(
 @click.option("--yes", is_flag=True, help="Skip confirmation prompt")
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, inventory_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, inventory_id: int, *, yes: bool) -> None:
     """Delete an inventory."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
-    confirm_delete(yes, "inventory", inventory_id)
+    confirm_delete("inventory", inventory_id, yes=yes)
     client.delete_inventory(pid, inventory_id)
     if not opts["quiet"]:
         click.echo(f"deleted inventory id={inventory_id}")

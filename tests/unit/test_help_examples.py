@@ -308,7 +308,7 @@ class TestUserExamples:
     def test_user_tokens_list(self, tmp_path: Path) -> None:
         # semacli user tokens
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._user_tokens.SemaphoreClient") as Mock:
             Mock.return_value.list_user_tokens.return_value = []
             r = _invoke(["user", "-c", str(cfg), "tokens"])
         assert r.exit_code == 0
@@ -316,7 +316,7 @@ class TestUserExamples:
     def test_user_tokens_create(self, tmp_path: Path) -> None:
         # semacli user tokens create
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._user_tokens.SemaphoreClient") as Mock:
             Mock.return_value.create_user_token.return_value = UserToken(id="sem-new", created="t")
             r = _invoke(["user", "-c", str(cfg), "tokens", "create"])
         assert r.exit_code == 0
@@ -325,7 +325,7 @@ class TestUserExamples:
     def test_user_tokens_delete(self, tmp_path: Path) -> None:
         # semacli user tokens delete sem-abc123
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.user.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._user_tokens.SemaphoreClient") as Mock:
             r = _invoke(["user", "-c", str(cfg), "tokens", "delete", "sem-abc123", "--yes"])
         assert r.exit_code == 0
         Mock.return_value.delete_user_token.assert_called_once_with("sem-abc123")

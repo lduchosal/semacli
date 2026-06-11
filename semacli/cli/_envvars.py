@@ -35,15 +35,18 @@ def normalize_environment(raw: str | None) -> str | None:
         try:
             json.loads(raw)
         except json.JSONDecodeError as e:
-            raise click.UsageError(f"--environment is not valid JSON: {e}") from e
+            msg = f"--environment is not valid JSON: {e}"
+            raise click.UsageError(msg) from e
         return raw
 
     pairs: dict[str, str] = {}
     for token in raw.split():
         if "=" not in token:
-            raise click.UsageError(f"--environment '{raw}': expected 'key=value' (got '{token}')")
+            msg = f"--environment '{raw}': expected 'key=value' (got '{token}')"
+            raise click.UsageError(msg)
         key, _, value = token.partition("=")
         if not key:
-            raise click.UsageError(f"--environment '{raw}': empty key in '{token}'")
+            msg = f"--environment '{raw}': empty key in '{token}'"
+            raise click.UsageError(msg)
         pairs[key] = value
     return json.dumps(pairs)

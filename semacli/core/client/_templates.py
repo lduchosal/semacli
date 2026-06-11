@@ -14,14 +14,16 @@ class TemplatesMixin(BaseClient):
         """GET /api/project/{pid}/templates."""
         data = self._request(f"project/{project_id}/templates")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /templates")
+            msg = "Unexpected response for /templates"
+            raise SemaphoreAPIError(msg)
         return [Template.model_validate(t) for t in data]
 
     def get_template(self, project_id: int, template_id: int) -> Template:
         """GET /api/project/{pid}/templates/{tid}."""
         data = self._request(f"project/{project_id}/templates/{template_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /templates/{tid}")
+            msg = "Unexpected response for /templates/{tid}"
+            raise SemaphoreAPIError(msg)
         return Template.model_validate(data)
 
     def create_template(
@@ -71,7 +73,8 @@ class TemplatesMixin(BaseClient):
             body["arguments"] = arguments
         data = self._request(f"project/{project_id}/templates", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /templates")
+            msg = "Unexpected response for POST /templates"
+            raise SemaphoreAPIError(msg)
         return Template.model_validate(data)
 
     def update_template(self, project_id: int, template_id: int, **fields: Any) -> None:

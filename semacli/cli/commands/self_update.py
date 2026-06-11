@@ -39,7 +39,7 @@ Examples:
 """
 
 
-def _fetch_latest_version(allow_pre: bool, timeout: float = 10.0) -> str:
+def _fetch_latest_version(*, allow_pre: bool, timeout: float = 10.0) -> str:
     """Return the latest version string from PyPI.
 
     With ``allow_pre`` true the highest pre-release is also considered;
@@ -51,13 +51,15 @@ def _fetch_latest_version(allow_pre: bool, timeout: float = 10.0) -> str:
         resp.raise_for_status()
         data = resp.json()
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"could not reach PyPI: {e}") from e
+        msg = f"could not reach PyPI: {e}"
+        raise RuntimeError(msg) from e
 
     if allow_pre:
         try:
             return str(data["info"]["version"])
         except (KeyError, TypeError) as e:
-            raise RuntimeError(f"unexpected PyPI JSON shape: {e}") from e
+            msg = f"unexpected PyPI JSON shape: {e}"
+            raise RuntimeError(msg) from e
 
     releases = data.get("releases", {})
     stables = [v for v in releases if _is_stable(v) and releases[v]]
@@ -66,7 +68,8 @@ def _fetch_latest_version(allow_pre: bool, timeout: float = 10.0) -> str:
     try:
         return str(data["info"]["version"])
     except (KeyError, TypeError) as e:
-        raise RuntimeError(f"unexpected PyPI JSON shape: {e}") from e
+        msg = f"unexpected PyPI JSON shape: {e}"
+        raise RuntimeError(msg) from e
 
 
 def _is_stable(version: str) -> bool:
@@ -84,7 +87,8 @@ def _version_key(version: str) -> tuple[int, ...]:
     return tuple(parts)
 
 
-def _pip_command(allow_pre: bool) -> list[str]:
+def _pip_command(*, allow_pre: bool) -> list[str]:
+    """Build the pip upgrade command line, adding --pre when requested."""
     cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "semacli"]
     if allow_pre:
         cmd.append("--pre")
@@ -114,14 +118,14 @@ def _pip_command(allow_pre: bool) -> list[str]:
     is_flag=True,
     help="Print the pip command instead of running it.",
 )
-def self_update_cmd(check_only: bool, allow_pre: bool, dry_run: bool) -> None:
+def self_update_cmd(*, check_only: bool, allow_pre: bool, dry_run: bool) -> None:
     """Upgrade semacli from PyPI (or just compare versions with --check)."""
     current = __version__
     click.echo(f"Current version: {current}")
 
     click.echo("Fetching latest from PyPI ...")
     try:
-        latest = _fetch_latest_version(allow_pre)
+        latest = _fetch_latest_version(allow_pre=allow_pre)
     except RuntimeError as e:
         click.echo(f"error: {e}", err=True)
         raise SystemExit(2) from e
@@ -136,7 +140,7 @@ def self_update_cmd(check_only: bool, allow_pre: bool, dry_run: bool) -> None:
         click.echo(f"Upgrade available: {current} -> {latest}")
         raise SystemExit(1)
 
-    cmd = _pip_command(allow_pre)
+    cmd = _pip_command(allow_pre=allow_pre)
     click.echo(f"Upgrading to {latest} ...")
     click.echo(f"  {' '.join(cmd)}")
     if dry_run:

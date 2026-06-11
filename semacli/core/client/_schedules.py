@@ -14,14 +14,16 @@ class SchedulesMixin(BaseClient):
         """GET /api/project/{pid}/schedules."""
         data = self._request(f"project/{project_id}/schedules")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /schedules")
+            msg = "Unexpected response for /schedules"
+            raise SemaphoreAPIError(msg)
         return [Schedule.model_validate(s) for s in data]
 
     def get_schedule(self, project_id: int, sched_id: int) -> Schedule:
         """GET /api/project/{pid}/schedules/{sid}."""
         data = self._request(f"project/{project_id}/schedules/{sched_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /schedules/{sid}")
+            msg = "Unexpected response for /schedules/{sid}"
+            raise SemaphoreAPIError(msg)
         return Schedule.model_validate(data)
 
     def create_schedule(
@@ -43,7 +45,8 @@ class SchedulesMixin(BaseClient):
         }
         data = self._request(f"project/{project_id}/schedules", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /schedules")
+            msg = "Unexpected response for POST /schedules"
+            raise SemaphoreAPIError(msg)
         return Schedule.model_validate(data)
 
     def update_schedule(self, project_id: int, sched_id: int, **fields: Any) -> None:

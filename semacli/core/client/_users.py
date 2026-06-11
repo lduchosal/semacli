@@ -14,14 +14,16 @@ class UsersMixin(BaseClient):
         """GET /api/user."""
         data = self._request("user")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /user")
+            msg = "Unexpected response for /user"
+            raise SemaphoreAPIError(msg)
         return User.model_validate(data)
 
     def list_user_tokens(self) -> list[UserToken]:
         """GET /api/user/tokens."""
         data = self._request("user/tokens")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /user/tokens")
+            msg = "Unexpected response for /user/tokens"
+            raise SemaphoreAPIError(msg)
         return [UserToken.model_validate(item) for item in data]
 
     def create_user_token(self) -> UserToken:
@@ -32,7 +34,8 @@ class UsersMixin(BaseClient):
         """
         data = self._request("user/tokens", method="POST", body={})
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /user/tokens")
+            msg = "Unexpected response for POST /user/tokens"
+            raise SemaphoreAPIError(msg)
         return UserToken.model_validate(data)
 
     def delete_user_token(self, token_id: str) -> None:
@@ -43,21 +46,24 @@ class UsersMixin(BaseClient):
         """GET /api/info — server metadata (no auth required)."""
         data = self._request("info", require_auth=False)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /info")
+            msg = "Unexpected response for /info"
+            raise SemaphoreAPIError(msg)
         return ApiInfo.model_validate(data)
 
     def list_users(self) -> list[User]:
         """GET /api/users — admin only."""
         data = self._request("users")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /users")
+            msg = "Unexpected response for /users"
+            raise SemaphoreAPIError(msg)
         return [User.model_validate(item) for item in data]
 
     def get_user(self, user_id: int) -> User:
         """GET /api/users/{uid} — admin only."""
         data = self._request(f"users/{user_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /users/{uid}")
+            msg = "Unexpected response for /users/{uid}"
+            raise SemaphoreAPIError(msg)
         return User.model_validate(data)
 
     def create_user(
@@ -79,7 +85,8 @@ class UsersMixin(BaseClient):
         }
         data = self._request("users", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /users")
+            msg = "Unexpected response for POST /users"
+            raise SemaphoreAPIError(msg)
         return User.model_validate(data)
 
     def update_user(self, user_id: int, **fields: Any) -> None:

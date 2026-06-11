@@ -14,14 +14,16 @@ class ProjectsMixin(BaseClient):
         """GET /api/projects — list all projects visible to the token."""
         data = self._request("projects")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response format for /projects")
+            msg = "Unexpected response format for /projects"
+            raise SemaphoreAPIError(msg)
         return [Project.model_validate(item) for item in data]
 
     def get_project(self, project_id: int) -> Project:
         """GET /api/project/{pid}."""
         data = self._request(f"project/{project_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /project/{pid}")
+            msg = "Unexpected response for /project/{pid}"
+            raise SemaphoreAPIError(msg)
         return Project.model_validate(data)
 
     def create_project(
@@ -40,7 +42,8 @@ class ProjectsMixin(BaseClient):
             body["max_parallel_tasks"] = max_parallel_tasks
         data = self._request("projects", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /projects")
+            msg = "Unexpected response for POST /projects"
+            raise SemaphoreAPIError(msg)
         return Project.model_validate(data)
 
     def update_project(self, project_id: int, **fields: Any) -> None:
@@ -57,7 +60,8 @@ class ProjectsMixin(BaseClient):
         """GET /api/project/{pid}/users."""
         data = self._request(f"project/{project_id}/users")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /project/{pid}/users")
+            msg = "Unexpected response for /project/{pid}/users"
+            raise SemaphoreAPIError(msg)
         return [ProjectMember.model_validate(item) for item in data]
 
     def add_project_member(self, project_id: int, user_id: int, role: str) -> None:
@@ -86,12 +90,14 @@ class ProjectsMixin(BaseClient):
         """GET /api/project/{pid}/events."""
         data = self._request(f"project/{project_id}/events")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /events")
+            msg = "Unexpected response for /events"
+            raise SemaphoreAPIError(msg)
         return [ProjectEvent.model_validate(e) for e in data]
 
     def export_project_backup(self, project_id: int) -> dict[str, Any]:
         """GET /api/project/{pid}/backup — returns the full project as JSON."""
         data = self._request(f"project/{project_id}/backup")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /backup")
+            msg = "Unexpected response for /backup"
+            raise SemaphoreAPIError(msg)
         return data

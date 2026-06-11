@@ -18,6 +18,7 @@ class RawEpilogCommand(click.Command):
     """
 
     def format_epilog(self, _ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        """Write the epilog verbatim instead of reflowing it."""
         _write_raw_epilog(self.epilog, formatter)
 
 
@@ -40,16 +41,20 @@ class AliasedGroup(click.Group):
         super().__init__(*args, **kwargs)
 
     def add_alias(self, alias: str, canonical: str) -> None:
+        """Register a hidden alias pointing at a canonical command name."""
         self._aliases[alias] = canonical
 
     def get_command(self, ctx: click.Context, cmd_name: str) -> click.Command | None:
+        """Resolve hidden aliases before the normal lookup."""
         canonical = self._aliases.get(cmd_name, cmd_name)
         return super().get_command(ctx, canonical)
 
     def list_commands(self, ctx: click.Context) -> list[str]:
+        """List commands with the hidden aliases filtered out."""
         return [name for name in super().list_commands(ctx) if name not in self._aliases]
 
     def format_epilog(self, _ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        """Write the epilog verbatim instead of reflowing it."""
         _write_raw_epilog(self.epilog, formatter)
 
 
@@ -83,6 +88,7 @@ class SectionedRootGroup(AliasedGroup):
     ]
 
     def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+        """Render the command list bucketed by ``category``, with an ``Other`` catch-all."""
         buckets: dict[str, list[tuple[str, str]]] = {key: [] for key, _ in self.SECTIONS}
         other: list[tuple[str, str]] = []
 

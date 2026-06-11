@@ -75,9 +75,8 @@ def parse_hook_config(section: dict[str, str], config_file: Path) -> HookConfig:
                 try:
                     timeout = int(raw_value)
                 except ValueError as exc:
-                    raise ValueError(
-                        f"[hook] timeout must be an integer, got {raw_value!r}"
-                    ) from exc
+                    msg = f"[hook] timeout must be an integer, got {raw_value!r}"
+                    raise ValueError(msg) from exc
             continue
 
         value = raw_value.strip()
@@ -149,9 +148,11 @@ def run_hook(
             check=False,
         )
     except FileNotFoundError as exc:
-        raise HookError(f"hook {key}: command not found: {spec.argv[0]}") from exc
+        msg = f"hook {key}: command not found: {spec.argv[0]}"
+        raise HookError(msg) from exc
     except subprocess.TimeoutExpired as exc:
-        raise HookError(f"hook {key}: timed out after {hook_cfg.timeout}s") from exc
+        msg = f"hook {key}: timed out after {hook_cfg.timeout}s"
+        raise HookError(msg) from exc
 
     if result.returncode != 0:
         captured = ""
@@ -160,7 +161,8 @@ def run_hook(
                 captured += f"\n--- stdout ---\n{result.stdout.rstrip()}"
             if result.stderr:
                 captured += f"\n--- stderr ---\n{result.stderr.rstrip()}"
-        raise HookError(f"hook {key}: exit {result.returncode}{captured}")
+        msg = f"hook {key}: exit {result.returncode}{captured}"
+        raise HookError(msg)
 
 
 def warn_hook_failure(error: HookError, key: str) -> None:

@@ -40,6 +40,7 @@ _LOCATIONS = {
 
 
 def _normalize_url(raw: str) -> str:
+    """Trim trailing slashes and default to https:// when no scheme is given."""
     raw = raw.strip().rstrip("/")
     if not raw.startswith(("http://", "https://")):
         raw = "https://" + raw
@@ -52,9 +53,7 @@ def _ping_with(cfg: SemaphoreConfig) -> str | None:
     try:
         client = SemaphoreClient(cfg, verbose=0)
         client.ping()
-    except (
-        Exception
-    ) as e:  # noqa: BLE001 — wizard probe: every failure becomes a hint, never a crash
+    except Exception as e:  # noqa: BLE001 — wizard probe: failures become hints
         return str(e)
     return None
 
@@ -67,9 +66,7 @@ def _check_token(cfg: SemaphoreConfig) -> tuple[int | None, str | None]:
         return len(projects), None
     except AuthenticationError as e:
         return None, f"token refused by server: {e}"
-    except (
-        Exception
-    ) as e:  # noqa: BLE001 — wizard probe: every failure becomes a hint, never a crash
+    except Exception as e:  # noqa: BLE001 — wizard probe: failures become hints
         return None, str(e)
 
 
@@ -105,7 +102,8 @@ def _prompt_url() -> tuple[str, bool, bool]:
             raise click.Abort()
 
 
-def _prompt_token(url: str, verify_ssl: bool, allow_http: bool) -> str:
+def _prompt_token(url: str, *, verify_ssl: bool, allow_http: bool) -> str:
+    """Prompt for a bearer token until one is accepted by the server."""
     while True:
         click.echo("Generate a token in Semaphore UI -> User Settings -> Create API Token.")
         token: str = click.prompt("Bearer token", hide_input=True)
@@ -125,6 +123,7 @@ def _prompt_token(url: str, verify_ssl: bool, allow_http: bool) -> str:
 
 
 def _prompt_project(cfg: SemaphoreConfig) -> int | None:
+    """Pick a default project by id or name; returns None when skipped or ambiguous."""
     projects = SemaphoreClient(cfg, verbose=0).get_projects()
     if not projects:
         click.echo("  no projects visible — skipping default project selection.")
@@ -153,6 +152,7 @@ def _prompt_project(cfg: SemaphoreConfig) -> int | None:
 
 
 def _prompt_location() -> Path:
+    """Ask which of the known config file locations to write to."""
     click.echo("Where should semacli.ini live?")
     for key, (path, label) in _LOCATIONS.items():
         click.echo(f"  {key}) {path}  ({label})")
@@ -162,12 +162,14 @@ def _prompt_location() -> Path:
 
 def _write_ini(
     target: Path,
+    *,
     url: str,
     token: str,
     verify_ssl: bool,
     allow_http: bool,
     project: int | None,
 ) -> None:
+    """Write the semacli.ini file from the wizard answers and chmod it 600."""
     lines: list[str] = [
         "[semaphore]",
         f"url = {url}",
@@ -214,7 +216,7 @@ def init_cmd(url: str | None, output_path: str | None) -> None:
         chosen_url, verify_ssl, allow_http = (
             _prompt_url() if not url else (url, True, url.startswith("http://"))
         )
-        token = _prompt_token(chosen_url, verify_ssl, allow_http)
+        token = _prompt_token(chosen_url, verify_ssl=verify_ssl, allow_http=allow_http)
         cfg = SemaphoreConfig(
             url=chosen_url,
             bearer_token=token,
@@ -224,7 +226,14 @@ def init_cmd(url: str | None, output_path: str | None) -> None:
         project = _prompt_project(cfg)
         target = Path(output_path).expanduser() if output_path else _prompt_location()
         _confirm_overwrite(target)
-        _write_ini(target, chosen_url, token, verify_ssl, allow_http, project)
+        _write_ini(
+            target,
+            url=chosen_url,
+            token=token,
+            verify_ssl=verify_ssl,
+            allow_http=allow_http,
+            project=project,
+        )
         click.echo(f"\nwrote {target} (mode 0600).")
         click.echo("\nTry:\n  sem ping\n  sem project\n  sem template")
     except click.Abort:

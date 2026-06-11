@@ -14,14 +14,16 @@ class RepositoriesMixin(BaseClient):
         """GET /api/project/{pid}/repositories."""
         data = self._request(f"project/{project_id}/repositories")
         if not isinstance(data, list):
-            raise SemaphoreAPIError("Unexpected response for /repositories")
+            msg = "Unexpected response for /repositories"
+            raise SemaphoreAPIError(msg)
         return [Repository.model_validate(r) for r in data]
 
     def get_repository(self, project_id: int, repo_id: int) -> Repository:
         """GET /api/project/{pid}/repositories/{rid}."""
         data = self._request(f"project/{project_id}/repositories/{repo_id}")
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for /repositories/{rid}")
+            msg = "Unexpected response for /repositories/{rid}"
+            raise SemaphoreAPIError(msg)
         return Repository.model_validate(data)
 
     def create_repository(
@@ -42,7 +44,8 @@ class RepositoriesMixin(BaseClient):
         }
         data = self._request(f"project/{project_id}/repositories", method="POST", body=body)
         if not isinstance(data, dict):
-            raise SemaphoreAPIError("Unexpected response for POST /repositories")
+            msg = "Unexpected response for POST /repositories"
+            raise SemaphoreAPIError(msg)
         return Repository.model_validate(data)
 
     def update_repository(

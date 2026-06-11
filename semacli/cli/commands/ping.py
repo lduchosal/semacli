@@ -35,6 +35,7 @@ Examples:
 @output_options
 @fail_on_error
 def ping_cmd(
+    *,
     config: str,
     verbose: int,
     output_json: bool,

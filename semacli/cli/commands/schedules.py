@@ -42,11 +42,13 @@ Examples:
 
 
 def _fmt_row(s: Schedule) -> str:
+    """One aligned text row for the schedule list view."""
     flag = "active" if s.active else "inactive"
     return f"{s.id:>4}  tpl={s.template_id}  {s.cron_format:<15}  {flag}  {s.name}"
 
 
 def _emit_show_text(s: Schedule) -> None:
+    """Emit one schedule as key-value lines."""
     click.echo(f"id:          {s.id}")
     click.echo(f"name:        {s.name}")
     click.echo(f"template_id: {s.template_id}")
@@ -69,6 +71,7 @@ def _emit_show_text(s: Schedule) -> None:
 @fail_on_error
 def schedules(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -128,6 +131,7 @@ def show_cmd(ctx: click.Context, sched_id: int) -> None:
 @fail_on_error
 def create_cmd(
     ctx: click.Context,
+    *,
     template: str,
     cron_format: str,
     name: str,
@@ -164,6 +168,7 @@ def create_cmd(
 @fail_on_error
 def update_cmd(
     ctx: click.Context,
+    *,
     sched_id: int,
     name: str | None,
     cron_format: str | None,
@@ -188,11 +193,11 @@ def update_cmd(
 @click.option("--yes", is_flag=True)
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, sched_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, sched_id: int, *, yes: bool) -> None:
     """Delete a schedule."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
-    confirm_delete(yes, "schedule", sched_id)
+    confirm_delete("schedule", sched_id, yes=yes)
     client.delete_schedule(pid, sched_id)
     if not opts["quiet"]:
         click.echo(f"deleted schedule id={sched_id}")

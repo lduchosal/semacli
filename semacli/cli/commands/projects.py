@@ -7,29 +7,12 @@ import click
 
 from semacli.core.client import SemaphoreClient
 from semacli.core.config import load_config
-from semacli.core.models import Project, ProjectMember
+from semacli.core.models import Project
 
 from .._groups import AliasedGroup
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, fail_on_error
-
-MEMBERS_HELP = """\
-Manage the users that have access to a project, and their role.
-
-Roles (Semaphore RBAC): owner / manager / task_runner / guest. The
-project owner cannot be removed.
-
-Calling `sem project members` without a subcommand lists members.
-"""
-
-MEMBERS_EPILOG = """\
-Examples:
-  sem project members                              # list members of default project
-  sem project members -p 2                         # list members of project 2
-  sem project members add --user 7 --role manager
-  sem project members update 7 --role task_runner
-  sem project members remove 7
-"""
+from ._project_members import members_group
 
 PROJECT_HELP = """\
 Projects visible to your token.
@@ -60,11 +43,13 @@ Next steps:
 
 
 def _emit_projects_json(projects: list[Project]) -> None:
+    """Emit the project list as a JSON array of id/name/created objects."""
     output = [{"id": p.id, "name": p.name, "created": p.created} for p in projects]
     click.echo(json.dumps(output, indent=2))
 
 
 def _emit_projects_text(projects: list[Project]) -> None:
+    """Emit the project list in compact text form, with an empty fallback + total line."""
     if not projects:
         click.echo("No projects found")
         return
@@ -74,26 +59,18 @@ def _emit_projects_text(projects: list[Project]) -> None:
 
 
 def _emit_project_show_json(p: Project) -> None:
+    """Emit one project as a full JSON dump."""
     click.echo(json.dumps(p.model_dump(), indent=2))
 
 
 def _emit_project_show_text(p: Project) -> None:
+    """Emit one project as key-value lines."""
     click.echo(f"id:                 {p.id}")
     click.echo(f"name:               {p.name}")
     click.echo(f"created:            {p.created}")
     click.echo(f"alert:              {p.alert}")
     click.echo(f"alert_chat:         {p.alert_chat}")
     click.echo(f"max_parallel_tasks: {p.max_parallel_tasks}")
-
-
-def _emit_members_text(members: list[ProjectMember]) -> None:
-    if not members:
-        click.echo("No members found")
-        return
-    for m in members:
-        label = m.username or m.name or f"user_id={m.user_id}"
-        click.echo(f"{m.user_id:>4}  {label:<20}  {m.role}")
-    click.echo(f"\nTotal: {len(members)} member(s)")
 
 
 @click.group(
@@ -109,6 +86,7 @@ def _emit_members_text(members: list[ProjectMember]) -> None:
 @fail_on_error
 def project_group(
     ctx: click.Context,
+    *,
     config: str,
     verbose: int,
     output_json: bool,
@@ -160,6 +138,7 @@ def show_cmd(ctx: click.Context, project_id: int) -> None:
 @fail_on_error
 def create_cmd(
     ctx: click.Context,
+    *,
     name: str,
     alert: bool,
     alert_chat: str,
@@ -190,6 +169,7 @@ def create_cmd(
 @fail_on_error
 def update_cmd(
     ctx: click.Context,
+    *,
     project_id: int,
     name: str | None,
     alert: bool | None,
@@ -216,7 +196,7 @@ def update_cmd(
 @click.option("--yes", is_flag=True, help="Skip confirmation")
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, project_id: int, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, project_id: int, *, yes: bool) -> None:
     """Delete a project and all its content. Irreversible."""
     opts = ctx.obj
     if not yes and not click.confirm(
@@ -232,85 +212,7 @@ def delete_cmd(ctx: click.Context, project_id: int, yes: bool) -> None:
         click.echo(f"deleted project id={project_id}")
 
 
-@project_group.group(
-    "members", invoke_without_command=True, help=MEMBERS_HELP, epilog=MEMBERS_EPILOG
-)
-@click.pass_context
-@project_option
-@fail_on_error
-def members_group(ctx: click.Context, project_override: int | None) -> None:
-    """List project members when invoked without a subcommand."""
-    opts = ctx.obj
-    opts["project_override"] = project_override
-    if ctx.invoked_subcommand is not None:
-        return
-    cfg = load_config(opts["config"])
-    client = SemaphoreClient(cfg, verbose=opts["verbose"])
-    pid = resolve_project(cfg, project_override)
-    members = client.list_project_members(pid)
-    if opts["output_json"]:
-        click.echo(json.dumps([m.model_dump() for m in members], indent=2))
-    elif not opts["quiet"]:
-        _emit_members_text(members)
-
-
-@members_group.command("add")
-@click.option("--user", "user_id", required=True, type=int, help="User id to add.")
-@click.option(
-    "--role",
-    required=True,
-    type=click.Choice(["owner", "manager", "task_runner", "guest"]),
-)
-@click.pass_context
-@fail_on_error
-def members_add_cmd(ctx: click.Context, user_id: int, role: str) -> None:
-    """Grant a user access to the project."""
-    opts = ctx.obj
-    cfg = load_config(opts["config"])
-    client = SemaphoreClient(cfg, verbose=opts["verbose"])
-    pid = resolve_project(cfg, opts["project_override"])
-    client.add_project_member(pid, user_id=user_id, role=role)
-    if not opts["quiet"]:
-        click.echo(f"added user id={user_id} as {role}")
-
-
-@members_group.command("update")
-@click.argument("user_id", type=int)
-@click.option(
-    "--role",
-    required=True,
-    type=click.Choice(["owner", "manager", "task_runner", "guest"]),
-)
-@click.pass_context
-@fail_on_error
-def members_update_cmd(ctx: click.Context, user_id: int, role: str) -> None:
-    """Change a member's role."""
-    opts = ctx.obj
-    cfg = load_config(opts["config"])
-    client = SemaphoreClient(cfg, verbose=opts["verbose"])
-    pid = resolve_project(cfg, opts["project_override"])
-    client.update_project_member(pid, user_id=user_id, role=role)
-    if not opts["quiet"]:
-        click.echo(f"updated user id={user_id} role={role}")
-
-
-@members_group.command("remove")
-@click.argument("user_id", type=int)
-@click.option("--yes", is_flag=True, help="Skip confirmation")
-@click.pass_context
-@fail_on_error
-def members_remove_cmd(ctx: click.Context, user_id: int, yes: bool) -> None:
-    """Revoke a user's access to the project."""
-    opts = ctx.obj
-    if not yes and not click.confirm(f"Remove user id={user_id} from the project?", default=False):
-        click.echo("aborted.", err=True)
-        return
-    cfg = load_config(opts["config"])
-    client = SemaphoreClient(cfg, verbose=opts["verbose"])
-    pid = resolve_project(cfg, opts["project_override"])
-    client.remove_project_member(pid, user_id=user_id)
-    if not opts["quiet"]:
-        click.echo(f"removed user id={user_id}")
+project_group.add_command(members_group)
 
 
 @project_group.command("events")
