@@ -106,6 +106,20 @@ def _resolve_path(path: str, config_dir: Path) -> str:
     return str((config_dir / path).resolve())
 
 
+def _raise_on_failure(result: subprocess.CompletedProcess[str], key: str, *, verbose: int) -> None:
+    """Raise HookError on a non-zero exit, attaching captured output when quiet."""
+    if result.returncode == 0:
+        return
+    captured = ""
+    if verbose < 1:
+        if result.stdout:
+            captured += f"\n--- stdout ---\n{result.stdout.rstrip()}"
+        if result.stderr:
+            captured += f"\n--- stderr ---\n{result.stderr.rstrip()}"
+    msg = f"hook {key}: exit {result.returncode}{captured}"
+    raise HookError(msg)
+
+
 def run_hook(
     hook_cfg: HookConfig | None,
     key: str,
@@ -154,15 +168,7 @@ def run_hook(
         msg = f"hook {key}: timed out after {hook_cfg.timeout}s"
         raise HookError(msg) from exc
 
-    if result.returncode != 0:
-        captured = ""
-        if verbose < 1:
-            if result.stdout:
-                captured += f"\n--- stdout ---\n{result.stdout.rstrip()}"
-            if result.stderr:
-                captured += f"\n--- stderr ---\n{result.stderr.rstrip()}"
-        msg = f"hook {key}: exit {result.returncode}{captured}"
-        raise HookError(msg)
+    _raise_on_failure(result, key, verbose=verbose)
 
 
 def warn_hook_failure(error: HookError, key: str) -> None:

@@ -58,22 +58,22 @@ TARGET_FILE_LINES = 300
 # as the gate is green, record a snapshot then tighten to the next palier
 # — a green gate is never a stable state. A threshold is NEVER relaxed
 # without an explicit, traced human decision.
-GATE_PALIER = 3
+GATE_PALIER = 4
 GATE_MAX = {
-    "max_file_lines": 350,
-    "max_func_lines": 60,
+    "max_file_lines": 300,
+    "max_func_lines": 50,
     "files_over_500": 0,
     "c901_over_10": 0,
-    "ruff_debt": 50,
+    "ruff_debt": 40,
     "ignored_debt": 35,
     "mypy_errors": 0,
     "vulture": 0,
     "refurb": 0,
 }
 GATE_MIN = {
-    "docstring_cov": 88.0,
-    "test_cov": 82.0,
-    "min_file_cov": 55.0,
+    "docstring_cov": 95.0,
+    "test_cov": 90.0,
+    "min_file_cov": 75.0,
 }
 # Best-ever ratchet: counts may never exceed their lowest recorded value,
 # coverage may not drop more than RATCHET_COV_SLACK below its highest.

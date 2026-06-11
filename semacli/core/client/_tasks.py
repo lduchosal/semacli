@@ -1,4 +1,12 @@
-"""Task endpoints (run, output, history)."""
+"""Task endpoints (run, output, history).
+
+Note on the POST /tasks body shape: it matches Semaphore's `db.Task` +
+`AnsibleTaskParams` — ansible-flavoured flags (limit/tags/skip_tags/
+dry_run/diff/debug/debug_level) belong under a nested `params` object.
+Sending them at the top level — as semacli did before ken #782 — was
+silently dropped by the server's `db.Task` json.Unmarshal because the
+struct only carries a deprecated top-level `Limit` string.
+"""
 
 from typing import Any
 
@@ -38,19 +46,11 @@ class TasksMixin(BaseClient):
     ) -> Task:
         """POST /api/project/{pid}/tasks — launch a task from a template.
 
-        Body shape matches Semaphore's `db.Task` + `AnsibleTaskParams`:
-        ansible-flavoured flags (limit/tags/skip_tags/dry_run/diff/debug/
-        debug_level) belong under a nested `params` object. Sending them
-        at the top level — as semacli did before ken #782 — was silently
-        dropped by the server's `db.Task` json.Unmarshal because the
-        struct only carries a deprecated top-level `Limit` string.
-
         `debug` is an ansible verbosity level (0=off, 1=-v ... 4=-vvvv);
         we emit both `debug: true` (toggle) and `debug_level: <n>` (int)
-        because that is what `AnsibleTaskParams` expects.
-
-        comma-separated cli inputs (`--limit a,b`, `--tags x,y`) are
-        normalised to `[]string` per the server schema.
+        because that is what `AnsibleTaskParams` expects. Comma-separated
+        cli inputs (`--limit a,b`) are normalised to `[]string` — see the
+        module docstring for the body-shape rationale (ken #782).
         """
         body: dict[str, Any] = {"template_id": template_id}
         if playbook is not None:

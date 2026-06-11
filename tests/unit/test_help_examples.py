@@ -464,7 +464,7 @@ class TestTemplateExamples:
 class TestTaskExamples:
     def test_list(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.list_tasks.return_value = []
             r = _invoke(["task", "-c", str(cfg), "list"])
         assert r.exit_code == 0
@@ -472,7 +472,7 @@ class TestTaskExamples:
     def test_run_with_limit(self, tmp_path: Path) -> None:
         # sem task run 5 --limit web1
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
             r = _invoke(["task", "-c", str(cfg), "run", "5", "--limit", "web1"])
         assert r.exit_code == 0
@@ -492,7 +492,7 @@ class TestTaskExamples:
     def test_run_check(self, tmp_path: Path) -> None:
         # sem task run 5 --check --diff
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
             r = _invoke(["task", "-c", str(cfg), "run", "5", "--check", "--diff"])
         assert r.exit_code == 0
@@ -503,8 +503,8 @@ class TestTaskExamples:
     def test_watch(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
         with (
-            patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock,
-            patch("semacli.cli.commands.tasks.time.sleep"),
+            patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands._task_views.time.sleep"),
         ):
             client = Mock.return_value
             client.get_task_output.return_value = [{"output": "done"}]
@@ -514,7 +514,7 @@ class TestTaskExamples:
 
     def test_show(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.get_task.return_value = Task(id=142, template_id=5, status="success")
             r = _invoke(["task", "-c", str(cfg), "show", "142"])
         assert r.exit_code == 0
@@ -522,7 +522,7 @@ class TestTaskExamples:
     def test_raw_output(self, tmp_path: Path) -> None:
         # semacli task raw-output 142  (> task-142.log is shell redirection)
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.get_task_raw_output.return_value = "PLAY [all]"
             r = _invoke(["task", "-c", str(cfg), "raw-output", "142"])
         assert r.exit_code == 0
@@ -530,7 +530,7 @@ class TestTaskExamples:
 
     def test_stop(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             r = _invoke(["task", "-c", str(cfg), "stop", "142"])
         assert r.exit_code == 0
         Mock.return_value.stop_task.assert_called_once_with(1, 142)

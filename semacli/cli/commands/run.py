@@ -262,12 +262,9 @@ def run_cmd(
     project_override: int | None,
 ) -> None:
     """Run a template by name (or id), watching it to completion by default."""
-    # Expose verbosity to the fail_on_error funnel (read from ctx.obj).
     ctx.ensure_object(dict)
-    ctx.obj["verbose"] = verbose
-    # Normalize --environment before entering the fail_on_error funnel so
-    # UsageError surfaces as a clean exit 2 rather than being swallowed
-    # and reported as an opaque exit-1 error.
+    ctx.obj["verbose"] = verbose  # the fail_on_error funnel reads ctx.obj
+    # Normalize before entering the funnel: UsageError must stay a clean exit 2.
     environment = normalize_environment(environment)
     _do_run(
         _RunSpec(

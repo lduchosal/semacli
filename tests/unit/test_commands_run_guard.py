@@ -99,7 +99,7 @@ class TestRunGuard:
 class TestTaskRunGuard:
     def test_limit_on_restrictive_template_refused(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.get_template.return_value = _RESTRICTIVE
             r = CliRunner().invoke(main, ["task", "-c", str(cfg), "run", "5", "--limit", "web1"])
         assert r.exit_code == 2
@@ -108,7 +108,7 @@ class TestTaskRunGuard:
 
     def test_tags_on_permissive_template_runs(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.get_template.return_value = _PERMISSIVE
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
             r = CliRunner().invoke(main, ["task", "-c", str(cfg), "run", "5", "--tags", "ntp"])
@@ -117,7 +117,7 @@ class TestTaskRunGuard:
 
     def test_no_flags_skips_template_fetch(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.tasks.SemaphoreClient") as Mock:
+        with patch("semacli.cli.commands._task_views.SemaphoreClient") as Mock:
             Mock.return_value.run_task.return_value = Task(id=99, template_id=5)
             r = CliRunner().invoke(main, ["task", "-c", str(cfg), "run", "5"])
         assert r.exit_code == 0

@@ -94,6 +94,18 @@ def _resolve_token(
     raise ConfigurationError(msg)
 
 
+def _clean_url(url: str, *, allow_http: bool) -> str:
+    """Strip trailing slashes and refuse plain HTTP unless explicitly allowed."""
+    clean_url = url.rstrip("/")
+    if clean_url.startswith("http://") and not allow_http:
+        msg = (
+            "Plain HTTP url is refused by default. Set 'allow_http = true' "
+            "in the [settings] section to enable it (not recommended)."
+        )
+        raise ConfigurationError(msg)
+    return clean_url
+
+
 def _parse_config(config: configparser.ConfigParser, config_file: Path) -> SemaphoreConfig:
     """Parse configuration into SemaphoreConfig object."""
     if "semaphore" not in config:
@@ -128,13 +140,7 @@ def _parse_config(config: configparser.ConfigParser, config_file: Path) -> Semap
         except ValueError as exc:
             raise ConfigurationError(str(exc)) from exc
 
-    clean_url = url.rstrip("/")
-    if clean_url.startswith("http://") and not allow_http:
-        msg = (
-            "Plain HTTP url is refused by default. Set 'allow_http = true' "
-            "in the [settings] section to enable it (not recommended)."
-        )
-        raise ConfigurationError(msg)
+    clean_url = _clean_url(url, allow_http=allow_http)
 
     return SemaphoreConfig(
         url=clean_url,

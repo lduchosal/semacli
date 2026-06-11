@@ -1,23 +1,19 @@
 """Tasks commands (run + show + output + watch)."""
 
 import json
-import time
 from typing import Any
 
 import click
 
-from semacli.core.client import SemaphoreClient
-from semacli.core.config import load_config
 from semacli.core.guards import ensure_overrides_allowed
 from semacli.core.models import Task
 
 from .._crud import opts_from_ctx, store_opts
 from .._envvars import normalize_environment
 from .._groups import AliasedGroup
-from ..decorators import common_options, output_options, project_option, resolve_project
+from ..decorators import common_options, output_options, project_option
 from ..handlers import OutputFormatter, fail_on_error
-
-_FINAL_STATES = {"success", "error", "stopped"}
+from ._task_views import _setup, list_cmd, output_cmd, raw_output_cmd, watch_cmd
 
 TASK_HELP = """\
 Tasks: concrete executions of a template.
@@ -69,23 +65,6 @@ def _emit_task_text(t: Task) -> None:
         click.echo(f"start:       {t.start}")
     if t.end:
         click.echo(f"end:         {t.end}")
-
-
-def _emit_output_lines(entries: list[dict[str, Any]], start: int = 0) -> int:
-    """Print output entries starting from index `start`; return new index."""
-    for entry in entries[start:]:
-        line = entry.get("output", "")
-        if line:
-            click.echo(line)
-    return len(entries)
-
-
-def _setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
-    """Build the API client and resolve the project id from the stored opts."""
-    cfg = load_config(opts["config"])
-    client = SemaphoreClient(cfg, verbose=opts["verbose"])
-    pid = resolve_project(cfg, opts["project_override"])
-    return client, pid
 
 
 @click.group("task", cls=AliasedGroup, help=TASK_HELP, epilog=TASK_EPILOG)
@@ -230,91 +209,6 @@ def show_cmd(ctx: click.Context, task_id: int) -> None:
         _emit_task_text(task)
 
 
-@tasks_group.command("output")
-@click.argument("task_id", type=int)
-@click.pass_context
-@fail_on_error
-def output_cmd(ctx: click.Context, task_id: int) -> None:
-    """Dump the full task output."""
-    opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
-    entries = client.get_task_output(pid, task_id)
-    if opts["output_json"]:
-        click.echo(json.dumps(entries, indent=2))
-    elif not opts["quiet"]:
-        _emit_output_lines(entries)
-
-
-@tasks_group.command("watch")
-@click.argument("task_id", type=int)
-@click.option("--interval", default=2.0, type=float, help="Polling interval in seconds")
-@click.pass_context
-@fail_on_error
-def watch_cmd(ctx: click.Context, task_id: int, interval: float) -> None:
-    """Tail task output until the task reaches a final state."""
-    opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
-
-    seen = 0
-    while True:
-        entries = client.get_task_output(pid, task_id)
-        seen = _emit_output_lines(entries, start=seen)
-        task = client.get_task(pid, task_id)
-        if task.status in _FINAL_STATES:
-            if not opts["quiet"]:
-                click.echo(f"\n→ status: {task.status}", err=True)
-            return
-        time.sleep(interval)
-
-
-def _emit_tasks_list_json(tasks: list[Task]) -> None:
-    """Emit the task history as a JSON array of summary objects."""
-    click.echo(
-        json.dumps(
-            [
-                {
-                    "id": t.id,
-                    "template_id": t.template_id,
-                    "tpl_alias": t.tpl_alias,
-                    "tpl_playbook": t.tpl_playbook,
-                    "status": t.status,
-                    "created": t.created,
-                }
-                for t in tasks
-            ],
-            indent=2,
-        )
-    )
-
-
-def _emit_tasks_list_text(tasks: list[Task]) -> None:
-    """Emit the task history in compact text form, with an empty fallback + total line."""
-    if not tasks:
-        click.echo("No tasks found")
-        return
-    alias_width = max((len(t.tpl_alias) for t in tasks), default=0)
-    for t in tasks:
-        click.echo(
-            f"{t.id:>5}  tpl={t.template_id:<4}  "
-            f"{t.tpl_alias:<{alias_width}}  {t.status:<10}  {t.created}"
-        )
-    click.echo(f"\nTotal: {len(tasks)} task(s)")
-
-
-@tasks_group.command("list")
-@click.pass_context
-@fail_on_error
-def list_cmd(ctx: click.Context) -> None:
-    """List task history of the project."""
-    opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
-    tasks = client.list_tasks(pid)
-    if opts["output_json"]:
-        _emit_tasks_list_json(tasks)
-    elif not opts["quiet"]:
-        _emit_tasks_list_text(tasks)
-
-
 @tasks_group.command("stop")
 @click.argument("task_id", type=int)
 @click.pass_context
@@ -328,19 +222,8 @@ def stop_cmd(ctx: click.Context, task_id: int) -> None:
         click.echo(f"stop requested for task {task_id}")
 
 
-@tasks_group.command("raw-output")
-@click.argument("task_id", type=int)
-@click.pass_context
-@fail_on_error
-def raw_output_cmd(ctx: click.Context, task_id: int) -> None:
-    """Dump task output without timestamps."""
-    opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
-    raw = client.get_task_raw_output(pid, task_id)
-    if opts["output_json"]:
-        click.echo(json.dumps({"output": raw}))
-    elif not opts["quiet"]:
-        click.echo(raw, nl=False)
+for _viewer in (output_cmd, watch_cmd, list_cmd, raw_output_cmd):
+    tasks_group.add_command(_viewer)
 
 
 def register_tasks_commands(main_group: Any) -> None:
