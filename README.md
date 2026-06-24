@@ -25,6 +25,10 @@ Designed for LLM/agent and automation use — deterministic commands, JSON outpu
 - List projects, templates, inventories, environments
 - Launch and monitor tasks
 - Read task output
+- Schedules: cron or one-shot `--run-at` triggers, carrying the same
+  ansible overrides as a run (`--limit` / `--tags` / `--skip-tags` /
+  `--inventory` / `--cli-args`) so a planned run can target a subset of
+  hosts without a dedicated template — see `sem sched create --help`
 - JSON output support
 - Bearer-token authentication (User Settings → API Tokens)
 

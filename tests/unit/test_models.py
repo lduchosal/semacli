@@ -1,6 +1,6 @@
 """Tests for semacli.core.models."""
 
-from semacli.core.models import Environment, Inventory, Project, Task, Template
+from semacli.core.models import Environment, Inventory, Project, Schedule, Task, Template
 
 
 class TestProject:
@@ -118,3 +118,45 @@ class TestEnvironment:
         # API returns the JSON content under the "json" key.
         e = Environment.model_validate({"id": 1, "name": "x", "json": '{"k":"v"}'})
         assert e.vars_json == '{"k":"v"}'
+
+
+class TestSchedule:
+    def test_minimal(self) -> None:
+        # The legacy response shape still parses; new fields take defaults.
+        s = Schedule.model_validate(
+            {"id": 1, "template_id": 10, "cron_format": "* * * * *", "name": "n"}
+        )
+        assert s.type == ""
+        assert s.run_at is None
+        assert s.delete_after_run is False
+        assert s.task_params is None
+
+    def test_run_at_with_task_params(self) -> None:
+        # ken #907: run-at + nested task_params (inventory/message/limit/tags).
+        s = Schedule.model_validate(
+            {
+                "id": 12,
+                "project_id": 1,
+                "template_id": 5,
+                "type": "run_at",
+                "run_at": "2026-06-25T02:00:00Z",
+                "delete_after_run": True,
+                "cron_format": "",
+                "task_params": {
+                    "message": "nightly",
+                    "inventory_id": 4,
+                    "arguments": '["--forks","5"]',
+                    "params": {"limit": ["h1", "h2"], "tags": ["pkg"]},
+                },
+            }
+        )
+        assert s.type == "run_at"
+        assert s.run_at == "2026-06-25T02:00:00Z"
+        assert s.delete_after_run is True
+        assert s.task_params is not None
+        assert s.task_params.inventory_id == 4
+        assert s.task_params.message == "nightly"
+        assert s.task_params.arguments == '["--forks","5"]'
+        assert s.task_params.params.limit == ["h1", "h2"]
+        assert s.task_params.params.tags == ["pkg"]
+        assert s.task_params.params.skip_tags == []

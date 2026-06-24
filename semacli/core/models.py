@@ -139,8 +139,34 @@ class Key(_ApiModel):
     type: str = ""
 
 
+class ScheduleParams(_ApiModel):
+    """Ansible flags a schedule passes to the task it fires.
+
+    Mirrors the nested ``params`` object of Semaphore's ``db.TaskParams``
+    (a.k.a. ``AnsibleTaskParams``): comma lists arrive as ``[]string``.
+    """
+
+    limit: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    skip_tags: list[str] = Field(default_factory=list)
+
+
+class ScheduleTaskParams(_ApiModel):
+    """Task overrides a schedule applies when it fires (``task_params``).
+
+    Mirrors Semaphore's ``db.TaskParams``: ``inventory_id`` / ``message`` /
+    ``arguments`` (raw CLI args, a JSON array string) live at this level,
+    while ansible ``--limit/--tags/--skip-tags`` live in nested ``params``.
+    """
+
+    message: str = ""
+    inventory_id: int | None = None
+    arguments: str | None = None
+    params: ScheduleParams = Field(default_factory=ScheduleParams)
+
+
 class Schedule(_ApiModel):
-    """A Semaphore cron schedule."""
+    """A Semaphore cron (or run-at) schedule."""
 
     id: int = 0
     project_id: int = 0
@@ -148,6 +174,10 @@ class Schedule(_ApiModel):
     cron_format: str = ""
     name: str = ""
     active: bool = True
+    type: str = ""
+    delete_after_run: bool = False
+    run_at: str | None = None
+    task_params: ScheduleTaskParams | None = None
 
 
 class User(_ApiModel):

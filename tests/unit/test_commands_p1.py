@@ -293,17 +293,213 @@ class TestSchedulesCommands:
                 ],
             )
         assert r.exit_code == 0
+        # The legacy fields keep their values; the new overrides default to None/False
+        # so the body builder omits them (back-compat, ken #907).
         Mock.return_value.create_schedule.assert_called_with(
-            1, template_id=10, cron_format="0 3 * * *", name="x", active=True
+            1,
+            template_id=10,
+            cron_format="0 3 * * *",
+            name="x",
+            active=True,
+            schedule_type=None,
+            run_at=None,
+            delete_after_run=False,
+            message=None,
+            inventory_id=None,
+            cli_args=None,
+            limit=None,
+            tags=None,
+            skip_tags=None,
         )
+
+    def test_create_with_overrides(self, tmp_path: Path) -> None:
+        # ken #907: a schedule can carry --limit / --tags / --inventory natively.
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.schedules.resolve_template", return_value=10),
+            patch("semacli.cli.commands.schedules.resolve_inventory", return_value=7) as inv,
+        ):
+            Mock.return_value.create_schedule.return_value = Schedule(id=1)
+            r = CliRunner().invoke(
+                main,
+                [
+                    "schedules", "-c", str(cfg), "create",
+                    "--template", "mtree", "--cron", "0 3 * * *",
+                    "--limit", "h1,h2", "--tags", "pkg", "--skip-tags", "slow",
+                    "--inventory", "prod", "--cli-args", '["--forks","5"]',
+                    "--message", "nightly",
+                ],
+            )  # fmt: skip
+        assert r.exit_code == 0
+        inv.assert_called_once()  # name resolution happened for --inventory
+        kwargs = Mock.return_value.create_schedule.call_args.kwargs
+        assert kwargs["limit"] == "h1,h2"
+        assert kwargs["tags"] == "pkg"
+        assert kwargs["skip_tags"] == "slow"
+        assert kwargs["inventory_id"] == 7
+        assert kwargs["cli_args"] == '["--forks","5"]'
+        assert kwargs["message"] == "nightly"
+
+    def test_create_run_at_once(self, tmp_path: Path) -> None:
+        # ken #907: one-shot run-at + delete-after-run.
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.schedules.resolve_template", return_value=10),
+        ):
+            Mock.return_value.create_schedule.return_value = Schedule(id=1)
+            r = CliRunner().invoke(
+                main,
+                [
+                    "schedules", "-c", str(cfg), "create",
+                    "--template", "mtree", "--run-at", "2026-06-25 02:00", "--once",
+                ],
+            )  # fmt: skip
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.create_schedule.call_args.kwargs
+        assert kwargs["schedule_type"] == "run_at"
+        assert kwargs["run_at"] == "2026-06-25T02:00:00Z"
+        assert kwargs["delete_after_run"] is True
+
+    def test_create_requires_a_trigger(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = CliRunner().invoke(
+                main, ["schedules", "-c", str(cfg), "create", "--template", "mtree"]
+            )
+        assert r.exit_code == 2  # UsageError: neither --cron nor --run-at
+        assert "trigger" in r.output
+
+    def test_create_rejects_both_triggers(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = CliRunner().invoke(
+                main,
+                [
+                    "schedules", "-c", str(cfg), "create",
+                    "--template", "mtree", "--cron", "0 3 * * *", "--run-at", "2026-06-25 02:00",
+                ],
+            )  # fmt: skip
+        assert r.exit_code == 2
+        assert "not both" in r.output
+
+    def test_create_rejects_bad_run_at(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = CliRunner().invoke(
+                main,
+                [
+                    "schedules", "-c", str(cfg), "create",
+                    "--template", "mtree", "--run-at", "not-a-time",
+                ],
+            )  # fmt: skip
+        assert r.exit_code == 2
 
     def test_update_active_flag(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
         with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             CliRunner().invoke(main, ["schedules", "-c", str(cfg), "update", "5", "--inactive"])
         Mock.return_value.update_schedule.assert_called_with(
-            1, 5, name=None, cron_format=None, active=False
+            1,
+            5,
+            name=None,
+            cron_format=None,
+            active=False,
+            schedule_type=None,
+            run_at=None,
+            delete_after_run=None,
+            message=None,
+            inventory_id=None,
+            cli_args=None,
+            limit=None,
+            tags=None,
+            skip_tags=None,
         )
+
+    def test_update_overrides(self, tmp_path: Path) -> None:
+        # ken #907: tweak limit + skip-tags on an existing schedule.
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            r = CliRunner().invoke(
+                main,
+                [
+                    "schedules", "-c", str(cfg), "update", "12",
+                    "--limit", "h3", "--skip-tags", "slow",
+                ],
+            )  # fmt: skip
+        assert r.exit_code == 0
+        kwargs = Mock.return_value.update_schedule.call_args.kwargs
+        assert kwargs["limit"] == "h3"
+        assert kwargs["skip_tags"] == "slow"
+
+    def test_update_rejects_both_triggers(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient"):
+            r = CliRunner().invoke(
+                main,
+                [
+                    "schedules", "-c", str(cfg), "update", "12",
+                    "--cron", "0 3 * * *", "--run-at", "2026-06-25 02:00",
+                ],
+            )  # fmt: skip
+        assert r.exit_code == 2
+        assert "not both" in r.output
+
+    def test_show_renders_overrides(self, tmp_path: Path) -> None:
+        # ken #907: show surfaces run-at + every task_params override line.
+        cfg = _write_cfg(tmp_path)
+        sched = Schedule.model_validate(
+            {
+                "id": 12, "project_id": 1, "template_id": 5,
+                "type": "run_at", "run_at": "2026-06-25T02:00:00Z",
+                "delete_after_run": True,
+                "task_params": {
+                    "message": "nightly", "inventory_id": 4, "arguments": '["--forks","5"]',
+                    "params": {"limit": ["h1", "h2"], "tags": ["pkg"], "skip_tags": ["slow"]},
+                },
+            }
+        )  # fmt: skip
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_schedule.return_value = sched
+            r = CliRunner().invoke(main, ["schedules", "-c", str(cfg), "show", "12"])
+        assert r.exit_code == 0
+        for token in ("run_at", "once", "inventory_id: 4", "h1,h2", "pkg", "slow", "nightly"):
+            assert token in r.output
+
+    def test_list_run_at_and_json(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        items = [Schedule(id=1, template_id=5, type="run_at", run_at="2026-06-25T02:00:00Z")]
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.list_schedules.return_value = items
+            text = CliRunner().invoke(main, ["schedules", "-c", str(cfg)])
+            js = CliRunner().invoke(main, ["schedules", "-c", str(cfg), "--json"])
+        assert text.exit_code == 0
+        assert "run-at" in text.output  # fmt_row run-at branch
+        assert js.exit_code == 0
+        assert '"run_at"' in js.output  # emit_json_list branch
+
+    def test_create_json_output(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with (
+            patch("semacli.cli._crud.SemaphoreClient") as Mock,
+            patch("semacli.cli.commands.schedules.resolve_template", return_value=5),
+        ):
+            Mock.return_value.create_schedule.return_value = Schedule(id=9, template_id=5)
+            r = CliRunner().invoke(
+                main,
+                ["schedules", "-c", str(cfg), "--json", "create", "--template", "5", "--cron",
+                 "0 3 * * *"],
+            )  # fmt: skip
+        assert r.exit_code == 0
+        assert '"id": 9' in r.output
+
+    def test_delete(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            r = CliRunner().invoke(main, ["schedules", "-c", str(cfg), "delete", "7", "--yes"])
+        assert r.exit_code == 0
+        Mock.return_value.delete_schedule.assert_called_with(1, 7)
 
 
 # ── Tasks extras ──────────────────────────────────────────────────────────

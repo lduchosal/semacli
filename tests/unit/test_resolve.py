@@ -1,9 +1,11 @@
 """Tests for the name-or-id resolution helpers (UX.md § 3.2)."""
 
+from unittest.mock import Mock
+
 import pytest
 
 from semacli.core.exceptions import AmbiguousNameError, NotFoundError
-from semacli.core.resolve import _match_id_or_name
+from semacli.core.resolve import _match_id_or_name, resolve_inventory
 
 
 class _Item:
@@ -13,6 +15,14 @@ class _Item:
 
 
 _ITEMS = [_Item(1, "mtree"), _Item(2, "mtreeremove"), _Item(3, "Echo")]
+
+
+class TestResolveInventory:
+    def test_resolves_name_via_list(self) -> None:
+        client = Mock()
+        client.list_inventories.return_value = [_Item(4, "prod"), _Item(5, "staging")]
+        assert resolve_inventory(client, 1, "prod") == 4
+        client.list_inventories.assert_called_once_with(1)
 
 
 class TestMatchIdOrName:

@@ -54,3 +54,11 @@ def resolve_template(
     """Resolve a template name (or id) to a numeric template id."""
     items = client.get_templates(pid)
     return _match_id_or_name(query, items, "template", exact=exact)
+
+
+def resolve_inventory(
+    client: "SemaphoreClient", pid: int, query: str, *, exact: bool = False
+) -> int:
+    """Resolve an inventory name (or id) to a numeric inventory id."""
+    items = client.list_inventories(pid)
+    return _match_id_or_name(query, items, "inventory", exact=exact)
