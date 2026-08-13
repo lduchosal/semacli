@@ -26,7 +26,7 @@ class TemplatesMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Template.model_validate(data)
 
-    def create_template(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
+    def create_template(  # noqa: PLR0913, PLR0917  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
         name: str,

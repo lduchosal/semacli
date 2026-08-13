@@ -29,6 +29,7 @@ class KeysMixin(BaseClient):
     def create_key(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
+        *,
         name: str,
         type: str,
         login: str = "",

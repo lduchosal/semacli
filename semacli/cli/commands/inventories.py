@@ -148,6 +148,7 @@ def show_cmd(ctx: click.Context, inventory_id: int) -> None:
 @fail_on_error
 def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     name: str,
     inv_type: str,
     inventory: str,
@@ -187,6 +188,7 @@ def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
 @fail_on_error
 def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     inventory_id: int,
     name: str | None,
     inv_type: str | None,

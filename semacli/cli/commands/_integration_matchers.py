@@ -89,6 +89,7 @@ def matchers_group(ctx: click.Context, integration_id: int) -> None:
 @fail_on_error
 def matchers_add_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     name: str,
     match_type: str,
     method: str,
@@ -124,6 +125,7 @@ def matchers_add_cmd(  # noqa: PLR0913  # one parameter per --option (click call
 @fail_on_error
 def matchers_update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     matcher_id: int,
     name: str | None,
     match_type: str | None,

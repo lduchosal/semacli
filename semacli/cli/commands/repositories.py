@@ -143,6 +143,7 @@ def create_cmd(ctx: click.Context, name: str, git_url: str, branch: str, ssh_key
 @fail_on_error
 def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     repo_id: int,
     name: str | None,
     git_url: str | None,

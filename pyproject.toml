@@ -214,7 +214,7 @@ dev = [
     "pytest-cov>=2.0",
     "black>=21.0",
     "mypy>=0.800",
-    "ruff>=0.1.0",
+    "ruff>=0.16.0",
     "pdm>=2.0.0",
     "pdm-bump",
     "interrogate>=1.7.0",

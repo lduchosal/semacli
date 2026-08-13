@@ -83,6 +83,7 @@ def _emit_show_text(k: Key) -> None:
 def _create_kwargs(  # noqa: PLR0913  # one parameter per key-type --option
     name: str,
     key_type: str,
+    *,
     ssh_key: str,
     login: str,
     password: str,
@@ -199,6 +200,7 @@ def show_cmd(ctx: click.Context, key_id: int) -> None:
 @fail_on_error
 def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     name: str,
     key_type: str,
     ssh_key: str,
@@ -209,7 +211,9 @@ def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     """Create an access key."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
-    kwargs = _create_kwargs(name, key_type, ssh_key, login, password, passphrase)
+    kwargs = _create_kwargs(
+        name, key_type, ssh_key=ssh_key, login=login, password=password, passphrase=passphrase
+    )
     item = client.create_key(pid, **kwargs)
     if opts["output_json"]:
         emit_json_single(item)
@@ -229,6 +233,7 @@ def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
 @fail_on_error
 def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     key_id: int,
     name: str | None,
     ssh_key: str | None,

@@ -29,6 +29,7 @@ class InventoriesMixin(BaseClient):
     def create_inventory(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
+        *,
         name: str,
         type: str,
         content: str = "",

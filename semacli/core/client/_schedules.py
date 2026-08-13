@@ -19,7 +19,7 @@ def _ansible_params(limit: str | None, tags: str | None, skip_tags: str | None) 
     return params
 
 
-def _task_params(  # noqa: PLR0913  # one parameter per schedule task-param field
+def _task_params(  # noqa: PLR0913, PLR0917  # one parameter per schedule task-param field
     message: str | None,
     inventory_id: int | None,
     cli_args: str | None,

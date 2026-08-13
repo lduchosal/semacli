@@ -204,7 +204,7 @@ def show_cmd(ctx: click.Context, template_id: int) -> None:
 )
 @click.pass_context
 @fail_on_error
-def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
+def create_cmd(  # noqa: PLR0913, PLR0917  # one parameter per --option (click callback)
     ctx: click.Context,
     name: str,
     playbook: str,
@@ -246,7 +246,7 @@ def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
 @click.option("--arguments", default=None)
 @click.pass_context
 @fail_on_error
-def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
+def update_cmd(  # noqa: PLR0913, PLR0917  # one parameter per --option (click callback)
     ctx: click.Context,
     template_id: int,
     name: str | None,

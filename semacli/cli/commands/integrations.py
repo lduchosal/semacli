@@ -141,6 +141,7 @@ def show_cmd(ctx: click.Context, integration_id: int) -> None:
 @fail_on_error
 def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     name: str,
     template_id: int,
     auth_method: str,
@@ -179,6 +180,7 @@ def create_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
 @fail_on_error
 def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     ctx: click.Context,
+    *,
     integration_id: int,
     name: str | None,
     template_id: int | None,

@@ -29,6 +29,7 @@ class IntegrationsMixin(BaseClient):
     def create_integration(  # noqa: PLR0913  # one parameter per payload field (API wrapper)
         self,
         project_id: int,
+        *,
         name: str,
         template_id: int,
         auth_method: str = "none",
@@ -83,6 +84,7 @@ class IntegrationsMixin(BaseClient):
         self,
         project_id: int,
         integration_id: int,
+        *,
         name: str,
         match_type: str,
         method: str,
