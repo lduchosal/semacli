@@ -8,11 +8,60 @@ BLUE='\033[0;34m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# Function to print step headers
+# Parse command line arguments (ported from kenboard publish.sh, ken #997)
+QUALITY_ONLY=false
+BUMP_TYPE="patch"
+for arg in "$@"; do
+    case $arg in
+        --quality)
+            QUALITY_ONLY=true
+            shift
+            ;;
+        --major)
+            BUMP_TYPE="major"
+            shift
+            ;;
+        --minor)
+            BUMP_TYPE="minor"
+            shift
+            ;;
+        --patch)
+            BUMP_TYPE="patch"
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: $0 [--quality] [--major|--minor|--patch] [--help]"
+            echo ""
+            echo "Options:"
+            echo "  --quality       Run only quality checks without publishing"
+            echo "  --major         Bump major version (x.0.0)"
+            echo "  --minor         Bump minor version (0.x.0)"
+            echo "  --patch         Bump patch version (0.0.x) [default]"
+            echo "  --help          Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $arg"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+done
+
+# Set total steps based on mode
+if [ "$QUALITY_ONLY" = true ]; then
+    STEPS=15
+else
+    STEPS=23
+fi
+STEP=0
+
+# Function to print step headers (auto-incrementing counter, kenboard style)
 print_step() {
+    STEP=$((STEP + 1))
     echo ""
     echo "${BLUE}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
-    echo "${BLUE}${BOLD}  $1${NC}"
+    echo "${BLUE}${BOLD}  $STEP/$STEPS $1${NC}"
     echo "${BLUE}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
     echo ""
 }
@@ -35,7 +84,7 @@ run_command() {
 
     echo "${YELLOW}→ Running: ${cmd}${NC}"
 
-    if $cmd; then
+    if eval "$cmd"; then
         print_success "$description completed successfully"
     else
         print_error "$description failed"
@@ -51,7 +100,7 @@ run_command_soft() {
 
     echo "${YELLOW}→ Running: ${cmd}${NC}"
 
-    if $cmd; then
+    if eval "$cmd"; then
         print_success "$description completed successfully"
     else
         echo "${YELLOW}${BOLD}⚠ $description failed (continuing)${NC}"
@@ -66,29 +115,59 @@ echo "╚════██║██╔══╝  ██║╚██╔╝██
 echo "███████║███████╗██║ ╚═╝ ██║██║  ██║╚██████╗███████╗██║"
 echo "╚══════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝╚══════╝╚═╝"
 echo "${NC}"
-echo "${BOLD}Starting Package Publishing Process...${NC}"
+if [ "$QUALITY_ONLY" = true ]; then
+    echo "${BOLD}Starting Quality Checks...${NC}"
+else
+    echo "${BOLD}Starting Package Publishing Process...${NC}"
+fi
 
-print_step "1/13 Cleaning Previous Build"
+print_step "Cleaning Previous Build"
 run_command "pdm run clean" "Clean"
 
-print_step "2/13 Installing Dependencies"
+print_step "Installing Dependencies"
 run_command "pdm run install" "Dependencies installation"
 
-print_step "3/13 Installing Development Dependencies"
+print_step "Installing Development Dependencies"
 run_command "pdm run install-dev" "Development dependencies installation"
 
-print_step "4/13 Code Linting"
+# Dependency freshness (ken #997): pdm.lock is gitignored, so the GitHub CI
+# resolves dependencies fresh on every run while the local venv stays at
+# whatever was last locked. Updating HERE — before the gates — means every
+# release is validated against the same versions the CI will get (the ruff
+# 0.15→0.16 drift shipped v0.5.25 green locally and red in CI).
+print_step "Checking for Outdated Dependencies"
+run_command "pdm outdated" "Outdated dependencies report"
+
+print_step "Updating Dependencies"
+run_command "pdm update" "Dependencies update"
+
+print_step "Format Check (black)"
+run_command "pdm run format-check" "Format check"
+
+print_step "Linting (ruff)"
 run_command "pdm run lint" "Linting"
 
-print_step "5/13 Type Checking"
+print_step "Import Architecture (lint-imports)"
+run_command "pdm run arch" "Import architecture check"
+
+print_step "Type Checking (mypy)"
 run_command "pdm run typecheck" "Type checking"
 
-print_step "6/14 Running Tests (unit + integration, with coverage)"
-# Full suite with coverage: the quality-metrics gate (step 8) reads the
+print_step "Docstring Coverage (interrogate)"
+run_command "pdm run interrogate" "Docstring coverage"
+
+print_step "Code Quality Check (refurb)"
+run_command "pdm run refurb" "Code quality check"
+
+print_step "Dead Code Check (vulture)"
+run_command "pdm run vulture" "Dead code check"
+
+print_step "Running Tests (unit + integration, with coverage)"
+# Full suite with coverage: the quality-metrics gate below reads the
 # .coverage file this run leaves behind.
 run_command "pdm run test" "Tests (full suite, coverage)"
 
-print_step "7/14 Running Integration Tests (VCR strict replay)"
+print_step "Running Integration Tests (VCR strict replay)"
 # --vcr-record=none is hard-coded in the test-integration script: a stale
 # cassette aborts the release rather than silently re-recording against
 # whatever Semaphore happens to be reachable from the build machine.
@@ -96,25 +175,35 @@ run_command "pdm run test-integration" "Integration tests (replay)"
 
 # Blocking quality-metrics gate (ken #828): absolute ceilings + best-ever
 # ratchet against doc/quality-history.csv — see doc/code-quality.md.
-print_step "8/14 Quality Metrics Gate"
+print_step "Quality Metrics Gate"
 run_command "pdm run metrics-gate" "Quality metrics gate"
+
+# Exit here if --quality flag is set
+if [ "$QUALITY_ONLY" = true ]; then
+    echo ""
+    echo "${GREEN}${BOLD}🎉 QUALITY CHECKS COMPLETED SUCCESSFULLY! 🎉${NC}"
+    echo "${GREEN}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
+    echo "${GREEN}All quality checks have passed.${NC}"
+    echo ""
+    exit 0
+fi
 
 # Push the (already committed) work so the GitHub CI runs the SonarCloud
 # analysis of HEAD, then block on the quality gate (ken #835, same pattern
 # as kenboard). 900s: the CI takes ~4-5 min to produce the analysis.
-print_step "9/16 Pushing Code for SonarCloud Analysis"
+print_step "Pushing Code for SonarCloud Analysis"
 run_command "git push" "Push for analysis"
 
-print_step "10/16 SonarCloud Quality Gate"
+print_step "SonarCloud Quality Gate"
 run_command "pdm run sonar-gate" "SonarCloud quality gate"
 
-print_step "11/16 Bumping Version"
-run_command "pdm run version-patch" "Version bump"
+print_step "Bumping Version (${BUMP_TYPE})"
+run_command "pdm run version-${BUMP_TYPE}" "Version bump"
 
-print_step "12/16 Building Package"
+print_step "Building Package"
 run_command "pdm build" "Package build"
 
-print_step "13/16 Publishing Package"
+print_step "Publishing Package"
 run_command "pdm publish" "Package publishing"
 
 # ── Kenboard wiki sync / build / publish ─────────────────────────────────
@@ -122,18 +211,18 @@ run_command "pdm publish" "Package publishing"
 # Non-fatal (run_command_soft): a missing `ken` or kenboard checkout warns
 # but does not abort the script.
 
-print_step "14/16 Wiki sync (kenboard tasks → wiki/)"
+print_step "Wiki sync (kenboard tasks → wiki/)"
 run_command_soft "ken wiki sync" "Wiki sync"
 
-print_step "15/16 Wiki build (wiki/ → wiki-html/)"
+print_step "Wiki build (wiki/ → wiki-html/)"
 run_command_soft "ken wiki build" "Wiki build"
 
 # ── Git commit + push ────────────────────────────────────────────────────
-# Captures the version bump (step 8), the regenerated wiki/ + wiki-html/
-# (steps 11-12), and any other tracked changes still in the working tree.
-# Non-fatal: PyPI is already updated, so a git hiccup must not abort the
-# script — the operator pushes manually.
-print_step "16/16 Git commit + push (release artifacts)"
+# Captures the version bump, the regenerated wiki/ + wiki-html/, and any
+# other tracked changes still in the working tree. Non-fatal: PyPI is
+# already updated, so a git hiccup must not abort the script — the
+# operator pushes manually.
+print_step "Git commit + push (release artifacts)"
 VERSION=$(grep '^__version__' semacli/__init__.py | cut -d'"' -f2)
 COMMIT_MSG="release: v${VERSION} — auto by publish.sh"
 echo "${YELLOW}→ Running: git add -A && git commit -m \"${COMMIT_MSG}\" && git push${NC}"
