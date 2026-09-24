@@ -8,7 +8,7 @@ from unittest.mock import patch
 from click.testing import CliRunner
 
 from semacli.cli import main
-from semacli.core.models import Task, Template
+from semacli.core.models import SurveyVar, Task, Template, TemplateTaskParams
 
 
 def _write_cfg(tmp_path: Path, project: int | None = 1) -> Path:
@@ -29,7 +29,7 @@ def _write_cfg(tmp_path: Path, project: int | None = 1) -> Path:
 class TestTemplatesList:
     def test_default_lists(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = [
                 Template(id=1, project_id=1, name="deploy", playbook="site.yml"),
                 Template(id=2, project_id=1, name="backup"),
@@ -41,14 +41,14 @@ class TestTemplatesList:
 
     def test_empty(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = []
             result = CliRunner().invoke(main, ["templates", "-c", str(cfg)])
         assert "No templates" in result.output
 
     def test_json(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = [
                 Template(id=1, project_id=1, name="deploy"),
             ]
@@ -64,7 +64,7 @@ class TestTemplatesList:
 
     def test_project_override(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path, project=None)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = []
             result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "-p", "9"])
         assert result.exit_code == 0
@@ -73,7 +73,7 @@ class TestTemplatesList:
     def test_hidden_list_and_ls_aliases(self, tmp_path: Path) -> None:
         # UX.md § 4.1: bare group lists; `list`/`ls` exist as hidden aliases.
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = [
                 Template(id=1, project_id=1, name="deploy"),
             ]
@@ -90,7 +90,7 @@ class TestTemplatesList:
 class TestTemplatesShow:
     def test_show_text(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_template.return_value = Template(
                 id=7,
                 project_id=1,
@@ -107,12 +107,68 @@ class TestTemplatesShow:
 
     def test_show_json(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_template.return_value = Template(
                 id=7, project_id=1, name="deploy"
             )
             result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "--json", "show", "7"])
         assert json.loads(result.output)["id"] == 7
+
+
+class TestTemplatesOutputDetails:
+    """Overrides column (ken #1118) and the optional show lines."""
+
+    def test_list_shows_the_allowed_overrides(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_templates.return_value = [
+                Template(
+                    id=1,
+                    name="open",
+                    task_params=TemplateTaskParams(
+                        allow_debug=True,
+                        allow_override_inventory=True,
+                        allow_override_limit=True,
+                        allow_override_skip_tags=True,
+                        allow_override_tags=True,
+                    ),
+                ),
+                Template(
+                    id=2, name="narrow", task_params=TemplateTaskParams(allow_override_limit=True)
+                ),
+                Template(id=3, name="locked"),
+            ]
+            result = CliRunner().invoke(main, ["templates", "-c", str(cfg)])
+        assert "[all]" in result.output
+        assert "[limit]" in result.output
+        assert "[none]" in result.output
+
+    def test_show_prints_view_app_arguments_and_survey(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_template.return_value = Template(
+                id=7,
+                name="deploy",
+                app="ansible",
+                view_id=2,
+                arguments='["--diff"]',
+                survey_vars=[SurveyVar(name="release")],
+            )
+            result = CliRunner().invoke(main, ["templates", "-c", str(cfg), "show", "7"])
+        assert "view_id:        2" in result.output
+        assert "app:            ansible" in result.output
+        assert '["--diff"]' in result.output
+        assert "survey_vars:    release" in result.output
+
+    def test_delete_can_be_aborted_at_the_prompt(self, tmp_path: Path) -> None:
+        cfg = _write_cfg(tmp_path)
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
+            Mock.return_value.get_template.return_value = Template(id=7, name="deploy")
+            result = CliRunner().invoke(
+                main, ["templates", "-c", str(cfg), "delete", "7"], input="n\n"
+            )
+        assert "aborted" in result.output
+        Mock.return_value.delete_template.assert_not_called()
 
 
 class TestTasksRun:

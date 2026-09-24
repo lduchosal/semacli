@@ -52,8 +52,24 @@ class TemplateTaskParams(_ApiModel):
     allow_override_tags: bool = False
 
 
+class SurveyVar(_ApiModel):
+    """One variable Semaphore prompts for before running a template."""
+
+    name: str = ""
+    title: str = ""
+    required: bool = False
+    type: str = ""
+    description: str = ""
+    values: list[dict[str, str]] = Field(default_factory=list)
+
+
 class Template(_ApiModel):
-    """A Semaphore task template."""
+    """A Semaphore task template.
+
+    ``view_id`` (the board column) and ``survey_vars`` are carried so a
+    read-modify-write update or a `template sync` round-trip cannot drop
+    them — ``extra="ignore"`` silently eats what the model omits.
+    """
 
     id: int = 0
     project_id: int = 0
@@ -64,8 +80,11 @@ class Template(_ApiModel):
     environment_id: int = 0
     description: str = ""
     app: str = ""
+    arguments: str = ""
+    view_id: int = 0
     allow_override_args_in_task: bool = False
     task_params: TemplateTaskParams = Field(default_factory=TemplateTaskParams)
+    survey_vars: list[SurveyVar] = Field(default_factory=list)
 
 
 class Task(_ApiModel):

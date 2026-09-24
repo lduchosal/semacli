@@ -163,6 +163,7 @@ sem inv delete prod-hosts
 | `repo`        | yes                   | yes                 |
 | `key`         | yes                   | yes                 |
 | `sched`       | by template name      | yes                 |
+| `view`        | by view title         | n/a (referenced only) |
 | `project`     | by project name       | yes                 |
 | `task`        | no (no human name)    | filter by status / template |
 
@@ -314,7 +315,12 @@ This log records the answers for traceability.
 | Rename `env --json` payload to `--vars`.                | **Yes** — `--json` only ever means "output as JSON".           |
 | `--ssh-key` flag overloading.                           | `repo create --key NAME-OR-ID` (reference an existing key); `key create --type ssh --private-key @file` (the actual key body). |
 | Keep `sem docs` command?                            | **No** — removed (commit `a02624b`).                           |
-| `template` CRUD (create / update / delete)?             | **No** — `template` exposes only `list` (bare) and `show`.     |
+| `template` CRUD (create / update / delete)?             | **Superseded** — `template` exposes `create` / `update` / `delete` (#812, #826) plus `audit` and `sync` (#1118). |
+| How does `template update` patch?                       | **Read-modify-write** — GET the row, patch the flags passed, PUT it back. A partial PUT drops `app` and wipes `task_params` / `view_id` (#1118). |
+| Per-run overrides on `create` / `update`.               | One `--allow-override` spec: comma list of `limit`/`tags`/`skip-tags`/`inventory`/`debug`, or `all` / `none`. Default on `create` is `all`. |
+| `template audit` exit code on findings.                 | **1** (not 2) — findings are a result, not a user error, so it works as a periodic check. |
+| `template sync` deletions.                              | **Never** — a template owns its task history. Server-only templates are reported as orphans. |
+| Where does the playbook → view mapping live?            | **In the user's manifest**, not in semacli: site rules stay in a file the operator owns. |
 
 ---
 

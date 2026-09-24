@@ -1,0 +1,256 @@
+interactions:
+- request:
+    body: '{"project_id": 1, "name": "semacli-vcr-rmw", "playbook": "ping.yml", "inventory_id":
+      4, "repository_id": 3, "app": "ansible", "allow_override_args_in_task": true,
+      "task_params": {"allow_override_limit": true, "allow_override_tags": true, "allow_override_skip_tags":
+      true, "allow_override_inventory": true, "allow_debug": true}, "description":
+      "vcr cassette ken #1118", "view_id": 2}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '382'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: POST
+    uri: https://semaphore.domain.com/api/project/1/templates
+  response:
+    body:
+      string: '{"id":248,"project_id":1,"inventory_id":4,"repository_id":3,"environment_ids":null,"environment_id":0,"name":"semacli-vcr-rmw","playbook":"ping.yml","allow_override_args_in_task":true,"description":"vcr
+        cassette ken #1118","view_id":2,"app":"ansible","tasks":0,"task_params":{"allow_debug":true,"allow_override_inventory":true,"allow_override_limit":true,"allow_override_skip_tags":true,"allow_override_tags":true}}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '416'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 24 Sep 2026 11:38:54 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 201
+      message: Created
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/templates/248
+  response:
+    body:
+      string: '{"id":248,"project_id":1,"inventory_id":4,"repository_id":3,"environment_ids":[],"environment_id":0,"name":"semacli-vcr-rmw","playbook":"ping.yml","allow_override_args_in_task":true,"description":"vcr
+        cassette ken #1118","view_id":2,"app":"ansible","tasks":0,"task_params":{"allow_debug":true,"allow_override_inventory":true,"allow_override_limit":true,"allow_override_skip_tags":true,"allow_override_tags":true},"permissions":15}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '431'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 24 Sep 2026 11:38:54 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"id": 248, "project_id": 1, "inventory_id": 4, "repository_id": 3, "environment_ids":
+      [], "environment_id": 0, "name": "semacli-vcr-rmw", "playbook": "ping.yml",
+      "allow_override_args_in_task": true, "description": "patched by vcr", "view_id":
+      2, "app": "ansible", "task_params": {"allow_debug": true, "allow_override_inventory":
+      true, "allow_override_limit": true, "allow_override_skip_tags": true, "allow_override_tags":
+      true}}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '429'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: PUT
+    uri: https://semaphore.domain.com/api/project/1/templates/248
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 24 Sep 2026 11:38:54 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/templates/248
+  response:
+    body:
+      string: '{"id":248,"project_id":1,"inventory_id":4,"repository_id":3,"environment_ids":[],"environment_id":0,"name":"semacli-vcr-rmw","playbook":"ping.yml","allow_override_args_in_task":true,"description":"patched
+        by vcr","view_id":2,"app":"ansible","tasks":0,"task_params":{"allow_debug":true,"allow_override_inventory":true,"allow_override_limit":true,"allow_override_skip_tags":true,"allow_override_tags":true},"permissions":15}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '423'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 24 Sep 2026 11:38:54 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: DELETE
+    uri: https://semaphore.domain.com/api/project/1/templates/248
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 24 Sep 2026 11:38:54 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+version: 1

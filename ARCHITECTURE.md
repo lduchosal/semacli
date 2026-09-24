@@ -58,9 +58,14 @@ semacli/
 │   ├── decorators.py
 │   └── handlers.py
 ├── core/                   # section: core
-│   ├── client.py           # section: core/client
+│   ├── client/             # section: core/client
 │   ├── models.py           # section: core/models
 │   ├── config.py
+│   ├── guards.py           # pre-flight refusals (overrides, arguments)
+│   ├── manifest.py         # `template sync` manifest
+│   ├── overrides.py        # task_params vocabulary
+│   ├── resolve.py          # name-or-id resolution
+│   ├── sync.py             # `template sync` planner (pure)
 │   └── exceptions.py
 └── services/               # section: services
 ```

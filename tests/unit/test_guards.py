@@ -1,9 +1,9 @@
-"""Tests for the pre-run override guard (ken #827)."""
+"""Tests for the pre-run override guard (ken #827) and the arguments guard (ken #636)."""
 
 import pytest
 
-from semacli.core.exceptions import OverrideNotAllowedError
-from semacli.core.guards import ensure_overrides_allowed
+from semacli.core.exceptions import InvalidArgumentsError, OverrideNotAllowedError
+from semacli.core.guards import ensure_overrides_allowed, validate_template_arguments
 from semacli.core.models import Template, TemplateTaskParams
 
 _PERMISSIVE = TemplateTaskParams(
@@ -59,3 +59,36 @@ class TestEnsureOverridesAllowed:
         tpl = Template.model_validate({"id": 7, "name": "mtree"})
         with pytest.raises(OverrideNotAllowedError):
             ensure_overrides_allowed(tpl, limit="web1")
+
+
+class TestValidateTemplateArguments:
+    @pytest.mark.parametrize("value", ["", None, "[]", '["--diff"]', '["--diff", "--check"]'])
+    def test_static_flags_pass(self, value: str | None) -> None:
+        validate_template_arguments(value)
+
+    @pytest.mark.parametrize(
+        "value",
+        ['["{{ limit }}"]', '["--limit", "{{ hosts }}"]', '["{% if x %}"]'],
+    )
+    def test_jinja_placeholder_is_refused(self, value: str) -> None:
+        # ken #636: Semaphore stores arguments verbatim; ansible then reads
+        # `{{ limit }}` as a literal host pattern.
+        with pytest.raises(InvalidArgumentsError, match="Jinja"):
+            validate_template_arguments(value)
+
+    def test_non_json_is_refused(self) -> None:
+        with pytest.raises(InvalidArgumentsError, match="not valid JSON"):
+            validate_template_arguments("--diff")
+
+    def test_json_object_is_refused(self) -> None:
+        with pytest.raises(InvalidArgumentsError, match="not a JSON array"):
+            validate_template_arguments('{"a": 1}')
+
+    def test_non_string_element_is_refused(self) -> None:
+        with pytest.raises(InvalidArgumentsError, match="must be a string"):
+            validate_template_arguments("[1, 2]")
+
+    def test_message_carries_the_offending_value(self) -> None:
+        with pytest.raises(InvalidArgumentsError) as exc:
+            validate_template_arguments("nope")
+        assert exc.value.value == "nope"

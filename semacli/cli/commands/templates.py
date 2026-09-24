@@ -1,18 +1,21 @@
-"""Templates commands (list + show)."""
+"""Templates commands (list, show, delete + the create/update/audit/sync satellites)."""
 
 import json
 from typing import Any
 
 import click
 
-from semacli.core.client import SemaphoreClient
-from semacli.core.config import load_config
 from semacli.core.models import Template
+from semacli.core.overrides import ALL_OVERRIDES, NO_OVERRIDES, OVERRIDE_TOGGLES, allowed_words
+from semacli.core.resolve import resolve_template
 
-from .._crud import opts_from_ctx, store_opts
+from .._crud import opts_from_ctx, setup, store_opts
 from .._groups import AliasedGroup, SectionedRootGroup
-from ..decorators import common_options, output_options, project_option, resolve_project
+from ..decorators import common_options, output_options, project_option
 from ..handlers import OutputFormatter, fail_on_error
+from ._template_audit import audit_cmd
+from ._template_sync import sync_cmd
+from ._template_write import create_cmd, update_cmd
 
 TEMPLATE_HELP = """\
 Templates: recipes that combine a repository, an inventory, an
@@ -25,20 +28,37 @@ A template references:
   - 0/1 environment (extra_vars + secrets)
   - playbook path   (relative to the repo)
 
+It also decides which per-run overrides are allowed (--limit, --tags,
+...). An override left out is not an error on the server: Semaphore
+drops it and runs anyway — `sem run` refuses instead, and
+`sem template audit` finds those templates before you need one.
+
 Calling `sem template` without a subcommand lists templates.
 """
 
 TEMPLATE_EPILOG = """\
 Examples:
   sem template                          # list
-  sem template show 5
+  sem template show mtree
   sem template create --name deploy-prod \\
        --playbook deploy/prod.yml \\
-       --repository 4 --inventory 42 --environment 7
-  sem template update 5 --environment 8
-  sem template delete 5
+       --repository ansible --inventory prod --environment secrets
+  sem template create --name reboot --playbook reboot.yml \\
+       --repository ansible --inventory prod --allow-override limit
+  sem template update mtree --environment staging
+  sem template audit                    # who would ignore --limit?
+  sem template sync --manifest templates.yml --dry-run
+  sem template delete deploy-prod
   sem run mtree                         # run by name (shortcut)
 """
+
+
+def _overrides_label(tpl: Template) -> str:
+    """Compact summary of the per-run overrides a template allows."""
+    allowed = allowed_words(tpl.task_params.model_dump())
+    if len(allowed) == len(OVERRIDE_TOGGLES):
+        return ALL_OVERRIDES
+    return ",".join(allowed) if allowed else NO_OVERRIDES
 
 
 def _emit_list_json(templates: list[Template]) -> None:
@@ -52,7 +72,7 @@ def _emit_list_text(templates: list[Template]) -> None:
         click.echo("No templates found")
         return
     for t in templates:
-        click.echo(f"{t.id:>4}  {t.name}  ({t.playbook or '?'})")
+        click.echo(f"{t.id:>4}  {t.name}  ({t.playbook or '?'})  [{_overrides_label(t)}]")
     click.echo(f"\nTotal: {len(templates)} template(s)")
 
 
@@ -70,36 +90,23 @@ def _emit_show_text(t: Template) -> None:
     click.echo(f"inventory_id:   {t.inventory_id}")
     click.echo(f"repository_id:  {t.repository_id}")
     click.echo(f"environment_id: {t.environment_id}")
+    if t.view_id:
+        click.echo(f"view_id:        {t.view_id}")
     if t.app:
         click.echo(f"app:            {t.app}")
-    p = t.task_params
-    allowed = [
-        label
-        for label, ok in (
-            ("limit", p.allow_override_limit),
-            ("tags", p.allow_override_tags),
-            ("skip-tags", p.allow_override_skip_tags),
-            ("debug", p.allow_debug),
-            ("inventory", p.allow_override_inventory),
-        )
-        if ok
-    ]
+    if t.arguments:
+        click.echo(f"arguments:      {t.arguments}")
+    allowed = allowed_words(t.task_params.model_dump())
     click.echo(f"overrides:      {', '.join(allowed) if allowed else 'none (run flags refused)'}")
+    if t.survey_vars:
+        click.echo(f"survey_vars:    {', '.join(v.name for v in t.survey_vars)}")
     if t.description:
         click.echo(f"description:    {t.description}")
 
 
-def _setup(opts: dict[str, Any]) -> tuple[SemaphoreClient, int]:
-    """Build the API client and resolve the project id from the stored opts."""
-    cfg = load_config(opts["config"])
-    client = SemaphoreClient(cfg, verbose=opts["verbose"])
-    pid = resolve_project(cfg, opts["project_override"])
-    return client, pid
-
-
 def _run_list(opts: dict[str, Any]) -> None:
     """Fetch and emit the template list (bare group form and hidden `list`)."""
-    client, pid = _setup(opts)
+    client, pid = setup(opts)
     OutputFormatter.format_verbose(f"GET /project/{pid}/templates", opts["verbose"])
     templates = client.get_templates(pid)
     if opts["output_json"]:
@@ -157,13 +164,14 @@ templates_group.add_alias("ls", "list")
 
 
 @templates_group.command("show")
-@click.argument("template_id", type=int)
+@click.argument("template")
 @click.pass_context
 @fail_on_error
-def show_cmd(ctx: click.Context, template_id: int) -> None:
+def show_cmd(ctx: click.Context, template: str) -> None:
     """Show full template details."""
     opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
+    client, pid = setup(opts)
+    template_id = resolve_template(client, pid, template)
     OutputFormatter.format_verbose(f"GET /project/{pid}/templates/{template_id}", opts["verbose"])
     tpl = client.get_template(pid, template_id)
     if opts["output_json"]:
@@ -172,124 +180,28 @@ def show_cmd(ctx: click.Context, template_id: int) -> None:
         _emit_show_text(tpl)
 
 
-@templates_group.command("create")
-@click.option("--name", required=True)
-@click.option("--playbook", required=True, help="Path of the playbook inside the repo.")
-@click.option(
-    "--repository",
-    "repository_id",
-    required=True,
-    type=int,
-    help="Linked repository id.",
-)
-@click.option("--inventory", "inventory_id", required=True, type=int, help="Linked inventory id.")
-@click.option(
-    "--environment",
-    "environment_id",
-    default=None,
-    type=int,
-    help="Optional environment id.",
-)
-@click.option("--description", default="")
-@click.option(
-    "--arguments",
-    default="",
-    help='Default ansible-playbook arguments as a JSON array, e.g. \'["--limit", "web1"]\'.',
-)
-@click.option(
-    "--app",
-    default="ansible",
-    show_default=True,
-    help="Runner app of the template (ansible, terraform, bash, ...).",
-)
-@click.pass_context
-@fail_on_error
-def create_cmd(  # noqa: PLR0913, PLR0917  # one parameter per --option (click callback)
-    ctx: click.Context,
-    name: str,
-    playbook: str,
-    repository_id: int,
-    inventory_id: int,
-    environment_id: int | None,
-    description: str,
-    arguments: str,
-    app: str,
-) -> None:
-    """Create a template."""
-    opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
-    tpl = client.create_template(
-        pid,
-        name=name,
-        playbook=playbook,
-        inventory_id=inventory_id,
-        repository_id=repository_id,
-        environment_id=environment_id,
-        description=description,
-        arguments=arguments,
-        app=app,
-    )
-    if opts["output_json"]:
-        _emit_show_json(tpl)
-    elif not opts["quiet"]:
-        click.echo(f"created template id={tpl.id}")
-
-
-@templates_group.command("update")
-@click.argument("template_id", type=int)
-@click.option("--name", default=None)
-@click.option("--playbook", default=None)
-@click.option("--repository", "repository_id", default=None, type=int)
-@click.option("--inventory", "inventory_id", default=None, type=int)
-@click.option("--environment", "environment_id", default=None, type=int)
-@click.option("--description", default=None)
-@click.option("--arguments", default=None)
-@click.pass_context
-@fail_on_error
-def update_cmd(  # noqa: PLR0913, PLR0917  # one parameter per --option (click callback)
-    ctx: click.Context,
-    template_id: int,
-    name: str | None,
-    playbook: str | None,
-    repository_id: int | None,
-    inventory_id: int | None,
-    environment_id: int | None,
-    description: str | None,
-    arguments: str | None,
-) -> None:
-    """Update mutable fields of a template."""
-    opts = opts_from_ctx(ctx)
-    client, pid = _setup(opts)
-    client.update_template(
-        pid,
-        template_id,
-        name=name,
-        playbook=playbook,
-        repository_id=repository_id,
-        inventory_id=inventory_id,
-        environment_id=environment_id,
-        description=description,
-        arguments=arguments,
-    )
-    if not opts["quiet"]:
-        click.echo(f"updated template id={template_id}")
-
-
 @templates_group.command("delete")
-@click.argument("template_id", type=int)
+@click.argument("template")
 @click.option("--yes", is_flag=True, help="Skip confirmation")
 @click.pass_context
 @fail_on_error
-def delete_cmd(ctx: click.Context, template_id: int, *, yes: bool) -> None:
+def delete_cmd(ctx: click.Context, template: str, *, yes: bool) -> None:
     """Delete a template. Fails if referenced by a schedule."""
     opts = opts_from_ctx(ctx)
-    if not yes and not click.confirm(f"Delete template id={template_id}?", default=False):
+    client, pid = setup(opts)
+    tpl = client.get_template(pid, resolve_template(client, pid, template))
+    if not yes and not click.confirm(f"Delete template '{tpl.name}' (id={tpl.id})?", default=False):
         click.echo("aborted.", err=True)
         return
-    client, pid = _setup(opts)
-    client.delete_template(pid, template_id)
+    client.delete_template(pid, tpl.id)
     if not opts["quiet"]:
-        click.echo(f"deleted template id={template_id}")
+        click.echo(f"deleted template id={tpl.id}")
+
+
+templates_group.add_command(create_cmd)
+templates_group.add_command(update_cmd)
+templates_group.add_command(audit_cmd)
+templates_group.add_command(sync_cmd)
 
 
 def register_templates_commands(main_group: SectionedRootGroup) -> None:

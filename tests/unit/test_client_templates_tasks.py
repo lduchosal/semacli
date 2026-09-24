@@ -239,3 +239,132 @@ class TestGetTaskOutput:
         c = SemaphoreClient(_cfg())
         with patch.object(c, "_request", return_value=None):
             assert c.get_task_output(5, 99) == []
+
+
+class TestTemplateWrites:
+    """Create extras + the read-modify-write update (ken #1118)."""
+
+    def test_create_sends_view_survey_and_narrow_task_params(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp('{"id": 12, "name": "x"}')
+            c.create_template(
+                1,
+                name="x",
+                playbook="x.yml",
+                inventory_id=4,
+                repository_id=3,
+                view_id=2,
+                task_params={"allow_override_limit": True},
+                allow_override_args=False,
+                survey_vars=[{"name": "release"}],
+            )
+        body = session.return_value.request.call_args.kwargs["json"]
+        assert body["view_id"] == 2
+        assert body["task_params"] == {"allow_override_limit": True}
+        assert body["allow_override_args_in_task"] is False
+        assert body["survey_vars"] == [{"name": "release"}]
+
+    def test_get_templates_raw_keeps_unknown_fields(self) -> None:
+        c = SemaphoreClient(_cfg())
+        payload = [{"id": 1, "name": "deploy", "surprise": "kept"}]
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp(json.dumps(payload))
+            assert c.get_templates_raw(5)[0]["surprise"] == "kept"
+
+    def test_get_templates_raw_non_list_raises(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp('{"oops": 1}')
+            with pytest.raises(SemaphoreAPIError):
+                c.get_templates_raw(5)
+
+    def test_create_non_dict_response_raises(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp("[]")
+            with pytest.raises(SemaphoreAPIError):
+                c.create_template(1, name="x", playbook="x.yml", inventory_id=4, repository_id=3)
+
+    def test_get_template_raw_non_dict_raises(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_get_session") as session:
+            session.return_value.request.return_value = _resp("[]")
+            with pytest.raises(SemaphoreAPIError):
+                c.get_template_raw(5, 6)
+
+
+_CURRENT = {
+    "id": 6,
+    "project_id": 1,
+    "name": "mtree",
+    "playbook": "mtree.yml",
+    "app": "ansible",
+    "inventory_id": 4,
+    "repository_id": 3,
+    "environment_id": 1,
+    "environment_ids": [1],
+    "view_id": 2,
+    "arguments": "[]",
+    "allow_override_args_in_task": True,
+    "task_params": {"allow_override_limit": True, "allow_debug": False},
+    "survey_vars": [{"name": "release"}],
+    "tasks": 17,
+    "permissions": 15,
+}
+
+
+def _update(client: SemaphoreClient, **fields: Any) -> dict[str, Any]:
+    """Run update_template against a canned GET and return the PUT body."""
+    with patch.object(client, "_get_session") as session:
+        session.return_value.request.side_effect = [
+            _resp(json.dumps(_CURRENT)),
+            _resp("{}"),
+        ]
+        client.update_template(1, 6, **fields)
+        return session.return_value.request.call_args.kwargs["json"]  # type: ignore[no-any-return]
+
+
+class TestUpdateTemplateReadModifyWrite:
+    """A partial PUT used to drop app/task_params/view_id (ken #1118)."""
+
+    def test_unpassed_fields_are_preserved(self) -> None:
+        body = _update(SemaphoreClient(_cfg()), name="renamed")
+        assert body["name"] == "renamed"
+        assert body["app"] == "ansible"
+        assert body["playbook"] == "mtree.yml"
+        assert body["view_id"] == 2
+        assert body["survey_vars"] == [{"name": "release"}]
+        assert body["task_params"]["allow_override_limit"] is True
+
+    def test_read_only_fields_are_not_sent_back(self) -> None:
+        body = _update(SemaphoreClient(_cfg()), name="renamed")
+        assert "tasks" not in body
+        assert "permissions" not in body
+
+    def test_task_params_are_merged_not_replaced(self) -> None:
+        body = _update(SemaphoreClient(_cfg()), task_params={"allow_debug": True})
+        assert body["task_params"] == {"allow_override_limit": True, "allow_debug": True}
+
+    def test_none_values_are_ignored(self) -> None:
+        body = _update(SemaphoreClient(_cfg()), name=None, playbook=None)
+        assert body["name"] == "mtree"
+
+    def test_environment_change_syncs_the_multi_env_list(self) -> None:
+        body = _update(SemaphoreClient(_cfg()), environment_id=8)
+        assert body["environment_id"] == 8
+        assert body["environment_ids"] == [8]
+
+    def test_identity_fields_are_forced(self) -> None:
+        body = _update(SemaphoreClient(_cfg()), name="renamed")
+        assert body["id"] == 6
+        assert body["project_id"] == 1
+
+    def test_returns_the_body_that_was_sent(self) -> None:
+        client = SemaphoreClient(_cfg())
+        with patch.object(client, "_get_session") as session:
+            session.return_value.request.side_effect = [
+                _resp(json.dumps(_CURRENT)),
+                _resp("{}"),
+            ]
+            assert client.update_template(1, 6, name="renamed")["name"] == "renamed"

@@ -12,6 +12,9 @@ from semacli.core.exceptions import (
     AuthenticationError,
     ConfigurationError,
     HookError,
+    InvalidArgumentsError,
+    InvalidOverrideSpecError,
+    ManifestError,
     NotFoundError,
     OverrideNotAllowedError,
     SemaphoreAPIError,
@@ -38,7 +41,17 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
     elif isinstance(error, AuthenticationError):
         click.echo(f"Authentication error: {error}", err=True)
         sys.exit(3)
-    elif isinstance(error, (AmbiguousNameError, NotFoundError, OverrideNotAllowedError)):
+    elif isinstance(
+        error,
+        (
+            AmbiguousNameError,
+            InvalidArgumentsError,
+            InvalidOverrideSpecError,
+            ManifestError,
+            NotFoundError,
+            OverrideNotAllowedError,
+        ),
+    ):
         click.echo(f"error: {error}", err=True)
         sys.exit(2)
     elif isinstance(error, SemaphoreAPIError):

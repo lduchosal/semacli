@@ -395,14 +395,14 @@ class TestProjectExamples:
 class TestTemplateExamples:
     def test_list(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_templates.return_value = []
             r = _invoke(["template", "-c", str(cfg)])
         assert r.exit_code == 0
 
     def test_show(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.get_template.return_value = Template(
                 id=5, project_id=1, name="deploy"
             )
@@ -413,7 +413,7 @@ class TestTemplateExamples:
         # semacli template create --name deploy-prod --playbook deploy/prod.yml
         #     --repository 4 --inventory 42 --environment 7
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             Mock.return_value.create_template.return_value = Template(
                 id=10, project_id=1, name="deploy-prod"
             )
@@ -445,14 +445,14 @@ class TestTemplateExamples:
 
     def test_update(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             r = _invoke(["template", "-c", str(cfg), "update", "5", "--environment", "8"])
         assert r.exit_code == 0
         Mock.return_value.update_template.assert_called_once()
 
     def test_delete(self, tmp_path: Path) -> None:
         cfg = _write_cfg(tmp_path)
-        with patch("semacli.cli.commands.templates.SemaphoreClient") as Mock:
+        with patch("semacli.cli._crud.SemaphoreClient") as Mock:
             r = _invoke(["template", "-c", str(cfg), "delete", "5", "--yes"])
         assert r.exit_code == 0
         Mock.return_value.delete_template.assert_called_once()

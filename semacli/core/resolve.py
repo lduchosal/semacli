@@ -9,6 +9,7 @@ These functions implement the rules in UX.md § 3.2:
 """
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from .exceptions import AmbiguousNameError, NotFoundError
@@ -62,3 +63,38 @@ def resolve_inventory(
     """Resolve an inventory name (or id) to a numeric inventory id."""
     items = client.list_inventories(pid)
     return _match_id_or_name(query, items, "inventory", exact=exact)
+
+
+def resolve_repository(
+    client: "SemaphoreClient", pid: int, query: str, *, exact: bool = False
+) -> int:
+    """Resolve a repository name (or id) to a numeric repository id."""
+    items = client.list_repositories(pid)
+    return _match_id_or_name(query, items, "repository", exact=exact)
+
+
+def resolve_environment(
+    client: "SemaphoreClient", pid: int, query: str, *, exact: bool = False
+) -> int:
+    """Resolve an environment name (or id) to a numeric environment id."""
+    items = client.list_environments(pid)
+    return _match_id_or_name(query, items, "environment", exact=exact)
+
+
+@dataclass
+class _TitledAsNamed:
+    """Adapter exposing a view's ``title`` under the ``name`` protocol."""
+
+    id: int
+    name: str
+
+
+def resolve_view(client: "SemaphoreClient", pid: int, query: str, *, exact: bool = False) -> int:
+    """Resolve a view title (or id) to a numeric view id.
+
+    Views carry a ``title``, not a ``name`` — the only object in the API
+    that does — so they are adapted before going through the shared
+    matcher.
+    """
+    items = [_TitledAsNamed(v.id, v.title) for v in client.list_views(pid)]
+    return _match_id_or_name(query, items, "view", exact=exact)

@@ -23,6 +23,8 @@ Designed for LLM/agent and automation use — deterministic commands, JSON outpu
 ## Features
 
 - List projects, templates, inventories, environments
+- Templates: create / update / audit / sync, with the per-run overrides
+  (`--limit`, `--tags`, …) declared explicitly — see [Templates](#templates)
 - Launch and monitor tasks
 - Read task output
 - Schedules: cron or one-shot `--run-at` triggers, carrying the same
@@ -198,6 +200,71 @@ timeout = 30
 
 Pass `--no-hooks` on `sem run` to bypass them (debug / replay).
 
+## Templates
+
+A template decides which per-run overrides a task may pass. Semaphore
+does not reject a forbidden override — it drops it and runs anyway, so a
+`--limit` that is not allowed runs the playbook on the **whole**
+inventory. semacli refuses that run instead, which makes the template's
+`task_params` worth getting right.
+
+```bash
+# Create: every override allowed unless you narrow it
+sem template create --name deploy --playbook deploy.yml \
+    --repository ansible --inventory prod --environment secrets --view DEPLOY
+
+# A template nobody may re-target at run time
+sem template create --name reboot-all --playbook reboot.yml \
+    --repository ansible --inventory prod --allow-override none
+
+# Update: read-modify-write, only the flags you pass are touched
+sem template update deploy --allow-override limit,tags
+
+# Which templates would silently ignore a --limit? (exit 1 if any)
+sem template audit
+sem template audit --require limit,tags
+sem template --json audit   # shared flags live on the group
+```
+
+`--arguments` only accepts a JSON array of static flags (`'["--diff"]'`).
+Jinja placeholders are refused: Semaphore stores the string verbatim and
+ansible reads `{{ limit }}` as a literal host pattern.
+
+### Declarative sync
+
+`sem template sync` reconciles a YAML manifest with the project: one
+template per declared playbook, idempotent, and **never a delete** (a
+template owns its task history). Run it with `--dry-run` first — it
+prints, field by field, what would change.
+
+```yaml
+# templates.yml
+defaults:
+  repository: ansible          # name or id
+  inventory: prod
+  environment: secrets
+  description: "Run ansible playbook {playbook}"
+  allow_override: [limit, tags, skip-tags, inventory, debug]
+playbooks: ansible             # scan ansible/*.yml, relative to this file
+ignore: [requirements.yml, site.yml]
+views:                         # template name -> board view
+  mtree: BSD
+templates:                     # explicit entries, merged over the scan
+  - name: book_base
+    playbook: book_base.yml
+    view: BOOK
+```
+
+```bash
+sem template sync --manifest templates.yml --dry-run   # review
+sem template sync --manifest templates.yml             # create what is missing
+sem template sync --manifest templates.yml --update    # + patch what drifted
+```
+
+Existing templates are skipped unless `--update` is passed, and with it
+only the ones that actually differ are written back. Templates present on
+the server but absent from the manifest are reported, never removed.
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -209,6 +276,10 @@ Pass `--no-hooks` on `sem run` to bypass them (debug / replay).
 | 4 | API error |
 | 5 | Not found |
 | 6 | Hook aborted the command (pre-hook returned non-zero or timed out) |
+
+`sem template audit` uses exit 1 for "findings" (at least one template
+forbids a required override) so it can be wired as a periodic check;
+`sem template sync` uses it when a create/update failed.
 
 ## Development
 
@@ -241,10 +312,15 @@ semacli/
 │   ├── decorators.py       # Common CLI options
 │   └── handlers.py         # Error handlers
 ├── core/                   # Core business logic
-│   ├── client.py           # Semaphore HTTP client
+│   ├── client/             # Semaphore HTTP client (per-resource mixins)
 │   ├── config.py           # Configuration
 │   ├── exceptions.py       # Custom exceptions
-│   └── models.py           # Data models
+│   ├── guards.py           # Pre-flight refusals (overrides, arguments)
+│   ├── manifest.py         # `template sync` manifest parsing
+│   ├── models.py           # Data models
+│   ├── overrides.py        # task_params vocabulary
+│   ├── resolve.py          # name-or-id resolution
+│   └── sync.py             # `template sync` planner (pure)
 └── services/               # Business services
 ```
 

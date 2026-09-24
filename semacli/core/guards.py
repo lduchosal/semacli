@@ -1,7 +1,19 @@
-"""Pre-flight guards executed before launching a task."""
+"""Pre-flight guards: refuse unsafe runs and unsafe template payloads.
 
-from .exceptions import OverrideNotAllowedError
+Both guards exist because Semaphore fails *open*: a forbidden per-run
+override is dropped without an error (ken #827), and ``arguments`` are
+handed to ansible-playbook verbatim, with no templating pass (ken #636).
+semacli refuses up front instead.
+"""
+
+import json
+import re
+
+from .exceptions import InvalidArgumentsError, OverrideNotAllowedError
 from .models import Template
+
+# `{{ limit }}` / `{% if %}` — Semaphore never expands these.
+_JINJA = re.compile(r"{{.*?}}|{%.*?%}")
 
 
 def ensure_overrides_allowed(
@@ -48,3 +60,33 @@ def ensure_overrides_allowed(
     for flag, requested, allowed, toggle, consequence in checks:
         if requested and not allowed:
             raise OverrideNotAllowedError(name, flag, toggle, consequence)
+
+
+def validate_template_arguments(arguments: str | None) -> None:
+    """Refuse ``--arguments`` that Semaphore cannot honour.
+
+    Accepts only a JSON array of static flags (``'["--diff"]'``). A
+    Jinja placeholder is rejected: Semaphore stores the string as-is and
+    ansible-playbook then reads ``{{ limit }}`` as a literal host
+    pattern (ken #636) — per-run targeting belongs in ``task_params``,
+    not in ``arguments``.
+    """
+    if not arguments:
+        return
+    if _JINJA.search(arguments):
+        jinja = (
+            "Jinja placeholders are never expanded and reach ansible literally "
+            "(use --limit/--tags at run time, gated by task_params)"
+        )
+        raise InvalidArgumentsError(jinja, arguments)
+    try:
+        parsed = json.loads(arguments)
+    except json.JSONDecodeError as err:
+        bad_json = f"not valid JSON ({err.msg})"
+        raise InvalidArgumentsError(bad_json, arguments) from err
+    if not isinstance(parsed, list):
+        not_array = f"not a JSON array (got {type(parsed).__name__})"
+        raise InvalidArgumentsError(not_array, arguments)
+    if any(not isinstance(item, str) for item in parsed):
+        not_strings = "every element must be a string"
+        raise InvalidArgumentsError(not_strings, arguments)

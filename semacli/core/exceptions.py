@@ -70,3 +70,40 @@ class AmbiguousNameError(SemaCliError):
             f"ambiguous '{query}' — {len(candidates)} candidates:\n{rows}\n"
             "hint: use a more specific name, or pass --exact."
         )
+
+
+class InvalidArgumentsError(SemaCliError):
+    """Raised when ``--arguments`` is not a plain JSON array of static flags.
+
+    Semaphore stores ``arguments`` verbatim and hands them to
+    ansible-playbook without any templating pass. A ``{{ limit }}``
+    placeholder therefore reaches ansible as a literal host pattern
+    (ken #636), which silently matches nothing — or the wrong hosts.
+    """
+
+    def __init__(self, reason: str, value: str) -> None:
+        self.reason = reason
+        self.value = value
+        super().__init__(
+            f"invalid --arguments: {reason}. "
+            f"Expected a JSON array of static flags, e.g. '[\"--diff\"]'. Got: {value!r}"
+        )
+
+
+class InvalidOverrideSpecError(SemaCliError):
+    """Raised when an ``--allow-override`` spec names an unknown toggle."""
+
+    def __init__(self, unknown: list[str], known: list[str]) -> None:
+        self.unknown = unknown
+        super().__init__(
+            f"unknown override(s): {', '.join(unknown)}. "
+            f"Known: {', '.join(known)} (or 'all' / 'none')."
+        )
+
+
+class ManifestError(SemaCliError):
+    """Raised when a sync manifest is unreadable or structurally invalid."""
+
+    def __init__(self, path: str, reason: str) -> None:
+        self.path = path
+        super().__init__(f"manifest {path}: {reason}")
