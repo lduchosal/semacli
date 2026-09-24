@@ -12,7 +12,7 @@ from semacli.core.exceptions import ConfigurationError
 
 def _write_ini(tmp_path: Path, body: str) -> Path:
     path = tmp_path / "semacli.ini"
-    path.write_text(textwrap.dedent(body).lstrip())
+    path.write_text(textwrap.dedent(body).lstrip(), encoding="utf-8")
     return path
 
 
@@ -127,6 +127,29 @@ class TestLoadConfig:
         assert "task_run_prehook" in cfg.hooks.hooks
         assert "task_run_posthook" in cfg.hooks.hooks
         assert cfg.hooks.timeout == 15
+
+    @pytest.mark.usefixtures("cp1252_locale")
+    def test_reads_utf8_whatever_the_locale(self, tmp_path: Path) -> None:
+        # ken #1122: the ini must not be decoded with the locale encoding.
+        ini = _write_ini(
+            tmp_path,
+            """
+            [semaphore]
+            url = https://semaphore.example
+            bearer_token = t
+
+            [hook]
+            task_run_prehook = /opt/prépare.sh
+            """,
+        )
+        cfg = load_config(str(ini))
+        assert cfg.hooks.hooks["task_run_prehook"].argv == ["/opt/prépare.sh"]
+
+    def test_non_utf8_file_raises_configuration_error(self, tmp_path: Path) -> None:
+        ini = tmp_path / "semacli.ini"
+        ini.write_bytes("[semaphore]\nurl = https://prépare.example\n".encode("cp1252"))
+        with pytest.raises(ConfigurationError, match="not valid UTF-8"):
+            load_config(str(ini))
 
     def test_hook_section_absent_yields_empty_config(self, tmp_path: Path) -> None:
         ini = _write_ini(

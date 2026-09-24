@@ -123,9 +123,13 @@ def load_manifest(path: str | Path) -> Manifest:
     """Read and validate a YAML manifest."""
     manifest_path = Path(path)
     try:
-        raw = yaml.safe_load(manifest_path.read_text())
+        # YAML is UTF-8 by spec: never fall back to the locale (cp1252 on Windows).
+        raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     except OSError as err:
         reason = f"cannot read ({err.strerror})"
+        raise ManifestError(str(manifest_path), reason) from err
+    except UnicodeDecodeError as err:
+        reason = f"not valid UTF-8 ({err.reason} at byte {err.start})"
         raise ManifestError(str(manifest_path), reason) from err
     except yaml.YAMLError as err:
         reason = f"invalid YAML ({err})"

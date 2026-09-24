@@ -45,7 +45,11 @@ def load_config(config_path: str = "semacli.ini") -> SemaphoreConfig:
         msg = f"Configuration file not found: {config_path}"
         raise ConfigurationError(msg)
 
-    config.read(config_file)
+    try:
+        config.read(config_file, encoding="utf-8")
+    except UnicodeDecodeError as err:
+        msg = f"Configuration file {config_file} is not valid UTF-8 ({err.reason} at byte {err.start})"
+        raise ConfigurationError(msg) from err
 
     return _parse_config(config, Path(config_file))
 

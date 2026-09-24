@@ -27,7 +27,7 @@ templates:
 
 def _manifest(tmp_path: Path, body: str, playbooks: tuple[str, ...] = ()) -> Path:
     path = tmp_path / "templates.yml"
-    path.write_text(body)
+    path.write_text(body, encoding="utf-8")
     if playbooks:
         (tmp_path / "ansible").mkdir(exist_ok=True)
         for name in playbooks:
@@ -51,6 +51,19 @@ class TestLoadManifest:
     def test_invalid_yaml(self, tmp_path: Path) -> None:
         with pytest.raises(ManifestError, match="invalid YAML"):
             load_manifest(_manifest(tmp_path, "defaults: [unclosed\n"))
+
+    @pytest.mark.usefixtures("cp1252_locale")
+    def test_reads_utf8_whatever_the_locale(self, tmp_path: Path) -> None:
+        # ken #1122: a cp1252 locale used to turn "Prépare" into "PrÃ©pare".
+        body = 'templates:\n  - name: book_base\n    description: "Prépare {name}"\n'
+        specs = build_specs(load_manifest(_manifest(tmp_path, body)))
+        assert specs[0].description == "Prépare book_base"
+
+    def test_non_utf8_file_is_refused(self, tmp_path: Path) -> None:
+        path = tmp_path / "templates.yml"
+        path.write_bytes("templates:\n  - name: Prépare\n".encode("cp1252"))
+        with pytest.raises(ManifestError, match="not valid UTF-8"):
+            load_manifest(path)
 
     def test_root_must_be_a_mapping(self, tmp_path: Path) -> None:
         with pytest.raises(ManifestError, match="must be a mapping"):

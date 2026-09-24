@@ -92,12 +92,17 @@ target-version = "py310"
 # Locked at palier 5 (ken #833): ANN401 (bare Any only at JSON boundaries,
 # argued noqas) and the full PLR family (PLR0913 argued per click callback /
 # API wrapper). The ken #800 per-file-ignores are fully lifted.
+# PLW1514 (ken #1122): every text read/write names its encoding — the locale
+# fallback is cp1252 on Windows. Preview-only rule, enabled alone thanks to
+# explicit-preview-rules (no other preview behaviour is switched on).
+preview = true
+explicit-preview-rules = true
 select = [
     "E", "F", "W", "I", "UP", "B", "C4", "C90",
     "DTZ", "G", "SLF", "PLC0415",
     "ARG", "PERF", "PTH", "RUF",
     "BLE", "EM", "FBT", "TRY",
-    "ANN401", "PLR",
+    "ANN401", "PLR", "PLW1514",
 ]
 # E501: black owns line length.
 ignore = ["E501"]

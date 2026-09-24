@@ -158,7 +158,8 @@ def run_hook(
             env=env,
             timeout=hook_cfg.timeout,
             capture_output=verbose < 1,
-            text=True,
+            encoding="utf-8",  # implies text mode; never the locale codec
+            errors="replace",
             check=False,
         )
     except FileNotFoundError as exc:
