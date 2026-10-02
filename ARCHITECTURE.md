@@ -19,6 +19,9 @@ wiki:
     - id: services
       title: Services
       description: Business services that compose the core client into higher-level operations.
+    - id: vscode
+      title: VS Code extension
+      description: vscode/ — sidebar of running/finished Semaphore tasks, task detail, stop; reads semacli.ini, shipped as a .vsix on the GitHub release.
     - id: tests
       title: Tests
       description: Unit tests, integration tests, fixtures, and mock client.
@@ -68,7 +71,24 @@ semacli/
 │   ├── sync.py             # `template sync` planner (pure)
 │   └── exceptions.py
 └── services/               # section: services
+
+vscode/                     # section: vscode — VS Code extension (ken #1131)
+├── src/
+│   ├── config.js           # semacli.ini + .env + [auth], port of core/config.py
+│   ├── api.js              # REST client (node:https, no runtime deps)
+│   ├── tasks.js            # pure presentation (split, labels, detail text)
+│   └── extension.js        # VS Code glue (tree, log documents, commands)
+└── test/                   # node --test, vscode-stub.js stands in for `vscode`
 ```
+
+The extension is plain JavaScript with `// @ts-check` + JSDoc (no build
+step) and has its own npm toolchain under `vscode/`. It never shells out
+to `sem`: it re-implements the config resolution of `core/config.py` so
+the two read the same `semacli.ini` the same way — **a change to the
+config format must land in both** (`vscode/src/config.js` and its tests).
+`publish.sh` syncs `vscode/package.json` to the release version, packages
+`semacli-vscode-<version>.vsix` before the PyPI upload, then tags
+`semacli-<version>` and attaches the .vsix to that GitHub release.
 
 Cross-cutting concerns map to:
 

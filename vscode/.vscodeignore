@@ -1,0 +1,9 @@
+# Ship only src/, media/, package.json, README.md, LICENSE.
+node_modules/**
+test/**
+*.vsix
+lcov.info
+.gitignore
+biome.json
+jsconfig.json
+package-lock.json

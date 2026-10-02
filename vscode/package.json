@@ -1,0 +1,161 @@
+{
+  "name": "semacli-vscode",
+  "displayName": "semacli",
+  "description": "Semaphore UI tasks in VS Code: running and finished tasks, task detail with output, stop (ken #1131).",
+  "version": "0.5.28",
+  "publisher": "lduchosal",
+  "license": "MIT",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lduchosal/semacli"
+  },
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=20"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "semaphore",
+    "ansible",
+    "semacli"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "workspaceContains:**/semacli.ini"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "semacli",
+          "title": "Semaphore",
+          "icon": "media/semacli.svg"
+        }
+      ]
+    },
+    "views": {
+      "semacli": [
+        {
+          "id": "semacli.tasks",
+          "name": "Tasks"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "semacli.refresh",
+        "title": "Refresh",
+        "category": "semacli",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "semacli.openSemaphore",
+        "title": "Open Semaphore in browser",
+        "category": "semacli",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "semacli.showTask",
+        "title": "Show task detail",
+        "category": "semacli"
+      },
+      {
+        "command": "semacli.openTask",
+        "title": "Open task in Semaphore",
+        "category": "semacli"
+      },
+      {
+        "command": "semacli.stopTask",
+        "title": "Stop task",
+        "category": "semacli",
+        "icon": "$(debug-stop)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "semacli.refresh",
+          "when": "view == semacli.tasks",
+          "group": "navigation"
+        },
+        {
+          "command": "semacli.openSemaphore",
+          "when": "view == semacli.tasks",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "semacli.stopTask",
+          "when": "view == semacli.tasks && viewItem == task.active",
+          "group": "inline"
+        },
+        {
+          "command": "semacli.showTask",
+          "when": "view == semacli.tasks && viewItem =~ /^task\\./",
+          "group": "0_show"
+        },
+        {
+          "command": "semacli.stopTask",
+          "when": "view == semacli.tasks && viewItem == task.active",
+          "group": "1_stop"
+        },
+        {
+          "command": "semacli.openTask",
+          "when": "view == semacli.tasks && viewItem =~ /^task\\./",
+          "group": "2_open"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "semacli.showTask",
+          "when": "false"
+        },
+        {
+          "command": "semacli.openTask",
+          "when": "false"
+        },
+        {
+          "command": "semacli.stopTask",
+          "when": "false"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "semacli",
+      "properties": {
+        "semacli.autoRefreshSeconds": {
+          "type": "number",
+          "default": 15,
+          "minimum": 0,
+          "description": "Refresh the task list and the open task detail every N seconds (0 disables it). Skipped while the VS Code window is in the background."
+        },
+        "semacli.finishedLimit": {
+          "type": "number",
+          "default": 50,
+          "minimum": 1,
+          "maximum": 200,
+          "description": "Number of finished tasks shown (newest first, Semaphore returns at most the last 200)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "lint": "biome check src test",
+    "typecheck": "tsc --noEmit -p jsconfig.json",
+    "test": "node --test 'test/*.test.js'",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=95 --test-coverage-functions=95 --test-coverage-exclude=test/** --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info 'test/*.test.js'",
+    "check": "npm run lint && npm run typecheck && npm run coverage",
+    "package": "cp ../LICENSE LICENSE && vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^20.17.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^3.2.1",
+    "typescript": "^5.9.3"
+  }
+}

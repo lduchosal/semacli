@@ -1,0 +1,5 @@
+node_modules/
+*.vsix
+lcov.info
+# Copied from ../LICENSE by `npm run package`.
+LICENSE

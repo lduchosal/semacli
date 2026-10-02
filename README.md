@@ -33,6 +33,9 @@ Designed for LLM/agent and automation use — deterministic commands, JSON outpu
   hosts without a dedicated template — see `sem sched create --help`
 - JSON output support
 - Bearer-token authentication (User Settings → API Tokens)
+- VS Code extension: running / finished tasks in the sidebar, task detail
+  with its output, stop — reads the same `semacli.ini` (see
+  [VS Code extension](#vs-code-extension))
 
 ## Installation
 
@@ -48,6 +51,21 @@ git clone https://github.com/lduchosal/semacli.git
 cd semacli
 pdm install
 ```
+
+### VS Code extension
+
+Each [GitHub release](https://github.com/lduchosal/semacli/releases)
+attaches `semacli-vscode-<version>.vsix` (no Marketplace):
+
+```bash
+gh release download semacli-<version> -R lduchosal/semacli -p '*.vsix'
+code --install-extension semacli-vscode-<version>.vsix
+```
+
+It finds `semacli.ini` from the workspace folder upwards (then
+`~/.semacli.ini`, `/usr/local/etc/semacli.ini`) and honours `[auth]`,
+`load_dotenv` and the TLS settings like the CLI. Details:
+[`vscode/README.md`](vscode/README.md).
 
 ## Quick Start
 

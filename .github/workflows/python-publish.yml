@@ -32,5 +32,9 @@ jobs:
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      # publish.sh uploads to PyPI itself, then creates the GitHub release
+      # that carries the VS Code .vsix (ken #1131) — which fires this
+      # workflow. --skip-existing keeps it a no-op for those releases while
+      # still publishing a release created by hand.
       run: |
-        python -m twine upload dist/*
+        python -m twine upload --skip-existing dist/*

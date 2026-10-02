@@ -70,7 +70,15 @@ to semacli.
    pdm run refurb            # modernisation refurb
    pdm run metrics           # snapshot des critères qualité
    pdm run metrics-gate      # gate qualité bloquant (paliers + ratchet)
+   pdm run vscode-install    # npm ci de l'extension VS Code (vscode/)
+   pdm run vscode-check      # biome + tsc --noEmit + node --test (coverage gate)
    ```
+
+   L'extension VS Code (`vscode/`, ken #1131) relit `semacli.ini` via sa
+   propre implémentation (`vscode/src/config.js`) : tout changement du
+   format de config (`semacli/core/config.py`) doit être reporté là, tests
+   compris. `publish.sh` package le `.vsix` et l'attache à la release
+   GitHub `semacli-<version>`.
 
    Le gate qualité (ken #828, porté de kenboard) : plafonds absolus par
    palier + ratchet best-ever contre `doc/quality-history.csv` — voir

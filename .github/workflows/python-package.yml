@@ -61,9 +61,40 @@ jobs:
         if-no-files-found: error
         retention-days: 1
 
+  vscode:
+    # VS Code extension (ken #1131): same gates as publish.sh — lockfile
+    # install, audit, biome, tsc on the JSDoc types, node --test with the
+    # coverage gate. Its lcov feeds the SonarCloud analysis below.
+    name: VS Code extension
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vscode
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: npm
+        cache-dependency-path: vscode/package-lock.json
+    - run: npm ci --no-fund
+    - run: npm audit
+    - run: npm run lint
+    - run: npm run typecheck
+    - run: npm run coverage
+    # node writes SF: paths relative to vscode/, Sonar reads them from the root.
+    - run: sed -i 's#^SF:#SF:vscode/#' lcov.info
+    - name: Upload lcov.info for SonarCloud
+      uses: actions/upload-artifact@v4
+      with:
+        name: vscode-lcov
+        path: vscode/lcov.info
+        if-no-files-found: error
+        retention-days: 1
+
   sonarcloud:
     name: SonarCloud
-    needs: build
+    needs: [build, vscode]
     runs-on: ubuntu-latest
     # Fork PRs cannot read SONAR_TOKEN; skip the scan there to avoid a hard fail.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -76,6 +107,11 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: coverage-xml
+    - name: Download the VS Code extension lcov.info
+      uses: actions/download-artifact@v4
+      with:
+        name: vscode-lcov
+        path: vscode
     - name: SonarCloud Scan
       uses: SonarSource/sonarqube-scan-action@v6
       env:

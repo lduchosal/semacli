@@ -207,7 +207,17 @@ metrics-gate = "python scripts/quality_metrics.py --gate"
 # live quality gate. Publish-only (needs network + a pushed HEAD + SONAR_TOKEN).
 sonar-gate = "python scripts/sonar_gate.py --timeout 900 --interval 20"
 test-cov-xml = "env PYTHONPATH=src python -m pytest tests/ --cov=semacli --cov-report=xml --cov-report=term --cov-fail-under=80"
-check = {composite = ["lint", "format-check", "typecheck", "arch", "vulture", "refurb", "test", "metrics-gate"]}
+# ken #1131 — VS Code extension (vscode/): self-contained npm toolchain
+# (biome + tsc --noEmit on JSDoc + node --test with a coverage gate),
+# packaged to a .vsix by publish.sh and attached to the GitHub release.
+vscode-install = { shell = "cd vscode && npm ci --no-fund" }
+vscode-audit = { shell = "cd vscode && npm audit" }
+vscode-lint = { shell = "cd vscode && npm run lint" }
+vscode-typecheck = { shell = "cd vscode && npm run typecheck" }
+vscode-test = { shell = "cd vscode && npm run coverage" }
+vscode-package = { shell = "cd vscode && npm run package" }
+vscode-check = {composite = ["vscode-lint", "vscode-typecheck", "vscode-test"]}
+check = {composite = ["lint", "format-check", "typecheck", "arch", "vulture", "refurb", "test", "metrics-gate", "vscode-check"]}
 clean = "rm -rf .coverage htmlcov/ .pytest_cache/ __pycache__/ semacli/__pycache__/"
 version-patch = "pdm bump patch"
 version-minor = "pdm bump minor"
