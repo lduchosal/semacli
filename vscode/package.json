@@ -147,7 +147,7 @@
     "lint": "biome check src test",
     "typecheck": "tsc --noEmit -p jsconfig.json",
     "test": "node --test 'test/*.test.js'",
-    "coverage": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=95 --test-coverage-functions=95 --test-coverage-exclude=test/** --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info 'test/*.test.js'",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=95 --test-coverage-functions=95 --test-coverage-exclude=test/** --test-reporter=dot --test-reporter-destination=stdout --test-reporter=spec --test-reporter-destination=test-report.txt --test-reporter=lcov --test-reporter-destination=lcov.info 'test/*.test.js' || { grep -h 'does not meet threshold' test-report.txt; exit 1; }",
     "check": "npm run lint && npm run typecheck && npm run coverage",
     "package": "cp ../LICENSE LICENSE && vsce package --no-dependencies"
   },

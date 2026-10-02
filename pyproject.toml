@@ -191,6 +191,11 @@ test-unit = "env PYTHONPATH=src python -m pytest tests/unit/ -v"
 test-unit-quick = "env PYTHONPATH=src python -m pytest tests/unit/ --tb=no -q"
 test-integration = "env PYTHONPATH=src python -m pytest tests/integration/ --vcr-record=none -v"
 test-integration-record = "env PYTHONPATH=src python -m pytest tests/integration/ -v"
+# publish.sh variants: progress dots only, full traceback of any failure.
+# `-o addopts=` drops the project-wide -v; --cov-report= keeps the .coverage
+# file the metrics gate reads without printing the per-file table.
+test-publish = "env PYTHONPATH=src python -m pytest tests/ -o addopts= -q --tb=long -rfE -p no:cacheprovider --cov=semacli --cov-report="
+test-integration-publish = "env PYTHONPATH=src python -m pytest tests/integration/ -o addopts= -q --tb=long -rfE -p no:cacheprovider --vcr-record=none"
 test-cov = "env PYTHONPATH=src python -m pytest tests/ -v --cov=semacli --cov-report=html --cov-report=term-missing"
 lint = "ruff check semacli/ tests/"
 arch = "lint-imports"

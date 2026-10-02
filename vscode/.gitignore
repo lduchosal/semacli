@@ -1,5 +1,6 @@
 node_modules/
 *.vsix
 lcov.info
+test-report.txt
 # Copied from ../LICENSE by `npm run package`.
 LICENSE

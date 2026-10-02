@@ -3,6 +3,7 @@ node_modules/**
 test/**
 *.vsix
 lcov.info
+test-report.txt
 .gitignore
 biome.json
 jsconfig.json

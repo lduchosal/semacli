@@ -168,13 +168,13 @@ run_command "pdm run vulture" "Dead code check"
 print_step "Running Tests (unit + integration, with coverage)"
 # Full suite with coverage: the quality-metrics gate below reads the
 # .coverage file this run leaves behind.
-run_command "pdm run test" "Tests (full suite, coverage)"
+run_command "pdm run test-publish" "Tests (full suite, coverage)"
 
 print_step "Running Integration Tests (VCR strict replay)"
 # --vcr-record=none is hard-coded in the test-integration script: a stale
 # cassette aborts the release rather than silently re-recording against
 # whatever Semaphore happens to be reachable from the build machine.
-run_command "pdm run test-integration" "Integration tests (replay)"
+run_command "pdm run test-integration-publish" "Integration tests (replay)"
 
 # VS Code extension (ken #1131): own npm toolchain under vscode/. npm ci
 # from the committed lockfile, then a blocking audit — a known vulnerability
