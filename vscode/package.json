@@ -2,7 +2,7 @@
   "name": "semacli-vscode",
   "displayName": "semacli",
   "description": "Semaphore UI tasks in VS Code: running and finished tasks, task detail with output, stop (ken #1131).",
-  "version": "0.5.28",
+  "version": "0.5.29",
   "publisher": "lduchosal",
   "license": "MIT",
   "private": true,
