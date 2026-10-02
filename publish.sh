@@ -1,5 +1,12 @@
 #!/bin/sh
 
+# The whole script is one { ... } block: the shell parses it entirely before
+# running the first line. Without it, sh reads the file as it executes, so
+# editing publish.sh during a run (e.g. a commit while the SonarCloud gate
+# waits) shifts the byte offsets and the run resumes mid-line — the 0.5.29
+# attempt died after the version bump on "syntax error near `)'" (ken #1131).
+{
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -297,3 +304,6 @@ echo "${GREEN}semacli v${VERSION} has been published to PyPI.${NC}"
 echo "${GREEN}GitHub release semacli-${VERSION} carries semacli-vscode-${VERSION}.vsix.${NC}"
 echo "${GREEN}Wiki sync + build + git push ran in non-fatal mode after.${NC}"
 echo ""
+
+exit 0
+}
