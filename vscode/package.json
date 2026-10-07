@@ -12,7 +12,7 @@
   },
   "engines": {
     "vscode": "^1.90.0",
-    "node": ">=20"
+    "node": ">=22"
   },
   "categories": [
     "Other"
@@ -155,7 +155,7 @@
     "@biomejs/biome": "^1.9.4",
     "@types/node": "^20.17.0",
     "@types/vscode": "~1.90.0",
-    "@vscode/vsce": "^3.2.1",
+    "@vscode/vsce": "^4.0.0",
     "typescript": "^5.9.3"
   }
 }
