@@ -208,17 +208,18 @@ steps, in order:
 | **commit** | Everything still pending in this repo — `git status`, then `git commit` following the commit style below (`closes ken #<id>`). Often a no-op because the work was committed as it went; say so rather than staying silent. |
 | **groom** | `ken wiki groom <id> <section>` (most semacli work: `cli/<sub>`). `ken wiki groom` with no arguments lists what is still unclassified — the pre-flight. Only classified tasks reach the wiki. |
 | **wiki** | `ken wiki sync` → `ken wiki build`: exports the classified tasks to `wiki/` and renders `wiki-html/` locally. |
-| **publish** | `svn ci wiki wiki-html` → `semacli run wiki --limit monitor1`: pushes the rendered wiki and deploys it to <https://www.monitor.2113.ch/wiki/>. |
+| **publish** | **In this repo: `./publish.sh`** — the semacli release (quality gates, version bump, PyPI, `.vsix`, git push, tag + GitHub release). Not the angel wiki deploy. |
 
-**wiki** + **publish** are chained by a single command, run from the angel
-root: `.venv/bin/angel publish`.
+The wiki itself (`ken wiki sync` → `build` → `svn ci` → `semacli run wiki`)
+is chained by `.venv/bin/angel publish`, run from the angel root.
 
 ```sh
 ken done <id>
 ken update <id> --desc-file <scratch>/ken-<id>.md   # TL;DR + detail
 git status && git commit ...                         # nothing left behind?
 ken wiki groom <id> cli/<sub>
-(cd .. && .venv/bin/angel publish)                   # wiki + publish
+(cd .. && .venv/bin/angel publish)                   # wiki
+./publish.sh                                         # publish = release
 ```
 
 Run `angel publish` from the angel root — other venvs may hold a stale `ken`
