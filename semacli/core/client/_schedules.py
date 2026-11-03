@@ -46,6 +46,41 @@ def _task_params(  # noqa: PLR0913, PLR0917  # one parameter per schedule task-p
     return tp
 
 
+def _schedule_changes(fields: dict[str, Any], task_params: dict[str, Any]) -> dict[str, Any]:
+    """Keep only the supplied (non-None) top-level fields, plus task_params if any."""
+    changes = {k: v for k, v in fields.items() if v is not None}
+    if task_params:
+        changes["task_params"] = task_params
+    return changes
+
+
+def merge_schedule_update(current: dict[str, Any], changes: dict[str, Any]) -> dict[str, Any]:
+    """Overlay ``changes`` on the server's ``current`` schedule (full PUT body).
+
+    ``task_params`` and its nested ``params`` are merged key by key so that
+    e.g. ``--limit`` alone keeps the inventory and tags. Switching the
+    trigger is coherent: ``--cron`` on a run-at schedule turns it back into
+    a cron one (drops ``run_at``); ``--run-at`` blanks the cron.
+    """
+    body = {k: v for k, v in current.items() if k != "tpl_name"}
+    body.update({k: v for k, v in changes.items() if k != "task_params"})
+    if "task_params" in changes:
+        merged_tp = dict(current.get("task_params") or {})
+        new_tp = changes["task_params"]
+        merged_tp.update({k: v for k, v in new_tp.items() if k != "params"})
+        if "params" in new_tp:
+            merged_tp["params"] = {**(merged_tp.get("params") or {}), **new_tp["params"]}
+        body["task_params"] = merged_tp
+    if "cron_format" in changes and "type" not in changes:
+        body["type"] = ""  # Semaphore db.ScheduleTypeCron
+        body.pop("run_at", None)
+    if changes.get("type") == "run_at":
+        body["cron_format"] = ""
+    if body.get("run_at") is None:
+        body.pop("run_at", None)
+    return body
+
+
 class SchedulesMixin(BaseClient):
     """CRUD on schedules."""
 
@@ -131,32 +166,37 @@ class SchedulesMixin(BaseClient):
         tags: str | None = None,
         skip_tags: str | None = None,
     ) -> None:
-        """PUT /api/project/{pid}/schedules/{sid}.
+        """Update only the supplied fields of a schedule (ken #1169).
 
-        Pass-through: only the fields you supply are sent. The new
-        overrides ride in a nested ``task_params`` exactly as for create.
+        Semaphore's ``PUT /schedules/{sid}`` is a FULL replace (absent field
+        -> zero value: empty cron 400, dropped task_params), so this GETs the
+        schedule, overlays the changes and PUTs it whole. A pure active
+        toggle uses ``PUT /schedules/{sid}/active``, which touches nothing else.
         """
-        body: dict[str, Any] = {"id": sched_id, "project_id": project_id}
-        if name is not None:
-            body["name"] = name
-        if cron_format is not None:
-            body["cron_format"] = cron_format
-        if active is not None:
-            body["active"] = active
-        if schedule_type is not None:
-            body["type"] = schedule_type
-        if run_at is not None:
-            body["run_at"] = run_at
-        if delete_after_run is not None:
-            body["delete_after_run"] = delete_after_run
-        tp = _task_params(message, inventory_id, cli_args, limit, tags, skip_tags)
-        if tp:
-            body["task_params"] = tp
-        self._request(
-            f"project/{project_id}/schedules/{sched_id}",
-            method="PUT",
-            body=body,
+        changes = _schedule_changes(
+            {
+                "name": name,
+                "cron_format": cron_format,
+                "active": active,
+                "type": schedule_type,
+                "run_at": run_at,
+                "delete_after_run": delete_after_run,
+            },
+            _task_params(message, inventory_id, cli_args, limit, tags, skip_tags),
         )
+        path = f"project/{project_id}/schedules/{sched_id}"
+        if not changes:
+            return
+        if set(changes) == {"active"}:
+            self._request(f"{path}/active", method="PUT", body={"active": active})
+            return
+
+        current = self._request(path)
+        if not isinstance(current, dict):
+            msg = "Unexpected response for /schedules/{sid}"
+            raise SemaphoreAPIError(msg)
+        body = merge_schedule_update(current, changes) | {"id": sched_id, "project_id": project_id}
+        self._request(path, method="PUT", body=body)
 
     def delete_schedule(self, project_id: int, sched_id: int) -> None:
         """DELETE /api/project/{pid}/schedules/{sid}."""

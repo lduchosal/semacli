@@ -260,38 +260,112 @@ class TestSchedulesClient:
             "params": {"limit": ["h1", "h2"], "tags": ["pkg"], "skip_tags": ["slow"]},
         }
 
-    def test_update_body_with_overrides(self) -> None:
+    @staticmethod
+    def _current() -> dict[str, Any]:
+        """A schedule as GET returns it: cron, inventory + limit + tags set."""
+        return {
+            "id": 7,
+            "project_id": 5,
+            "template_id": 10,
+            "cron_format": "0 6 * * *",
+            "name": "winchoco",
+            "active": True,
+            "type": "",
+            "delete_after_run": False,
+            "repository_id": None,
+            "task_params": {
+                "inventory_id": 4,
+                "message": "keep",
+                "params": {"limit": ["ci-01"], "tags": ["pkg"]},
+            },
+        }
+
+    def _run_update(self, **kwargs: Any) -> list[Any]:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
-            c.update_schedule(5, 7, limit="h3", skip_tags="slow")
-        body = req.call_args.kwargs["body"]
+        with patch.object(c, "_request", side_effect=[self._current(), None]) as req:
+            c.update_schedule(5, 7, **kwargs)
+        return req.call_args_list
+
+    def test_update_is_read_modify_write(self) -> None:
+        # ken #1169: PUT is a full replace server-side -> GET then PUT everything.
+        calls = self._run_update(cron_format="30 6 * * *")
+        assert calls[0].args == ("project/5/schedules/7",)
+        put = calls[1]
+        assert put.kwargs["method"] == "PUT"
+        body = put.kwargs["body"]
+        assert body["cron_format"] == "30 6 * * *"
+        assert body["type"] == ""  # db.ScheduleTypeCron
+        # untouched fields survive (the bug: limit was wiped)
+        assert body["name"] == "winchoco"
+        assert body["template_id"] == 10
+        assert body["active"] is True
+        assert body["task_params"]["params"]["limit"] == ["ci-01"]
+        assert body["task_params"]["inventory_id"] == 4
+
+    def test_update_overrides_merge_task_params(self) -> None:
+        body = self._run_update(limit="h3", skip_tags="slow")[1].kwargs["body"]
         assert body["id"] == 7
-        assert body["task_params"]["params"] == {"limit": ["h3"], "skip_tags": ["slow"]}
-        # untouched fields stay out of the body (pass-through semantics)
-        assert "name" not in body
-        assert "cron_format" not in body
+        assert body["cron_format"] == "0 6 * * *"
+        assert body["task_params"] == {
+            "inventory_id": 4,
+            "message": "keep",
+            "params": {"limit": ["h3"], "tags": ["pkg"], "skip_tags": ["slow"]},
+        }
+
+    def test_update_overrides_on_schedule_without_task_params(self) -> None:
+        c = SemaphoreClient(_cfg())
+        current = {**self._current(), "task_params": None}
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
+            c.update_schedule(5, 7, limit="h1")
+        assert req.call_args.kwargs["body"]["task_params"] == {"params": {"limit": ["h1"]}}
 
     def test_update_body_run_at(self) -> None:
-        c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
-            c.update_schedule(
-                5,
-                7,
-                schedule_type="run_at",
-                run_at="2026-06-25T02:00:00Z",
-                delete_after_run=False,
-            )
-        body = req.call_args.kwargs["body"]
+        body = self._run_update(
+            schedule_type="run_at", run_at="2026-06-25T02:00:00Z", delete_after_run=False
+        )[1].kwargs["body"]
         assert body["type"] == "run_at"
         assert body["run_at"] == "2026-06-25T02:00:00Z"
+        assert body["cron_format"] == ""
         assert body["delete_after_run"] is False  # --no-once sends an explicit False
 
-    def test_update_delete(self) -> None:
+    def test_update_cron_on_run_at_schedule_switches_back(self) -> None:
+        c = SemaphoreClient(_cfg())
+        current = {
+            **self._current(),
+            "type": "run_at",
+            "cron_format": "",
+            "run_at": "2030-01-01T02:00:00Z",
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
+            c.update_schedule(5, 7, cron_format="0 3 * * *")
+        body = req.call_args.kwargs["body"]
+        assert body["type"] == ""  # db.ScheduleTypeCron
+        assert "run_at" not in body
+
+    def test_update_active_only_uses_active_endpoint(self) -> None:
+        # ken #1169: `--inactive` must not resend a (possibly empty) cron.
         c = SemaphoreClient(_cfg())
         with patch.object(c, "_request", return_value=None) as req:
             c.update_schedule(5, 7, active=False)
-        assert req.call_args.kwargs["body"]["active"] is False
-        # a bare update sends no task_params (back-compat)
-        assert "task_params" not in req.call_args.kwargs["body"]
+        req.assert_called_once_with(
+            "project/5/schedules/7/active", method="PUT", body={"active": False}
+        )
+
+    def test_update_nothing_is_noop(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with patch.object(c, "_request") as req:
+            c.update_schedule(5, 7)
+        req.assert_not_called()
+
+    def test_update_bad_get_response(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with (
+            patch.object(c, "_request", return_value=[]),
+            pytest.raises(SemaphoreAPIError),
+        ):
+            c.update_schedule(5, 7, name="x")
+
+    def test_delete_schedule(self) -> None:
+        c = SemaphoreClient(_cfg())
         with patch.object(c, "_request", return_value=None):
             c.delete_schedule(5, 7)
