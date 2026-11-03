@@ -1,0 +1,589 @@
+interactions:
+- request:
+    body: '{"name": "ken1170-invkey-vcr", "type": "none", "project_id": 1}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '63'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: POST
+    uri: https://semaphore.domain.com/api/project/1/keys
+  response:
+    body:
+      string: '{"id":8,"name":"ken1170-invkey-vcr","type":"none","project_id":1,"string":"","login_password":{"login":"","password":""},"ssh":{"login":"","passphrase":"","private_key":""}}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '174'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"name": "ken1170-inv-vcr", "type": "static", "inventory": "[all]\nh1\n",
+      "project_id": 1, "ssh_key_id": 8}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '107'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: POST
+    uri: https://semaphore.domain.com/api/project/1/inventory
+  response:
+    body:
+      string: '{"id":10,"name":"ken1170-inv-vcr","project_id":1,"inventory":"[all]\nh1\n","ssh_key_id":8,"become_key_id":null,"type":"static","template_id":null,"repository_id":null}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '168'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 201
+      message: Created
+- request:
+    body: '{"name": "ken1170-repo-vcr", "git_url": "https://example.invalid/vcr.git",
+      "git_branch": "main", "ssh_key_id": 8, "project_id": 1}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '130'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: POST
+    uri: https://semaphore.domain.com/api/project/1/repositories
+  response:
+    body:
+      string: '{"id":6,"name":"ken1170-repo-vcr","project_id":1,"git_url":"https://example.invalid/vcr.git","git_branch":"main","ssh_key_id":8}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '129'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 201
+      message: Created
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/inventory/10
+  response:
+    body:
+      string: '{"id":10,"name":"ken1170-inv-vcr","project_id":1,"inventory":"[all]\nh1\n","ssh_key_id":8,"become_key_id":null,"type":"static","template_id":null,"repository_id":null}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '168'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"id": 10, "name": "ken1170-inv-vcr-renamed", "project_id": 1, "inventory":
+      "[all]\nh1\n", "ssh_key_id": 8, "become_key_id": null, "type": "static", "template_id":
+      null, "repository_id": null}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '192'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: PUT
+    uri: https://semaphore.domain.com/api/project/1/inventory/10
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/inventory/10
+  response:
+    body:
+      string: '{"id":10,"name":"ken1170-inv-vcr-renamed","project_id":1,"inventory":"[all]\nh1\n","ssh_key_id":8,"become_key_id":null,"type":"static","template_id":null,"repository_id":null}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '176'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/repositories/6
+  response:
+    body:
+      string: '{"id":6,"name":"ken1170-repo-vcr","project_id":1,"git_url":"https://example.invalid/vcr.git","git_branch":"main","ssh_key_id":8}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '129'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: '{"id": 6, "name": "ken1170-repo-vcr", "project_id": 1, "git_url": "https://example.invalid/vcr.git",
+      "git_branch": "develop", "ssh_key_id": 8}'
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '142'
+      Content-Type:
+      - application/json
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: PUT
+    uri: https://semaphore.domain.com/api/project/1/repositories/6
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: GET
+    uri: https://semaphore.domain.com/api/project/1/repositories/6
+  response:
+    body:
+      string: '{"id":6,"name":"ken1170-repo-vcr","project_id":1,"git_url":"https://example.invalid/vcr.git","git_branch":"develop","ssh_key_id":8}
+
+        '
+    headers:
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '132'
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:18 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: DELETE
+    uri: https://semaphore.domain.com/api/project/1/repositories/6
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:19 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: DELETE
+    uri: https://semaphore.domain.com/api/project/1/inventory/10
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:19 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+- request:
+    body: null
+    headers:
+      Accept:
+      - application/json
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '0'
+      User-Agent:
+      - python-requests/2.34.2
+      authorization:
+      - Bearer REDACTED
+    method: DELETE
+    uri: https://semaphore.domain.com/api/project/1/keys/8
+  response:
+    body:
+      string: ''
+    headers:
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'self' 'unsafe-inline'
+      Content-Security-Policy-Report-Only:
+      - default-src 'self' 'unsafe-inline' 'unsafe-eval'
+      Content-Type:
+      - application/json
+      Date:
+      - Tue, 03 Nov 2026 08:30:19 GMT
+      Permissions-Policy:
+      - geolocation=(), microphone=(), fullscreen=()
+      Referrer-Policy:
+      - no-referrer
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubDomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+    status:
+      code: 204
+      message: No Content
+version: 1

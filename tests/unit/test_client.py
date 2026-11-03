@@ -252,3 +252,24 @@ class TestInsecureWarnings:
         err = capsys.readouterr().err
         assert "TLS certificate verification is DISABLED" in err
         assert "plain HTTP" in err
+
+
+class TestPutMerged:
+    """ken #1170: the shared read-modify-write PUT helper."""
+
+    def test_get_then_full_put(self) -> None:
+        c = SemaphoreClient(_cfg())
+        current = {"id": 1, "a": 1, "b": 2, "computed": "x"}
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
+            body = c._put_merged("thing/1", {"a": 9, "b": None}, {"id": 1}, frozenset({"computed"}))
+        assert req.call_args_list[0].args == ("thing/1",)
+        assert req.call_args_list[1].kwargs == {"method": "PUT", "body": body}
+        assert body == {"id": 1, "a": 9, "b": 2}
+
+    def test_unexpected_get_response(self) -> None:
+        c = SemaphoreClient(_cfg())
+        with (
+            patch.object(c, "_request", return_value=[]),
+            pytest.raises(SemaphoreAPIError, match="GET thing/1"),
+        ):
+            c._put_merged("thing/1", {"a": 1}, {"id": 1})

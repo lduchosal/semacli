@@ -47,10 +47,8 @@ class ProjectsMixin(BaseClient):
         return Project.model_validate(data)
 
     def update_project(self, project_id: int, **fields: str | int | bool | None) -> None:
-        """PUT /api/project/{pid}."""
-        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = project_id
-        self._request(f"project/{project_id}", method="PUT", body=body)
+        """PUT /api/project/{pid} — read-modify-write (ken #1170)."""
+        self._put_merged(f"project/{project_id}", fields, {"id": project_id})
 
     def delete_project(self, project_id: int) -> None:
         """DELETE /api/project/{pid}."""

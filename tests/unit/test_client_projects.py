@@ -79,10 +79,17 @@ class TestProjectsClient:
 
     def test_update_body(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 5,
+            "name": "old",
+            "alert": True,
+            "alert_chat": "#ops",
+            "max_parallel_tasks": 3,
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_project(5, name="renamed", alert_chat=None)
         body = req.call_args.kwargs["body"]
-        assert body == {"name": "renamed", "id": 5}
+        assert body == {**current, "name": "renamed"}
         assert req.call_args.args[0] == "project/5"
         assert req.call_args.kwargs["method"] == "PUT"
 

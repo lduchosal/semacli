@@ -144,10 +144,28 @@ class TestAdminUsers:
 
     def test_update_body(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 2,
+            "created": "2026-01-01T00:00:00Z",
+            "username": "bob",
+            "name": "Bob",
+            "email": "bob@example.org",
+            "admin": True,
+            "external": False,
+            "alert": False,
+            "pro": False,
+            "totp": {"id": 1},
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_user(2, name="Robert", email=None)
         body = req.call_args.kwargs["body"]
-        assert body == {"name": "Robert", "id": 2}
+        # ken #1170: a rename no longer strips admin nor blanks username/email.
+        assert body["name"] == "Robert"
+        assert body["admin"] is True
+        assert body["username"] == "bob"
+        assert body["email"] == "bob@example.org"
+        assert "totp" not in body
+        assert "created" not in body
         assert req.call_args.args[0] == "users/2"
         assert req.call_args.kwargs["method"] == "PUT"
 

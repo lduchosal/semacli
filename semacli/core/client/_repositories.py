@@ -52,14 +52,11 @@ class RepositoriesMixin(BaseClient):
         repo_id: int,
         **fields: str | int | bool | None,
     ) -> None:
-        """PUT /api/project/{pid}/repositories/{rid}."""
-        body = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = repo_id
-        body["project_id"] = project_id
-        self._request(
+        """PUT /api/project/{pid}/repositories/{rid} — read-modify-write (ken #1170)."""
+        self._put_merged(
             f"project/{project_id}/repositories/{repo_id}",
-            method="PUT",
-            body=body,
+            fields,
+            {"id": repo_id, "project_id": project_id},
         )
 
     def delete_repository(self, project_id: int, repo_id: int) -> None:

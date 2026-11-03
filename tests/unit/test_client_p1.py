@@ -98,10 +98,19 @@ class TestInventoriesClient:
 
     def test_update_body(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 7,
+            "project_id": 5,
+            "name": "old",
+            "type": "static",
+            "inventory": "old content",
+            "ssh_key_id": 2,
+            "become_key_id": 3,
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_inventory(5, 7, name="renamed", inventory="new content")
         body = req.call_args.kwargs["body"]
-        assert body == {"name": "renamed", "inventory": "new content", "id": 7, "project_id": 5}
+        assert body == {**current, "name": "renamed", "inventory": "new content"}
 
     def test_delete(self) -> None:
         c = SemaphoreClient(_cfg())
@@ -134,9 +143,23 @@ class TestEnvironmentsClient:
 
     def test_update_delete(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 7,
+            "project_id": 5,
+            "name": "old",
+            "json": '{"a": 1}',
+            "env": "{}",
+            "password": "vault",
+            "secrets": [{"id": 1, "name": "S"}],
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_environment(5, 7, name="renamed")
-        assert req.call_args.kwargs["body"]["name"] == "renamed"
+        body = req.call_args.kwargs["body"]
+        assert body["name"] == "renamed"
+        # ken #1170: extra vars + vault password kept; secrets list not replayed as ops.
+        assert body["json"] == '{"a": 1}'
+        assert body["password"] == "vault"
+        assert "secrets" not in body
         with patch.object(c, "_request", return_value=None) as req:
             c.delete_environment(5, 7)
         assert req.call_args.kwargs["method"] == "DELETE"
@@ -165,9 +188,17 @@ class TestRepositoriesClient:
 
     def test_update_delete(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 7,
+            "project_id": 5,
+            "name": "r",
+            "git_url": "svn+ssh://x",
+            "git_branch": "trunk",
+            "ssh_key_id": 2,
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_repository(5, 7, git_branch="develop")
-        assert req.call_args.kwargs["body"]["git_branch"] == "develop"
+        assert req.call_args.kwargs["body"] == {**current, "git_branch": "develop"}
         with patch.object(c, "_request", return_value=None):
             c.delete_repository(5, 7)
 
@@ -197,11 +228,27 @@ class TestKeysClient:
 
     def test_update_delete(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {"id": 7, "project_id": 5, "name": "old", "type": "ssh", "empty": False}
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_key(5, 7, name="renamed")
-        assert req.call_args.kwargs["body"]["name"] == "renamed"
+        body = req.call_args.kwargs["body"]
+        assert body == {"id": 7, "project_id": 5, "name": "renamed", "type": "ssh"}
+        assert "override_secret" not in body  # rename never touches the secret
         with patch.object(c, "_request", return_value=None):
             c.delete_key(5, 7)
+
+    def test_update_private_key_overrides_secret(self) -> None:
+        # ken #1170: without override_secret the server silently kept the old key.
+        c = SemaphoreClient(_cfg())
+        current = {"id": 7, "project_id": 5, "name": "deploy", "type": "login_password"}
+        ssh = {"private_key": "PEM", "login": "root", "passphrase": ""}
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
+            c.update_key(5, 7, ssh=ssh)
+        body = req.call_args.kwargs["body"]
+        assert body["name"] == "deploy"
+        assert body["override_secret"] is True
+        assert body["type"] == "ssh"
+        assert body["ssh"] == ssh
 
 
 class TestSchedulesClient:

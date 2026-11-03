@@ -56,14 +56,11 @@ class IntegrationsMixin(BaseClient):
     def update_integration(
         self, project_id: int, integration_id: int, **fields: str | int | bool | None
     ) -> None:
-        """PUT /api/project/{pid}/integrations/{iid}."""
-        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = integration_id
-        body["project_id"] = project_id
-        self._request(
+        """PUT /api/project/{pid}/integrations/{iid} — read-modify-write (ken #1170)."""
+        self._put_merged(
             f"project/{project_id}/integrations/{integration_id}",
-            method="PUT",
-            body=body,
+            fields,
+            {"id": integration_id, "project_id": project_id},
         )
 
     def delete_integration(self, project_id: int, integration_id: int) -> None:
@@ -117,14 +114,11 @@ class IntegrationsMixin(BaseClient):
         matcher_id: int,
         **fields: str | int | bool | None,
     ) -> None:
-        """PUT /api/project/{pid}/integrations/{iid}/matchers/{mid}."""
-        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = matcher_id
-        body["integration_id"] = integration_id
-        self._request(
+        """PUT /api/project/{pid}/integrations/{iid}/matchers/{mid} — read-modify-write (ken #1170)."""
+        self._put_merged(
             f"project/{project_id}/integrations/{integration_id}/matchers/{matcher_id}",
-            method="PUT",
-            body=body,
+            fields,
+            {"id": matcher_id, "integration_id": integration_id},
         )
 
     def remove_integration_matcher(

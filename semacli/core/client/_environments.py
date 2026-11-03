@@ -53,14 +53,16 @@ class EnvironmentsMixin(BaseClient):
         env_id: int,
         **fields: str | int | bool | None,
     ) -> None:
-        """PUT /api/project/{pid}/environment/{eid}."""
-        body = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = env_id
-        body["project_id"] = project_id
-        self._request(
+        """PUT /api/project/{pid}/environment/{eid} — read-modify-write (ken #1170).
+
+        ``secrets`` is dropped: on PUT it is a list of create/update/delete
+        operations, so echoing the GET list back would be replayed as ops.
+        """
+        self._put_merged(
             f"project/{project_id}/environment/{env_id}",
-            method="PUT",
-            body=body,
+            fields,
+            {"id": env_id, "project_id": project_id},
+            drop=frozenset({"secrets"}),
         )
 
     def delete_environment(self, project_id: int, env_id: int) -> None:

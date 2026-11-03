@@ -72,10 +72,11 @@ class TestViewsClient:
 
     def test_update_body(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {"id": 7, "project_id": 5, "title": "Old", "position": 4}
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_view(5, 7, title="Renamed", position=None)
         body = req.call_args.kwargs["body"]
-        assert body == {"title": "Renamed", "id": 7, "project_id": 5}
+        assert body == {**current, "title": "Renamed"}
         assert req.call_args.args[0] == "project/5/views/7"
         assert req.call_args.kwargs["method"] == "PUT"
 

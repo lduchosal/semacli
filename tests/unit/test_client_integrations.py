@@ -88,10 +88,21 @@ class TestIntegrationsClient:
 
     def test_update_body(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 7,
+            "project_id": 5,
+            "name": "old",
+            "template_id": 9,
+            "auth_method": "token",
+            "auth_header": "X-Token",
+            "searchable": True,
+            "task_params": {"params": {"limit": ["h1"]}},
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_integration(5, 7, name="renamed", auth_method=None)
         body = req.call_args.kwargs["body"]
-        assert body == {"name": "renamed", "id": 7, "project_id": 5}
+        # ken #1170: read-modify-write — untouched fields survive the full PUT.
+        assert body == {**current, "name": "renamed"}
         assert req.call_args.args[0] == "project/5/integrations/7"
         assert req.call_args.kwargs["method"] == "PUT"
 
@@ -149,10 +160,19 @@ class TestIntegrationMatchersClient:
 
     def test_update_body(self) -> None:
         c = SemaphoreClient(_cfg())
-        with patch.object(c, "_request", return_value=None) as req:
+        current = {
+            "id": 3,
+            "integration_id": 7,
+            "name": "branch",
+            "match_type": "equals",
+            "method": "body",
+            "key": "ref",
+            "value": "main",
+        }
+        with patch.object(c, "_request", side_effect=[current, None]) as req:
             c.update_integration_matcher(5, 7, 3, value="develop", key=None)
         body = req.call_args.kwargs["body"]
-        assert body == {"value": "develop", "id": 3, "integration_id": 7}
+        assert body == {**current, "value": "develop"}
         assert req.call_args.args[0] == "project/5/integrations/7/matchers/3"
         assert req.call_args.kwargs["method"] == "PUT"
 

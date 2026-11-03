@@ -90,10 +90,18 @@ class UsersMixin(BaseClient):
         return User.model_validate(data)
 
     def update_user(self, user_id: int, **fields: str | int | bool | None) -> None:
-        """PUT /api/users/{uid} — admin only."""
-        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = user_id
-        self._request(f"users/{user_id}", method="PUT", body=body)
+        """PUT /api/users/{uid} — admin only, read-modify-write (ken #1170).
+
+        Without it a lone ``--email`` blanked name/username and reset
+        ``admin`` to false. 2FA state (``totp`` / ``email_otp``) is not a
+        PUT field and is dropped.
+        """
+        self._put_merged(
+            f"users/{user_id}",
+            fields,
+            {"id": user_id},
+            drop=frozenset({"totp", "email_otp", "created"}),
+        )
 
     def delete_user(self, user_id: int) -> None:
         """DELETE /api/users/{uid} — admin only."""

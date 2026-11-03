@@ -177,3 +177,28 @@ class BaseClient:
         if isinstance(result, str):
             return result.strip()
         return str(result)
+
+    def _put_merged(
+        self,
+        path: str,
+        fields: dict[str, Any],
+        ids: dict[str, Any],
+        drop: frozenset[str] = frozenset(),
+    ) -> dict[str, Any]:
+        """Read-modify-write PUT: only ``fields`` that are not None change.
+
+        Semaphore's PUT replaces the whole row — any key missing from the
+        body falls to its zero value (ken #1118, #1169, #1170). So the
+        current object is GET first, ``drop`` removes server-computed or
+        write-only keys, the non-None ``fields`` are overlaid, then
+        ``ids`` (id / project_id…) pin the target. Returns the sent body.
+        """
+        current = self._request(path)
+        if not isinstance(current, dict):
+            msg = f"Unexpected response for GET {path}"
+            raise SemaphoreAPIError(msg)
+        body = {k: v for k, v in current.items() if k not in drop}
+        body.update({k: v for k, v in fields.items() if v is not None})
+        body.update(ids)
+        self._request(path, method="PUT", body=body)
+        return body

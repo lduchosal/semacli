@@ -40,11 +40,12 @@ class ViewsMixin(BaseClient):
         return View.model_validate(data)
 
     def update_view(self, project_id: int, view_id: int, **fields: str | int | bool | None) -> None:
-        """PUT /api/project/{pid}/views/{vid}."""
-        body: dict[str, Any] = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = view_id
-        body["project_id"] = project_id
-        self._request(f"project/{project_id}/views/{view_id}", method="PUT", body=body)
+        """PUT /api/project/{pid}/views/{vid} — read-modify-write (ken #1170)."""
+        self._put_merged(
+            f"project/{project_id}/views/{view_id}",
+            fields,
+            {"id": view_id, "project_id": project_id},
+        )
 
     def delete_view(self, project_id: int, view_id: int) -> None:
         """DELETE /api/project/{pid}/views/{vid}."""

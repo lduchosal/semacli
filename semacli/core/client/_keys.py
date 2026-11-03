@@ -6,6 +6,9 @@ from ..exceptions import SemaphoreAPIError
 from ..models import Key
 from ._base import BaseClient
 
+# Secret payload key -> access key ``type`` (Semaphore db.AccessKeyType).
+_SECRET_TYPES = {"ssh": "ssh", "login_password": "login_password", "string": "string"}
+
 
 class KeysMixin(BaseClient):
     """CRUD on access keys."""
@@ -64,12 +67,28 @@ class KeysMixin(BaseClient):
             raise SemaphoreAPIError(msg)
         return Key.model_validate(data)
 
-    def update_key(self, project_id: int, key_id: int, **fields: str | int | bool | None) -> None:
-        """PUT /api/project/{pid}/keys/{kid}."""
-        body = {k: v for k, v in fields.items() if v is not None}
-        body["id"] = key_id
-        body["project_id"] = project_id
-        self._request(f"project/{project_id}/keys/{key_id}", method="PUT", body=body)
+    def update_key(
+        self,
+        project_id: int,
+        key_id: int,
+        **fields: Any,  # noqa: ANN401  # JSON payload values
+    ) -> None:
+        """PUT /api/project/{pid}/keys/{kid} — read-modify-write (ken #1170).
+
+        The server only rewrites the secret when ``override_secret`` is set,
+        so a new ``ssh`` / ``login_password`` / ``string`` payload turns it
+        on (and pins the matching ``type``). Otherwise the masked secret
+        fields echoed by GET are ignored server-side.
+        """
+        secret = {k: fields[k] for k in _SECRET_TYPES if fields.get(k) is not None}
+        if secret:
+            fields |= {"override_secret": True, "type": _SECRET_TYPES[next(iter(secret))]}
+        self._put_merged(
+            f"project/{project_id}/keys/{key_id}",
+            fields,
+            {"id": key_id, "project_id": project_id},
+            drop=frozenset({"empty"}),
+        )
 
     def delete_key(self, project_id: int, key_id: int) -> None:
         """DELETE /api/project/{pid}/keys/{kid}."""
