@@ -191,7 +191,40 @@ todo → doing → review → done
 └──── agent owns ────┘  └─ user ─┘
 ```
 
-Never call `ken done`. The user finalises after review.
+Never call `ken done` on your own. The user finalises after review — or
+asks you to, through the closing ceremony below.
+
+## Closing ceremony
+
+Copied from the angel `README.md` (§ Closing ceremony), adapted to this git
+repo. When a task is finished, the user asks for it in these words — *« ken
+done, ken tldr, commit, groom, wiki, publish »* (or just *« cloture »*). The
+steps, in order:
+
+| Step | What it means |
+|---|---|
+| **ken done** | `ken done <id>`. This is the one moment the rule *« never move to done yourself »* is lifted: the user is asking for it. If real leftovers remain, open a **follow-up task** for them rather than leaving the finished one open. |
+| **ken tldr** | Rewrite the task description with a **TL;DR** on top, then the detail below: what was done, which commits / versions, what was found, what is explicitly *not* done. The board is the audit trail — commit messages alone are not enough. Use `--desc-file`, never `--desc "…\n…"` (the `\n` stays literal and wrecks the markdown). |
+| **commit** | Everything still pending in this repo — `git status`, then `git commit` following the commit style below (`closes ken #<id>`). Often a no-op because the work was committed as it went; say so rather than staying silent. |
+| **groom** | `ken wiki groom <id> <section>` (most semacli work: `cli/<sub>`). `ken wiki groom` with no arguments lists what is still unclassified — the pre-flight. Only classified tasks reach the wiki. |
+| **wiki** | `ken wiki sync` → `ken wiki build`: exports the classified tasks to `wiki/` and renders `wiki-html/` locally. |
+| **publish** | `svn ci wiki wiki-html` → `semacli run wiki --limit monitor1`: pushes the rendered wiki and deploys it to <https://www.monitor.2113.ch/wiki/>. |
+
+**wiki** + **publish** are chained by a single command, run from the angel
+root: `.venv/bin/angel publish`.
+
+```sh
+ken done <id>
+ken update <id> --desc-file <scratch>/ken-<id>.md   # TL;DR + detail
+git status && git commit ...                         # nothing left behind?
+ken wiki groom <id> cli/<sub>
+(cd .. && .venv/bin/angel publish)                   # wiki + publish
+```
+
+Run `angel publish` from the angel root — other venvs may hold a stale `ken`
+that shadows the good one. If it fails at `svn ci` or at `semacli run wiki`,
+it is almost always the laptop VPN: reconnect and replay the two steps by
+hand, the sync and build are already done.
 
 ## Quick reference
 
@@ -224,7 +257,7 @@ reference the ken id when the commit closes a task.
   native filters (`--who`, `--status`).
 - Don't use `--desc "…\n…"` — corrupts markdown. Use `--desc-file` (or
   `--desc -` from stdin, or `$(cat <<'EOF' … EOF)`).
-- Don't move tasks to `done`.
+- Don't move tasks to `done` — except when the user asks for the closing ceremony.
 - Don't skip `ken wiki groom` after `--to review`.
 - Don't use `// NOSONAR` or blanket suppressions — refactor or use
   scoped, documented config-level suppressions (see user memory
