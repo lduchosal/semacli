@@ -7,7 +7,7 @@ the list/show formatters.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import click
 
@@ -101,8 +101,8 @@ def normalize_run_at(value: str) -> str:
         msg = f"--run-at: not an ISO-8601 / RFC3339 time: {value!r}"
         raise click.UsageError(msg) from exc
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def trigger_for_create(cron_format: str | None, run_at: str | None) -> Trigger:

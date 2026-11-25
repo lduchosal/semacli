@@ -11,14 +11,13 @@ authors = [
 description = "A CLI tool to manage Semaphore UI (ansible-semaphore) via HTTP REST API"
 readme = "README.md"
 license = {text = "MIT"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -28,11 +27,13 @@ keywords = ["semaphore", "ansible", "cli", "api", "devops"]
 dependencies = [
     "click>=8.0,<9.0",
     "pydantic>=2.0,<3.0",
-    "certifi>=2024.0",
     "requests>=2.31,<3.0",
     "python-dotenv>=1.0,<2.0",
     "truststore>=0.9,<1.0",
     "pyyaml>=6.0,<7.0",
+    # Imported directly (core/client/_base.py silences InsecureRequestWarning):
+    # declared instead of riding on requests' pin (deptry DEP003, ken #1240).
+    "urllib3>=1.26,<3.0",
 ]
 
 [project.urls]
@@ -47,10 +48,10 @@ semacli = "semacli.cli:main"
 
 [tool.black]
 line-length = 100
-target-version = ['py310']
+target-version = ['py311']
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -79,7 +80,7 @@ version-files = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 # Quality-gate locks (ken #828, ratchet principle of doc/code-quality.md):
@@ -151,6 +152,12 @@ modules = [
     "semacli.cli.commands.views",
 ]
 
+[tool.deptry]
+# ken #1240 — `deptry semacli` roots the scan in the package directory, so the
+# package name must be spelled out or every `from semacli…` reads as DEP003.
+# No per-rule ignore: every runtime dependency is imported somewhere.
+known_first_party = ["semacli"]
+
 [tool.vulture]
 # Quality gate (ken #828): dead-code findings are blocking at every palier.
 min_confidence = 80
@@ -204,6 +211,15 @@ format-check = "black --check semacli/ tests/"
 interrogate = "interrogate semacli/"
 vulture = "vulture"
 refurb = "refurb semacli/"
+# ken #1240 — dependency hygiene. deptry scans semacli/ only (the runtime
+# contract of the published package; tests/ and scripts/ run on dev deps).
+deptry = "deptry semacli"
+# pip-audit on the lock, not on the venv: the venv may hold strays that are
+# no dependency of semacli (`pdm list --tree` "Not required"), and auditing
+# requirements.txt would evaluate markers against the host, silently skipping
+# the linux-only packages on a macOS release machine. The pylock export keeps
+# every locked package of every group, whatever the platform.
+audit = { shell = "d=$(mktemp -d) && pdm export -q -f pylock -G :all -o \"$d/pylock.toml\" && pip-audit --locked --strict --progress-spinner off \"$d\"; rc=$?; rm -rf \"$d\"; exit $rc" }
 # Quality metrics snapshot & blocking gate (ken #828) — see doc/code-quality.md
 metrics = "python scripts/quality_metrics.py"
 metrics-record = "python scripts/quality_metrics.py --record"
@@ -222,7 +238,7 @@ vscode-typecheck = { shell = "cd vscode && npm run typecheck" }
 vscode-test = { shell = "cd vscode && npm run coverage" }
 vscode-package = { shell = "cd vscode && npm run package" }
 vscode-check = {composite = ["vscode-lint", "vscode-typecheck", "vscode-test"]}
-check = {composite = ["lint", "format-check", "typecheck", "arch", "vulture", "refurb", "test", "metrics-gate", "vscode-check"]}
+check = {composite = ["lint", "format-check", "typecheck", "arch", "deptry", "vulture", "refurb", "test", "metrics-gate", "vscode-check"]}
 clean = "rm -rf .coverage htmlcov/ .pytest_cache/ __pycache__/ semacli/__pycache__/"
 version-patch = "pdm bump patch"
 version-minor = "pdm bump minor"
@@ -244,4 +260,9 @@ dev = [
     "import-linter>=2.11",
     "vulture>=2.14",
     "refurb>=2.2.0",
+    # ken #1240 — Python dependency hygiene in publish.sh: deptry (declared vs
+    # imported), pip-audit (known vulnerabilities, the Python twin of the
+    # vscode/ `npm audit` gate).
+    "deptry>=0.25.1",
+    "pip-audit>=2.10.1",
 ]

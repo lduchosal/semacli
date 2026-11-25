@@ -23,8 +23,9 @@ L'historique vit dans [`quality-history.csv`](quality-history.csv) (une ligne
 par snapshot, committée). Convention : enregistrer un snapshot à la fin de
 chaque palier, au minimum à chaque release.
 
-Le gate est exécuté par `pdm run check` **et** par `publish.sh` (étape 8,
-juste après la suite complète pour lire une couverture fraîche).
+Le gate est exécuté par `pdm run check` **et** par `publish.sh` (dernière
+étape du mode `--quality`, après la suite complète pour lire une couverture
+fraîche).
 
 ## Critères suivis
 
@@ -108,6 +109,31 @@ tous les paliers. `[tool.interrogate] fail-under` suit le palier.)
 
 Règle d'or : on ne **détend jamais** un seuil sans décision humaine
 explicite, tracée dans une carte ken et dans l'historique du CSV.
+
+## Hygiène des dépendances (ken #1240)
+
+Deux gates binaires (pas de métrique, pas de ratchet : zéro finding ou
+rouge), lancés par `publish.sh` juste après `pdm update --update-all` et par
+la CI (une fois, sur 3.13) :
+
+```sh
+pdm run deptry   # dépendances déclarées vs importées — semacli/ seulement
+pdm run audit    # pip-audit sur le lock (réseau requis)
+```
+
+- **deptry** juge le contrat runtime du paquet publié : `semacli/` seul,
+  `tests/` et `scripts/` tournent sur les dev-deps. Un import direct d'un
+  paquet transitif (DEP003) se déclare ; une dépendance jamais importée
+  (DEP002) se retire. Aucun ignore à ce jour — tout ajout dans
+  `[tool.deptry]` est commenté avec son besoin runtime et l'ID ken. Aussi
+  dans `pdm run check` (hors ligne).
+- **pip-audit** audite `pdm export -f pylock -G :all` (tous les groupes,
+  toutes plateformes) et non la venv : la venv peut porter des paquets
+  étrangers au projet, et un `requirements.txt` ferait évaluer les markers
+  par l'hôte — les paquets linux-only seraient sautés en silence sur le
+  laptop macOS. Sur finding : bumper la dépendance. Un `--ignore-vuln` n'est
+  admis que justifié en commentaire avec l'ID ken. Réseau requis → hors de
+  `pdm run check`.
 
 ## Hors périmètre local
 

@@ -56,13 +56,14 @@ for arg in "$@"; do
 done
 
 # Set total steps based on mode (one per print_step call):
-#   18 = 15 Python gates + 3 VS Code extension gates (ken #1131)
+#   20 = 17 Python gates (incl. deptry + pip-audit, ken #1240)
+#        + 3 VS Code extension gates (ken #1131)
 #   +10 publish-only: push, sonar gate, bump, build, .vsix, PyPI, wiki sync,
 #       wiki build, git commit + push, tag + GitHub release
 if [ "$QUALITY_ONLY" = true ]; then
-    STEPS=18
+    STEPS=20
 else
-    STEPS=28
+    STEPS=30
 fi
 STEP=0
 
@@ -145,11 +146,25 @@ run_command "pdm run install-dev" "Development dependencies installation"
 # whatever was last locked. Updating HERE — before the gates — means every
 # release is validated against the same versions the CI will get (the ruff
 # 0.15→0.16 drift shipped v0.5.25 green locally and red in CI).
+# --update-all (ken #1240): plain `pdm update` uses the "reuse" strategy and
+# only moves top-level packages — transitive pins (urllib3, virtualenv…)
+# stayed months behind the fresh CI resolution, vulnerable versions included.
 print_step "Checking for Outdated Dependencies"
 run_command "pdm outdated" "Outdated dependencies report"
 
 print_step "Updating Dependencies"
-run_command "pdm update" "Dependencies update"
+run_command "pdm update --update-all" "Dependencies update"
+
+# Python dependency hygiene (ken #1240), right after the update so both gates
+# judge the lock this release will ship with. deptry: declared vs imported
+# (missing, unused, transitive-used-directly). pip-audit: known
+# vulnerabilities on every locked package of every group, whatever the
+# platform markers — the Python twin of the vscode/ `npm audit` gate.
+print_step "Dependency Declarations (deptry)"
+run_command "pdm run deptry" "Dependency declarations check (on failure: declare the import, or drop the unused dependency)"
+
+print_step "Python Security Audit (pip-audit)"
+run_command "pdm run audit" "Python security audit (on failure: bump the flagged dependency)"
 
 print_step "Format Check (black)"
 run_command "pdm run format-check" "Format check"

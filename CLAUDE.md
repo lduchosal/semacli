@@ -1,7 +1,7 @@
 # semacli — agent guide
 
 CLI tool to drive [Semaphore UI](https://semaphoreui.com) via its HTTP REST
-API. Python 3.10+, PDM-managed, click-based. See `README.md` / `ARCHITECTURE.md`
+API. Python 3.11+, PDM-managed, click-based. See `README.md` / `ARCHITECTURE.md`
 for the user-facing docs.
 
 Parent project conventions (SVN externals, ken CLI install, monitor stack,
@@ -68,6 +68,8 @@ to semacli.
    pdm run test-integration  # cassette replay strict (--vcr-record=none)
    pdm run vulture           # dead code (whitelist: vulture_whitelist.py)
    pdm run refurb            # modernisation refurb
+   pdm run deptry            # deps declared vs imported (semacli/ only)
+   pdm run audit             # pip-audit on the lock (network; publish.sh + CI)
    pdm run metrics           # snapshot des critères qualité
    pdm run metrics-gate      # gate qualité bloquant (paliers + ratchet)
    pdm run vscode-install    # npm ci de l'extension VS Code (vscode/)

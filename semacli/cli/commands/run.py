@@ -143,7 +143,7 @@ def _after_watch_hooks(
                 verbose=spec.verbose,
                 enabled=spec.hooks_enabled,
             )
-        except HookError as hook_err:  # noqa: PERF203  # ≤2 hooks; per-hook isolation is the point
+        except HookError as hook_err:  # ≤2 hooks; per-hook isolation is the point
             warn_hook_failure(hook_err, hook_key)
 
 
