@@ -64,7 +64,7 @@ semacli/
 │   ├── client/             # section: core/client
 │   ├── models.py           # section: core/models
 │   ├── config.py
-│   ├── guards.py           # pre-flight refusals (overrides, arguments)
+│   ├── guards.py           # pre-flight refusals (overrides, arguments, cache clear)
 │   ├── manifest.py         # `template sync` manifest
 │   ├── overrides.py        # task_params vocabulary
 │   ├── resolve.py          # name-or-id resolution

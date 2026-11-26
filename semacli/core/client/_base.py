@@ -10,7 +10,12 @@ import truststore
 import urllib3
 
 from ..config import SemaphoreConfig
-from ..exceptions import AuthenticationError, NotFoundError, SemaphoreAPIError
+from ..exceptions import (
+    AuthenticationError,
+    NotFoundError,
+    SemaphoreAPIError,
+    UnsupportedFieldError,
+)
 
 # Verbosity tiers (UX.md: -v config, -vv requests, -vvv response bodies).
 _VERBOSE_REQUESTS = 2
@@ -184,6 +189,7 @@ class BaseClient:
         fields: dict[str, Any],
         ids: dict[str, Any],
         drop: frozenset[str] = frozenset(),
+        require: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """Read-modify-write PUT: only ``fields`` that are not None change.
 
@@ -192,11 +198,19 @@ class BaseClient:
         current object is GET first, ``drop`` removes server-computed or
         write-only keys, the non-None ``fields`` are overlaid, then
         ``ids`` (id / project_id…) pin the target. Returns the sent body.
+
+        ``require`` maps a field name to a hint: when that field is being
+        set but the GET did not return it, the server does not know it and
+        would drop it silently — raise :class:`UnsupportedFieldError`
+        before the PUT instead (ken #1248).
         """
         current = self._request(path)
         if not isinstance(current, dict):
             msg = f"Unexpected response for GET {path}"
             raise SemaphoreAPIError(msg)
+        for key, hint in (require or {}).items():
+            if fields.get(key) is not None and key not in current:
+                raise UnsupportedFieldError(path, key, hint)
         body = {k: v for k, v in current.items() if k not in drop}
         body.update({k: v for k, v in fields.items() if v is not None})
         body.update(ids)

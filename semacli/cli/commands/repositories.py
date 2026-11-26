@@ -24,6 +24,10 @@ Each repo belongs to one project and is bound to one SSH key (the key
 Semaphore uses to clone). Templates reference a repo + a playbook path
 inside it.
 
+A monorepo repository (Semaphore svn fork >= v2.21.0-svn.1) keeps one
+checkout shared by every template instead of one per template; its
+templates cannot pin a branch of their own.
+
 Calling `sem repo` without a subcommand lists repositories.
 """
 
@@ -35,13 +39,16 @@ Examples:
        --git-url git@github.com:org/infra.git \\
        --branch main --ssh-key-id 12
   sem repo update 4 --branch release/2026
+  sem repo update 3 --monorepo              # one shared checkout
+  sem repo --json | jq '.[] | select(.monorepo) | .id'
   sem repo delete 4
 """
 
 
 def _fmt_row(r: Repository) -> str:
     """One aligned text row for the repository list view."""
-    return f"{r.id:>4}  {r.name}  {r.git_url}@{r.git_branch or 'HEAD'}"
+    mono = "  [monorepo]" if r.monorepo else ""
+    return f"{r.id:>4}  {r.name}  {r.git_url}@{r.git_branch or 'HEAD'}{mono}"
 
 
 def _emit_show_text(r: Repository) -> None:
@@ -51,6 +58,7 @@ def _emit_show_text(r: Repository) -> None:
     click.echo(f"git_url:    {r.git_url}")
     click.echo(f"git_branch: {r.git_branch}")
     click.echo(f"ssh_key_id: {r.ssh_key_id}")
+    click.echo(f"monorepo:   {r.monorepo}")
     click.echo(f"project_id: {r.project_id}")
 
 
@@ -139,6 +147,11 @@ def create_cmd(ctx: click.Context, name: str, git_url: str, branch: str, ssh_key
 @click.option("--git-url", default=None)
 @click.option("--branch", "git_branch", default=None)
 @click.option("--ssh-key-id", type=int, default=None)
+@click.option(
+    "--monorepo/--no-monorepo",
+    default=None,
+    help="One checkout shared by every template (svn fork >= v2.21.0-svn.1).",
+)
 @click.pass_context
 @fail_on_error
 def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
@@ -149,8 +162,9 @@ def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
     git_url: str | None,
     git_branch: str | None,
     ssh_key_id: int | None,
+    monorepo: bool | None,
 ) -> None:
-    """Update a repository."""
+    """Update a repository (only the flags passed change)."""
     opts = opts_from_ctx(ctx)
     client, pid = setup(opts)
     client.update_repository(
@@ -160,6 +174,7 @@ def update_cmd(  # noqa: PLR0913  # one parameter per --option (click callback)
         git_url=git_url,
         git_branch=git_branch,
         ssh_key_id=ssh_key_id,
+        monorepo=monorepo,
     )
     if not opts["quiet"]:
         click.echo(f"updated repository id={repo_id}")

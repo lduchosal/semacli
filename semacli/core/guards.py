@@ -1,16 +1,17 @@
 """Pre-flight guards: refuse unsafe runs and unsafe template payloads.
 
-Both guards exist because Semaphore fails *open*: a forbidden per-run
-override is dropped without an error (ken #827), and ``arguments`` are
-handed to ansible-playbook verbatim, with no templating pass (ken #636).
+Every guard exists because Semaphore fails *open*: a forbidden per-run
+override is dropped without an error (ken #827), ``arguments`` are
+handed to ansible-playbook verbatim, with no templating pass (ken #636),
+and the project cache is wiped even under a running task (ken #1248).
 semacli refuses up front instead.
 """
 
 import json
 import re
 
-from .exceptions import InvalidArgumentsError, OverrideNotAllowedError
-from .models import Template
+from .exceptions import ActiveTasksError, InvalidArgumentsError, OverrideNotAllowedError
+from .models import Task, Template
 
 # `{{ limit }}` / `{% if %}` — Semaphore never expands these.
 _JINJA = re.compile(r"{{.*?}}|{%.*?%}")
@@ -90,3 +91,16 @@ def validate_template_arguments(arguments: str | None) -> None:
     if any(not isinstance(item, str) for item in parsed):
         not_strings = "every element must be a string"
         raise InvalidArgumentsError(not_strings, arguments)
+
+
+def ensure_no_active_tasks(project_id: int, active: list[Task]) -> None:
+    """Refuse a project cache clear while tasks are still running.
+
+    ``DELETE /project/{pid}/cache`` empties the project's tmp dir with no
+    check of its own — a running task would lose its checkout or its
+    per-task copy mid-run (ken #1248). ``active`` is the output of
+    ``list_active_tasks``; raises :class:`ActiveTasksError` when non-empty.
+    """
+    if active:
+        rows = [(t.id, t.status, t.tpl_alias or f"template {t.template_id}") for t in active]
+        raise ActiveTasksError(project_id, rows)

@@ -107,3 +107,37 @@ class ManifestError(SemaCliError):
     def __init__(self, path: str, reason: str) -> None:
         self.path = path
         super().__init__(f"manifest {path}: {reason}")
+
+
+class UnsupportedFieldError(SemaphoreAPIError):
+    """Raised when an update sets a field the server does not know.
+
+    Semaphore's PUT unmarshals into a fixed struct and silently drops
+    unknown keys, so ``repo update --monorepo`` against a server without
+    the svn fork would report success and change nothing (ken #1248).
+    """
+
+    def __init__(self, path: str, field: str, hint: str) -> None:
+        self.path = path
+        self.field = field
+        super().__init__(
+            f"server does not know '{field}' on {path} — it would silently drop it. {hint}"
+        )
+
+
+class ActiveTasksError(SemaCliError):
+    """Raised when a project-wide action must wait for its tasks to finish.
+
+    Clearing the project cache removes the checkouts and per-task copies
+    that running tasks work in (ken #1248).
+    """
+
+    def __init__(self, project_id: int, tasks: list[tuple[int, str, str]]) -> None:
+        self.project_id = project_id
+        self.tasks = tasks
+        listed = ", ".join(f"#{tid} {status} ({tpl})" for tid, status, tpl in tasks)
+        super().__init__(
+            f"project {project_id} has {len(tasks)} active task(s): {listed}. "
+            "Clearing the cache would remove the files they run in. "
+            "Wait for them, stop them, or pass --force for a zombie task. Refusing to clear."
+        )

@@ -31,6 +31,9 @@ Designed for LLM/agent and automation use — deterministic commands, JSON outpu
   ansible overrides as a run (`--limit` / `--tags` / `--skip-tags` /
   `--inventory` / `--cli-args`) so a planned run can target a subset of
   hosts without a dedicated template — see `sem sched create --help`
+- Server-side checkouts: `repo update --monorepo` (one checkout shared by
+  every template, svn fork >= v2.21.0-svn.1) and a guarded
+  `project cache clear` — see [Repository cache](#repository-cache)
 - JSON output support
 - Bearer-token authentication (User Settings → API Tokens)
 - VS Code extension: running / finished tasks in the sidebar, task detail
@@ -283,6 +286,25 @@ Existing templates are skipped unless `--update` is passed, and with it
 only the ones that actually differ are written back. Templates present on
 the server but absent from the manifest are reported, never removed.
 
+## Repository cache
+
+Semaphore keeps the checkouts of a project's repositories under
+`<tmp_path>/project_<id>` on the server. With one checkout per template
+that directory grows with the template count; a **monorepo** repository
+(Semaphore svn fork >= v2.21.0-svn.1) shares one checkout across all its
+templates instead.
+
+```bash
+sem repo update 3 --monorepo             # refused (exit 4) on a server without the field
+sem project cache clear -p 1 --dry-run   # list active tasks; exit 1 if the purge would be refused
+sem project cache clear -p 1             # DELETE /project/1/cache
+```
+
+The server wipes the cache even under a running task, which would lose
+the files it runs in. semacli refuses (exit 2) while a task of the
+project is waiting / starting / running / stopping; `--force` overrides
+for a zombie task. The API returns no size, only success.
+
 ## Exit Codes
 
 | Code | Meaning |
@@ -298,6 +320,7 @@ the server but absent from the manifest are reported, never removed.
 `sem template audit` uses exit 1 for "findings" (at least one template
 forbids a required override) so it can be wired as a periodic check;
 `sem template sync` uses it when a create/update failed.
+`sem project cache clear --dry-run` uses it when the purge would be refused.
 
 ## Development
 

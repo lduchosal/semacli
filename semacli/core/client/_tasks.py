@@ -11,7 +11,7 @@ struct only carries a deprecated top-level `Limit` string.
 from typing import Any
 
 from ..exceptions import SemaphoreAPIError
-from ..models import Task
+from ..models import ACTIVE_TASK_STATUSES, Task
 from ._base import BaseClient, _split_csv
 
 
@@ -104,6 +104,14 @@ class TasksMixin(BaseClient):
             msg = "Unexpected response for /tasks"
             raise SemaphoreAPIError(msg)
         return [Task.model_validate(t) for t in data]
+
+    def list_active_tasks(self, project_id: int) -> list[Task]:
+        """Tasks of the project that have not finished yet.
+
+        The server has no status filter on /tasks (last 1000 rows), so
+        the filter runs here, on :data:`ACTIVE_TASK_STATUSES`.
+        """
+        return [t for t in self.list_tasks(project_id) if t.status in ACTIVE_TASK_STATUSES]
 
     def stop_task(self, project_id: int, task_id: int) -> None:
         """POST /api/project/{pid}/tasks/{tid}/stop."""

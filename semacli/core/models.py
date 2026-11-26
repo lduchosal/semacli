@@ -87,6 +87,21 @@ class Template(_ApiModel):
     survey_vars: list[SurveyVar] = Field(default_factory=list)
 
 
+# Mirrors Semaphore's ``task_logger.UnfinishedTaskStatuses()``: a task in
+# one of these may still own a checkout or a per-task copy on the server.
+ACTIVE_TASK_STATUSES = frozenset(
+    {
+        "waiting",
+        "starting",
+        "waiting_confirmation",
+        "confirmed",
+        "rejected",
+        "running",
+        "stopping",
+    }
+)
+
+
 class Task(_ApiModel):
     """A Semaphore task (a run of a template)."""
 
@@ -147,6 +162,8 @@ class Repository(_ApiModel):
     git_url: str = ""
     git_branch: str = ""
     ssh_key_id: int = 0
+    # Fork svn >= v2.21.0-svn.1: one checkout shared by every template (ken #1248).
+    monorepo: bool = False
 
 
 class Key(_ApiModel):

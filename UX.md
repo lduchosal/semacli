@@ -321,6 +321,8 @@ This log records the answers for traceability.
 | `template audit` exit code on findings.                 | **1** (not 2) — findings are a result, not a user error, so it works as a periodic check. |
 | `template sync` deletions.                              | **Never** — a template owns its task history. Server-only templates are reported as orphans. |
 | Where does the playbook → view mapping live?            | **In the user's manifest**, not in semacli: site rules stay in a file the operator owns. |
+| `project cache clear` while tasks are active.           | **Refuse (exit 2)**: the server wipes the tmp dir under a running task. `--force` for a zombie task; `--dry-run` exits **1** when the purge would be refused, like `template audit` (#1248). |
+| `repo update --monorepo` on a server without the field. | **Refuse (exit 4) before the PUT**: the server would drop the unknown key and answer 204 (#1248). |
 
 ---
 

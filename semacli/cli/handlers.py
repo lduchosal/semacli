@@ -8,6 +8,7 @@ from typing import Any, NoReturn
 import click
 
 from semacli.core.exceptions import (
+    ActiveTasksError,
     AmbiguousNameError,
     AuthenticationError,
     ConfigurationError,
@@ -44,6 +45,7 @@ def handle_error(error: Exception, verbose: int = 0) -> NoReturn:
     elif isinstance(
         error,
         (
+            ActiveTasksError,
             AmbiguousNameError,
             InvalidArgumentsError,
             InvalidOverrideSpecError,

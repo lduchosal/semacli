@@ -11,6 +11,7 @@ from semacli.core.models import Project
 from .._groups import AliasedGroup, SectionedRootGroup
 from ..decorators import common_options, output_options, project_option, resolve_project
 from ..handlers import OutputFormatter, fail_on_error
+from ._project_cache import cache_group
 from ._project_members import members_group
 
 PROJECT_HELP = """\
@@ -33,6 +34,7 @@ Examples:
   sem project delete 2
   sem project members -p 2                          # list members
   sem project members add --user 7 --role manager
+  sem project cache clear -p 2                      # wipe server checkouts
   sem project --json | jq -r '.[].name'
 
 Next steps:
@@ -212,6 +214,7 @@ def delete_cmd(ctx: click.Context, project_id: int, *, yes: bool) -> None:
 
 
 project_group.add_command(members_group)
+project_group.add_command(cache_group)
 
 
 @project_group.command("events")

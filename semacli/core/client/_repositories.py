@@ -4,6 +4,8 @@ from ..exceptions import SemaphoreAPIError
 from ..models import Repository
 from ._base import BaseClient
 
+_MONOREPO_HINT = "Single-checkout repositories need the Semaphore svn fork >= v2.21.0-svn.1."
+
 
 class RepositoriesMixin(BaseClient):
     """CRUD on repositories."""
@@ -52,11 +54,16 @@ class RepositoriesMixin(BaseClient):
         repo_id: int,
         **fields: str | int | bool | None,
     ) -> None:
-        """PUT /api/project/{pid}/repositories/{rid} — read-modify-write (ken #1170)."""
+        """PUT /api/project/{pid}/repositories/{rid} — read-modify-write (ken #1170).
+
+        ``monorepo`` only exists on the svn fork; a server without it would
+        drop the key and still answer 204, so it is refused up front.
+        """
         self._put_merged(
             f"project/{project_id}/repositories/{repo_id}",
             fields,
             {"id": repo_id, "project_id": project_id},
+            require={"monorepo": _MONOREPO_HINT},
         )
 
     def delete_repository(self, project_id: int, repo_id: int) -> None:

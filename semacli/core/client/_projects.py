@@ -54,6 +54,14 @@ class ProjectsMixin(BaseClient):
         """DELETE /api/project/{pid}."""
         self._request(f"project/{project_id}", method="DELETE")
 
+    def clear_project_cache(self, project_id: int) -> None:
+        """DELETE /api/project/{pid}/cache — wipe the project's tmp dir.
+
+        The server empties ``<tmp_path>/project_<pid>``: every repository
+        checkout and per-task copy. Answers 204 with no body (no size).
+        """
+        self._request(f"project/{project_id}/cache", method="DELETE")
+
     def list_project_members(self, project_id: int) -> list[ProjectMember]:
         """GET /api/project/{pid}/users."""
         data = self._request(f"project/{project_id}/users")
